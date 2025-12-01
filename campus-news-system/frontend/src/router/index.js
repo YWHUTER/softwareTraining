@@ -11,6 +11,12 @@ const routes = [
         component: () => import('@/views/Home.vue')
       },
       {
+        path: '/follow',
+        name: 'Follow',
+        component: () => import('@/views/Follow.vue'),
+        meta: { requireAuth: true }
+      },
+      {
         path: '/board/:type',
         name: 'Board',
         component: () => import('@/views/Board.vue')

@@ -35,6 +35,17 @@
                 </span>
               </div>
             </div>
+            <!-- 关注按钮 -->
+            <el-button
+              v-if="userStore.isLogin && article.author?.id !== userStore.user?.id"
+              :type="isFollowingAuthor ? 'default' : 'primary'"
+              size="small"
+              round
+              @click="handleFollowAuthor"
+              class="follow-author-btn"
+            >
+              {{ isFollowingAuthor ? '已关注' : '+ 关注' }}
+            </el-button>
           </div>
           
           <div class="article-stats">
@@ -51,6 +62,11 @@
       </div>
       
       <el-divider class="header-divider" />
+      
+      <!-- 封面图片 -->
+      <div class="article-cover" v-if="article.coverImage">
+        <img :src="article.coverImage" :alt="article.title" class="cover-image" />
+      </div>
       
       <!-- 文章内容 -->
       <div class="article-body">
@@ -196,6 +212,7 @@ import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { getArticleDetail, toggleLike, toggleFavorite } from '@/api/article'
 import { getCommentList, createComment, deleteComment } from '@/api/comment'
+import { toggleFollow, checkFollow } from '@/api/follow'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
@@ -207,15 +224,46 @@ const article = ref(null)
 const comments = ref([])
 const commentContent = ref('')
 const replyTo = ref(null)
+const isFollowingAuthor = ref(false)
 
 const fetchArticle = async () => {
   loading.value = true
   try {
     article.value = await getArticleDetail(route.params.id)
+    // 检查是否已关注作者
+    if (userStore.isLogin && article.value?.author?.id) {
+      checkFollowStatus()
+    }
   } catch (error) {
     console.error(error)
   } finally {
     loading.value = false
+  }
+}
+
+// 检查是否关注作者
+const checkFollowStatus = async () => {
+  try {
+    if (article.value?.author?.id && article.value.author.id !== userStore.user?.id) {
+      isFollowingAuthor.value = await checkFollow(article.value.author.id)
+    }
+  } catch (error) {
+    console.error('检查关注状态失败:', error)
+  }
+}
+
+// 关注/取消关注作者
+const handleFollowAuthor = async () => {
+  if (!userStore.isLogin) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  try {
+    const result = await toggleFollow(article.value.author.id)
+    isFollowingAuthor.value = result.isFollowing
+    ElMessage.success(result.message)
+  } catch (error) {
+    ElMessage.error('操作失败')
   }
 }
 
@@ -430,8 +478,26 @@ onMounted(() => {
   font-weight: 500;
 }
 
+.follow-author-btn {
+  margin-left: 12px;
+}
+
 .header-divider {
   margin: 20px 0;
+}
+
+/* 封面图片 */
+.article-cover {
+  padding: 0 40px;
+  margin-bottom: 24px;
+}
+
+.cover-image {
+  width: 100%;
+  max-height: 500px;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 /* 文章主体 */
@@ -460,9 +526,27 @@ onMounted(() => {
 
 .article-content :deep(img) {
   max-width: 100%;
+  height: auto !important;
+  display: block;
   border-radius: 8px;
-  margin: 1.5em 0;
+  margin: 1.5em auto;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Quill 编辑器插入的图片容器 */
+.article-content :deep(.ql-align-center) {
+  text-align: center;
+}
+
+.article-content :deep(.ql-align-right) {
+  text-align: right;
+}
+
+.article-content :deep(p img),
+.article-content :deep(span img) {
+  max-width: 100%;
+  height: auto !important;
+  display: inline-block;
 }
 
 .article-content :deep(blockquote) {

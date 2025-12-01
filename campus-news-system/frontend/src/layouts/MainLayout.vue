@@ -37,6 +37,10 @@
               <el-icon><OfficeBuilding /></el-icon>
               <span>学院新闻</span>
             </el-menu-item>
+            <el-menu-item index="/follow" class="menu-item follow-menu-item">
+              <el-icon><Star /></el-icon>
+              <span>关注</span>
+            </el-menu-item>
             <el-menu-item index="/ai-assistant" class="menu-item ai-menu-item">
               <el-icon><ChatDotRound /></el-icon>
               <span>AI 助手</span>
@@ -272,6 +276,22 @@ const handleUserCommand = (command) => {
   color: #764ba2;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
   border-bottom-color: #764ba2;
+}
+
+/* 关注菜单项特殊样式 */
+.main-menu .follow-menu-item {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%);
+  color: #f59e0b;
+}
+
+.main-menu .follow-menu-item:hover {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 152, 0, 0.2) 100%);
+}
+
+.main-menu .follow-menu-item.is-active {
+  color: #d97706;
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 152, 0, 0.15) 100%);
+  border-bottom-color: #f59e0b;
 }
 
 /* 用户操作区 */

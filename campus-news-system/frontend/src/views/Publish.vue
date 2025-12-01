@@ -119,11 +119,13 @@
           <el-form-item prop="content">
             <div class="editor-wrapper">
               <QuillEditor
+                ref="quillEditorRef"
                 v-model:content="form.content"
                 contentType="html"
                 theme="snow"
                 :options="editorOptions"
                 class="custom-editor"
+                @update:content="handleContentChange"
               />
             </div>
           </el-form-item>
@@ -171,6 +173,7 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const formRef = ref(null)
+const quillEditorRef = ref(null)
 const loading = ref(false)
 const isEdit = ref(false)
 
@@ -184,6 +187,14 @@ const form = ref({
   isPinned: 0
 })
 
+// 处理编辑器内容变化
+const handleContentChange = (content) => {
+  // 确保 content 是字符串类型的 HTML
+  if (typeof content === 'string') {
+    form.value.content = content
+  }
+}
+
 const rules = {
   title: [{ required: true, message: '请输入文章标题', trigger: 'blur' }],
   content: [{ required: true, message: '请输入文章内容', trigger: 'blur' }],
@@ -193,19 +204,43 @@ const rules = {
 // 富文本编辑器配置
 const editorOptions = {
   modules: {
-    toolbar: [
-      ['bold', 'italic', 'underline', 'strike'],
-      ['blockquote', 'code-block'],
-      [{ 'header': 1 }, { 'header': 2 }],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'indent': '-1'}, { 'indent': '+1' }],
-      [{ 'size': ['small', false, 'large', 'huge'] }],
-      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-      [{ 'color': [] }, { 'background': [] }],
-      [{ 'align': [] }],
-      ['link', 'image'],
-      ['clean']
-    ]
+    toolbar: {
+      container: [
+        ['bold', 'italic', 'underline', 'strike'],
+        ['blockquote', 'code-block'],
+        [{ 'header': 1 }, { 'header': 2 }],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        [{ 'size': ['small', false, 'large', 'huge'] }],
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'align': [] }],
+        ['link', 'image'],
+        ['clean']
+      ],
+      handlers: {
+        image: function() {
+          const input = document.createElement('input')
+          input.setAttribute('type', 'file')
+          input.setAttribute('accept', 'image/*')
+          input.click()
+          
+          input.onchange = () => {
+            const file = input.files[0]
+            if (file) {
+              const reader = new FileReader()
+              reader.onload = (e) => {
+                const quill = this.quill
+                const range = quill.getSelection(true)
+                quill.insertEmbed(range.index, 'image', e.target.result)
+                quill.setSelection(range.index + 1)
+              }
+              reader.readAsDataURL(file)
+            }
+          }
+        }
+      }
+    }
   },
   placeholder: '在这里开始书写您的文章内容...'
 }
@@ -219,20 +254,51 @@ watch(() => form.value.boardType, (newType) => {
 })
 
 const handleSubmit = async () => {
+  // 提交前确保获取最新的编辑器内容
+  let htmlContent = form.value.content
+  
+  if (quillEditorRef.value) {
+    // 尝试从编辑器实例获取内容
+    const editor = quillEditorRef.value
+    if (editor.getHTML) {
+      htmlContent = editor.getHTML()
+    } else if (editor.getQuill) {
+      const quill = editor.getQuill()
+      if (quill) {
+        htmlContent = quill.root.innerHTML
+      }
+    }
+  }
+  
+  // 调试日志
+  console.log('提交的内容:', htmlContent)
+  
   await formRef.value.validate(async (valid) => {
     if (valid) {
       loading.value = true
       try {
+        const submitData = {
+          title: form.value.title,
+          summary: form.value.summary,
+          content: htmlContent,
+          coverImage: form.value.coverImage,
+          boardType: form.value.boardType,
+          collegeId: form.value.collegeId,
+          isPinned: form.value.isPinned
+        }
+        
+        console.log('提交数据:', submitData)
+        
         if (isEdit.value) {
-          await updateArticle(route.query.id, form.value)
+          await updateArticle(route.query.id, submitData)
           ElMessage.success('更新成功！')
         } else {
-          await createArticle(form.value)
+          await createArticle(submitData)
           ElMessage.success('发布成功！文章正在审核中')
         }
         router.push('/')
       } catch (error) {
-        console.error(error)
+        console.error('提交失败:', error)
       } finally {
         loading.value = false
       }

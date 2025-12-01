@@ -6,8 +6,10 @@ import com.campus.news.dto.AiChatRequest;
 import com.campus.news.dto.AiChatResponse;
 import com.campus.news.entity.Article;
 import com.campus.news.entity.User;
+import com.campus.news.entity.UserFollow;
 import com.campus.news.mapper.ArticleMapper;
 import com.campus.news.mapper.UserMapper;
+import com.campus.news.mapper.UserFollowMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,7 @@ public class AIService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final ArticleMapper articleMapper;
     private final UserMapper userMapper;
+    private final UserFollowMapper userFollowMapper;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
     
@@ -187,6 +190,16 @@ public class AIService {
             // 👤 用户相关查询
             if (containsAny(lowerPrompt, "用户数", "多少用户", "注册用户")) {
                 context.append(getUserStatistics());
+            }
+            
+            // ⭐ 关注相关查询
+            if (containsAny(lowerPrompt, "粉丝", "关注", "最多粉丝", "人气", "大V", "网红")) {
+                context.append(getFollowStatistics());
+            }
+            
+            // 🏆 粉丝排行
+            if (containsAny(lowerPrompt, "粉丝最多", "最受欢迎", "人气最高", "粉丝排行", "谁最火")) {
+                context.append(getTopFollowedUsers());
             }
             
         } catch (Exception e) {
@@ -410,6 +423,14 @@ public class AIService {
             - **收藏**：收藏文章到个人中心
             - **评论**：在文章下方发表评论
             
+            ### ⭐ 关注系统
+            - **关注用户**：在文章详情页可以关注作者
+            - **关注动态**：在「关注」页面查看关注的人发布的最新文章
+            - **我的关注**：查看我关注了哪些用户
+            - **我的粉丝**：查看谁关注了我
+            - **推荐关注**：系统推荐活跃用户供关注
+            - 关注/粉丝数会显示在用户资料中
+            
             ### 🔐 账号相关
             - 注册时需填写：用户名、密码、真实姓名、邮箱，可选择学院
             - 登录后可在个人中心修改信息
@@ -432,6 +453,60 @@ public class AIService {
             return "你好！我是校园新闻助手。目前AI服务暂时不可用，但我仍然可以为您提供基本帮助。请问有什么可以帮您的？";
         }
         return "抱歉，AI 服务暂时遇到问题。请稍后再试，或联系管理员。";
+    }
+    
+    /**
+     * 获取关注统计数据
+     */
+    private String getFollowStatistics() {
+        StringBuilder sb = new StringBuilder("\n【关注系统统计】\n");
+        
+        // 总关注关系数
+        Long totalFollows = userFollowMapper.selectCount(null);
+        sb.append("- 平台总关注关系数: ").append(totalFollows).append("\n");
+        
+        // 有粉丝的用户数
+        QueryWrapper<User> hasFollowerWrapper = new QueryWrapper<>();
+        hasFollowerWrapper.gt("follower_count", 0);
+        Long usersWithFollowers = userMapper.selectCount(hasFollowerWrapper);
+        sb.append("- 有粉丝的用户数: ").append(usersWithFollowers).append("\n");
+        
+        // 平均粉丝数
+        if (usersWithFollowers > 0) {
+            sb.append("- 平均每人关注数: ").append(totalFollows / usersWithFollowers).append("\n");
+        }
+        
+        return sb.toString();
+    }
+    
+    /**
+     * 获取粉丝最多的用户排行
+     */
+    private String getTopFollowedUsers() {
+        StringBuilder sb = new StringBuilder("\n【粉丝排行榜 TOP5】\n");
+        
+        QueryWrapper<User> wrapper = new QueryWrapper<>();
+        wrapper.gt("follower_count", 0)
+               .orderByDesc("follower_count")
+               .last("LIMIT 5");
+        
+        List<User> topUsers = userMapper.selectList(wrapper);
+        
+        int rank = 1;
+        for (User user : topUsers) {
+            sb.append(rank).append(". ")
+              .append(user.getRealName() != null ? user.getRealName() : user.getUsername())
+              .append(" - 粉丝数: ").append(user.getFollowerCount() != null ? user.getFollowerCount() : 0)
+              .append(", 关注数: ").append(user.getFollowingCount() != null ? user.getFollowingCount() : 0)
+              .append("\n");
+            rank++;
+        }
+        
+        if (topUsers.isEmpty()) {
+            sb.append("暂无粉丝数据\n");
+        }
+        
+        return sb.toString();
     }
     
     /**

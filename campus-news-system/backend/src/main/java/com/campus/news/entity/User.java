@@ -25,6 +25,16 @@ public class User {
     private String studentId;
     private Integer status;
     
+    /**
+     * 关注数
+     */
+    private Integer followingCount;
+    
+    /**
+     * 粉丝数
+     */
+    private Integer followerCount;
+    
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     
@@ -36,4 +46,10 @@ public class User {
     
     @TableField(exist = false)
     private College college;
+    
+    /**
+     * 当前用户是否已关注此用户（非数据库字段）
+     */
+    @TableField(exist = false)
+    private Boolean isFollowed;
 }

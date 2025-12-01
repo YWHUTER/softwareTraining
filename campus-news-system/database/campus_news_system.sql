@@ -1,9 +1,17 @@
--- 校园新闻发布系统数据库
+-- ============================================
+-- 校园新闻发布系统 - 完整数据库脚本
 -- MySQL Version: 8.0+
+-- 最后更新: 2025-12-01
+-- ============================================
+
 -- 创建数据库
 DROP DATABASE IF EXISTS campus_news_system;
 CREATE DATABASE campus_news_system DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE campus_news_system;
+
+-- ============================================
+-- 表结构
+-- ============================================
 
 -- 1. 角色表
 CREATE TABLE `role` (
@@ -35,6 +43,8 @@ CREATE TABLE `user` (
     `avatar` VARCHAR(500) COMMENT '头像URL',
     `college_id` BIGINT COMMENT '所属学院ID',
     `student_id` VARCHAR(50) COMMENT '学号/工号',
+    `following_count` INT DEFAULT 0 COMMENT '关注数',
+    `follower_count` INT DEFAULT 0 COMMENT '粉丝数',
     `status` TINYINT DEFAULT 1 COMMENT '状态: 0-禁用 1-正常',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -56,13 +66,26 @@ CREATE TABLE `user_role` (
     FOREIGN KEY (`role_id`) REFERENCES `role`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户角色关联表';
 
--- 5. 文章表（新闻/帖子统一管理）
+-- 5. 用户关注表
+CREATE TABLE `user_follow` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `follower_id` BIGINT NOT NULL COMMENT '关注者ID（粉丝）',
+    `following_id` BIGINT NOT NULL COMMENT '被关注者ID',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_follow` (`follower_id`, `following_id`),
+    INDEX `idx_follower` (`follower_id`),
+    INDEX `idx_following` (`following_id`),
+    FOREIGN KEY (`follower_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`following_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户关注关系表';
+
+-- 6. 文章表（新闻/帖子统一管理）
 CREATE TABLE `article` (
     `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `title` VARCHAR(200) NOT NULL COMMENT '标题',
     `content` LONGTEXT NOT NULL COMMENT '内容',
     `summary` VARCHAR(500) COMMENT '摘要',
-    `cover_image` VARCHAR(500) COMMENT '封面图URL',
+    `cover_image` VARCHAR(1000) COMMENT '封面图URL',
     `author_id` BIGINT NOT NULL COMMENT '作者ID',
     `board_type` VARCHAR(50) NOT NULL COMMENT '板块类型: OFFICIAL/CAMPUS/COLLEGE',
     `college_id` BIGINT COMMENT '所属学院ID（学院板块必填）',
@@ -70,7 +93,7 @@ CREATE TABLE `article` (
     `like_count` INT DEFAULT 0 COMMENT '点赞数',
     `comment_count` INT DEFAULT 0 COMMENT '评论数',
     `is_pinned` TINYINT DEFAULT 0 COMMENT '是否置顶: 0-否 1-是',
-    `is_approved` TINYINT DEFAULT 1 COMMENT '是否审核通过: 0-待审核 1-已通过 2-未通过',
+    `is_approved` TINYINT DEFAULT 0 COMMENT '审核状态: 0-待审核 1-已通过 2-已拒绝',
     `status` TINYINT DEFAULT 1 COMMENT '状态: 0-已删除 1-正常',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -78,12 +101,13 @@ CREATE TABLE `article` (
     INDEX `idx_board_type` (`board_type`),
     INDEX `idx_college` (`college_id`),
     INDEX `idx_created_at` (`created_at`),
+    INDEX `idx_view_count` (`view_count`),
     INDEX `idx_is_pinned` (`is_pinned`),
     FOREIGN KEY (`author_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`college_id`) REFERENCES `college`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章表';
 
--- 6. 评论表
+-- 7. 评论表
 CREATE TABLE `comment` (
     `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `article_id` BIGINT NOT NULL COMMENT '文章ID',
@@ -102,7 +126,7 @@ CREATE TABLE `comment` (
     FOREIGN KEY (`parent_id`) REFERENCES `comment`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='评论表';
 
--- 7. 文章点赞表
+-- 8. 文章点赞表
 CREATE TABLE `article_like` (
     `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `article_id` BIGINT NOT NULL COMMENT '文章ID',
@@ -115,7 +139,7 @@ CREATE TABLE `article_like` (
     FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章点赞表';
 
--- 8. 文章收藏表
+-- 9. 文章收藏表
 CREATE TABLE `article_favorite` (
     `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `article_id` BIGINT NOT NULL COMMENT '文章ID',
@@ -127,6 +151,10 @@ CREATE TABLE `article_favorite` (
     FOREIGN KEY (`article_id`) REFERENCES `article`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章收藏表';
+
+-- ============================================
+-- 初始化数据
+-- ============================================
 
 -- 初始化角色数据
 INSERT INTO `role` (`id`, `role_name`, `description`) VALUES
@@ -142,8 +170,13 @@ INSERT INTO `college` (`id`, `name`, `code`, `description`) VALUES
 (4, '电子信息工程学院', 'EE', '电子学院'),
 (5, '经济管理学院', 'EM', '经管学院');
 
--- 初始化管理员账号 (密码: admin123，需要后端加密)
+-- 初始化管理员账号 (密码: admin123)
 INSERT INTO `user` (`id`, `username`, `password`, `email`, `real_name`, `status`) VALUES
 (1, 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'admin@campus.edu', '系统管理员', 1);
 
 INSERT INTO `user_role` (`user_id`, `role_id`) VALUES (1, 1);
+
+-- ============================================
+-- 完成
+-- ============================================
+SELECT '数据库初始化完成！' AS message;

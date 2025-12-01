@@ -171,7 +171,7 @@
             <template #header>
               <div class="card-title">
                 <el-icon :size="18" color="#f56c6c"><TrendCharts /></el-icon>
-                <span>热门文章</span>
+                <span>热门 TOP10</span>
               </div>
             </template>
             <div class="hot-articles">
@@ -270,8 +270,10 @@ const fetchHotArticles = async () => {
   try {
     const data = await getArticleList({
       current: 1,
-      size: 5,
+      size: 10,                // 热门 TOP10
       isApproved: 1,
+      sortBy: 'views',         // 按浏览量排序
+      sortOrder: 'desc',       // 降序（最高在前）
       _t: Date.now() // 防止缓存
     })
     hotArticles.value = data.records
