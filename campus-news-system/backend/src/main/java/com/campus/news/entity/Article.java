@@ -23,7 +23,7 @@ public class Article {
     private Integer isPinned;
     private Integer isApproved;
     
-    @TableLogic
+    @TableLogic(value = "1", delval = "0")
     private Integer status;
     
     @TableField(fill = FieldFill.INSERT)

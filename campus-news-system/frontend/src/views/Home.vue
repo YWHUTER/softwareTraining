@@ -3,7 +3,7 @@
     <!-- 顶部横幅 -->
     <div class="banner">
       <div class="banner-content">
-        <h1 class="banner-title">校园资讯中心</h1>
+        <h1 class="banner-title">校园新闻中心</h1>
         <p class="banner-subtitle">第一时间了解校园动态，掌握最新资讯</p>
       </div>
     </div>
@@ -276,7 +276,8 @@ const fetchHotArticles = async () => {
       sortOrder: 'desc',       // 降序（最高在前）
       _t: Date.now() // 防止缓存
     })
-    hotArticles.value = data.records
+    // 确保最多只显示10个
+    hotArticles.value = (data.records || []).slice(0, 10)
   } catch (error) {
     console.error(error)
   }

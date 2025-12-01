@@ -97,6 +97,11 @@ public class UserService extends ServiceImpl<UserMapper, User> implements UserDe
             throw new BusinessException("用户名或密码错误");
         }
         
+        // 检查用户是否被禁用
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            throw new BusinessException("账号已被禁用，请联系管理员");
+        }
+        
         String token = jwtUtil.generateToken(user.getUsername(), user.getId());
         
         Map<String, Object> result = new HashMap<>();
@@ -149,9 +154,10 @@ public class UserService extends ServiceImpl<UserMapper, User> implements UserDe
     
     @Transactional
     public boolean updateUserStatus(Long userId, Integer status) {
-        User user = new User();
-        user.setId(userId);
-        user.setStatus(status);
-        return userMapper.updateById(user) > 0;
+        return userMapper.update(null,
+            new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<User>()
+                .eq("id", userId)
+                .set("status", status)
+        ) > 0;
     }
 }

@@ -41,9 +41,7 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: auto
-      logic-delete-field: status
-      logic-delete-value: 0
-      logic-not-delete-value: 1
+      # 移除全局逻辑删除，在需要的实体上单独配置
 
 # Swagger配置
 springdoc:

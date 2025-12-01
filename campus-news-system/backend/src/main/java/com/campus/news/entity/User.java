@@ -23,6 +23,10 @@ public class User {
     private String avatar;
     private Long collegeId;
     private String studentId;
+    
+    /**
+     * 用户状态: 0-禁用 1-正常
+     */
     private Integer status;
     
     /**

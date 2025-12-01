@@ -17,7 +17,7 @@ public class Comment {
     private Long parentId;
     private Integer likeCount;
     
-    @TableLogic
+    @TableLogic(value = "1", delval = "0")
     private Integer status;
     
     @TableField(fill = FieldFill.INSERT)

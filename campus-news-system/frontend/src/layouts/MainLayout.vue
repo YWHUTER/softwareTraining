@@ -9,7 +9,7 @@
             <img src="@/assets/whut-logo.png" alt="校徽" class="logo-img" />
             <div class="logo-text">
               <span class="logo-title">校园新闻</span>
-              <span class="logo-subtitle">Campus News</span>
+              <span class="logo-subtitle">WHUT News</span>
             </div>
           </div>
 
@@ -157,7 +157,7 @@ const handleUserCommand = (command) => {
     case 'logout':
       userStore.logout()
       ElMessage.success('退出成功')
-      router.push('/')
+      router.push('/login')
       break
   }
 }

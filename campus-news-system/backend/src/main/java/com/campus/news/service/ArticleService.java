@@ -13,12 +13,10 @@ import com.campus.news.entity.User;
 import com.campus.news.exception.BusinessException;
 import com.campus.news.mapper.ArticleMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -29,9 +27,6 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
     private final CollegeService collegeService;
     private final ArticleLikeService articleLikeService;
     private final ArticleFavoriteService articleFavoriteService;
-    private final RedisTemplate<String, Object> redisTemplate;
-    
-    private static final String ARTICLE_VIEW_KEY = "article:view:";
     
     @Transactional
     public Article createArticle(ArticleCreateRequest request, Long userId) {
@@ -143,7 +138,12 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
         
         // 增加浏览量
         incrementViewCount(id);
-        article.setViewCount(article.getViewCount() + 1);
+        
+        // 重新获取更新后的浏览量
+        Article updated = articleMapper.selectById(id);
+        if (updated != null) {
+            article.setViewCount(updated.getViewCount());
+        }
         
         enrichArticle(article, currentUserId);
         return article;
@@ -163,18 +163,14 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
     
     private void incrementViewCount(Long articleId) {
         try {
-            String key = ARTICLE_VIEW_KEY + articleId;
-            Long count = redisTemplate.opsForValue().increment(key);
-            redisTemplate.expire(key, 1, TimeUnit.HOURS);
-
-            if (count != null && count % 10 == 0) {
-                Article article = new Article();
-                article.setId(articleId);
-                article.setViewCount(count.intValue());
-                articleMapper.updateById(article);
-            }
+            // 直接更新数据库浏览量 +1
+            articleMapper.update(null, 
+                new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Article>()
+                    .eq("id", articleId)
+                    .setSql("view_count = view_count + 1")
+            );
         } catch (Exception ignored) {
-            // 如果 Redis 不可用，忽略浏览量统计错误，不影响文章详情正常返回
+            // 更新失败不影响文章详情正常返回
         }
     }
     

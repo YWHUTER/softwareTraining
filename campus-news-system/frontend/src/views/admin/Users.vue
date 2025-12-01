@@ -100,7 +100,9 @@ const fetchUsers = async () => {
 }
 
 const handleToggleStatus = async (user) => {
-  const newStatus = user.status === 1 ? 0 : 1
+  // 状态判断：1 或 undefined/null 视为正常，0 视为禁用
+  const currentStatus = user.status ?? 1
+  const newStatus = currentStatus === 1 ? 0 : 1
   const action = newStatus === 1 ? '启用' : '禁用'
   
   try {
@@ -109,12 +111,15 @@ const handleToggleStatus = async (user) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    await updateUserStatus(user.id, newStatus)
+    const result = await updateUserStatus(user.id, newStatus)
+    console.log('更新结果:', result)
     ElMessage.success(`${action}成功`)
-    fetchUsers()
+    // 强制刷新列表
+    await fetchUsers()
   } catch (error) {
     if (error !== 'cancel') {
-      console.error(error)
+      console.error('更新状态失败:', error)
+      ElMessage.error('操作失败')
     }
   }
 }
