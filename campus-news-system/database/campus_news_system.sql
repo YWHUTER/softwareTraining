@@ -1,0 +1,149 @@
+-- 校园新闻发布系统数据库
+-- MySQL Version: 8.0+
+-- 创建数据库
+DROP DATABASE IF EXISTS campus_news_system;
+CREATE DATABASE campus_news_system DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE campus_news_system;
+
+-- 1. 角色表
+CREATE TABLE `role` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `role_name` VARCHAR(50) NOT NULL UNIQUE COMMENT '角色名称: ADMIN/TEACHER/STUDENT',
+    `description` TEXT COMMENT '角色描述',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色表';
+
+-- 2. 学院表
+CREATE TABLE `college` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL COMMENT '学院名称',
+    `code` VARCHAR(50) NOT NULL UNIQUE COMMENT '学院代码',
+    `description` TEXT COMMENT '学院简介',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='学院表';
+
+-- 3. 用户表
+CREATE TABLE `user` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `username` VARCHAR(50) NOT NULL UNIQUE COMMENT '用户名',
+    `password` VARCHAR(255) NOT NULL COMMENT '密码(加密)',
+    `email` VARCHAR(100) COMMENT '邮箱',
+    `real_name` VARCHAR(50) COMMENT '真实姓名',
+    `phone` VARCHAR(20) COMMENT '手机号',
+    `avatar` VARCHAR(500) COMMENT '头像URL',
+    `college_id` BIGINT COMMENT '所属学院ID',
+    `student_id` VARCHAR(50) COMMENT '学号/工号',
+    `status` TINYINT DEFAULT 1 COMMENT '状态: 0-禁用 1-正常',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_college` (`college_id`),
+    INDEX `idx_username` (`username`),
+    FOREIGN KEY (`college_id`) REFERENCES `college`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
+
+-- 4. 用户角色关联表
+CREATE TABLE `user_role` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `role_id` BIGINT NOT NULL COMMENT '角色ID',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_role` (`role_id`),
+    UNIQUE KEY `uk_user_role` (`user_id`, `role_id`),
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`role_id`) REFERENCES `role`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户角色关联表';
+
+-- 5. 文章表（新闻/帖子统一管理）
+CREATE TABLE `article` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(200) NOT NULL COMMENT '标题',
+    `content` LONGTEXT NOT NULL COMMENT '内容',
+    `summary` VARCHAR(500) COMMENT '摘要',
+    `cover_image` VARCHAR(500) COMMENT '封面图URL',
+    `author_id` BIGINT NOT NULL COMMENT '作者ID',
+    `board_type` VARCHAR(50) NOT NULL COMMENT '板块类型: OFFICIAL/CAMPUS/COLLEGE',
+    `college_id` BIGINT COMMENT '所属学院ID（学院板块必填）',
+    `view_count` INT DEFAULT 0 COMMENT '浏览量',
+    `like_count` INT DEFAULT 0 COMMENT '点赞数',
+    `comment_count` INT DEFAULT 0 COMMENT '评论数',
+    `is_pinned` TINYINT DEFAULT 0 COMMENT '是否置顶: 0-否 1-是',
+    `is_approved` TINYINT DEFAULT 1 COMMENT '是否审核通过: 0-待审核 1-已通过 2-未通过',
+    `status` TINYINT DEFAULT 1 COMMENT '状态: 0-已删除 1-正常',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_author` (`author_id`),
+    INDEX `idx_board_type` (`board_type`),
+    INDEX `idx_college` (`college_id`),
+    INDEX `idx_created_at` (`created_at`),
+    INDEX `idx_is_pinned` (`is_pinned`),
+    FOREIGN KEY (`author_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`college_id`) REFERENCES `college`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章表';
+
+-- 6. 评论表
+CREATE TABLE `comment` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `article_id` BIGINT NOT NULL COMMENT '文章ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `content` TEXT NOT NULL COMMENT '评论内容',
+    `parent_id` BIGINT COMMENT '父评论ID（支持一层回复）',
+    `like_count` INT DEFAULT 0 COMMENT '点赞数',
+    `status` TINYINT DEFAULT 1 COMMENT '状态: 0-已删除 1-正常',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_article` (`article_id`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_parent` (`parent_id`),
+    FOREIGN KEY (`article_id`) REFERENCES `article`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`parent_id`) REFERENCES `comment`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='评论表';
+
+-- 7. 文章点赞表
+CREATE TABLE `article_like` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `article_id` BIGINT NOT NULL COMMENT '文章ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_article_user` (`article_id`, `user_id`),
+    INDEX `idx_article` (`article_id`),
+    INDEX `idx_user` (`user_id`),
+    FOREIGN KEY (`article_id`) REFERENCES `article`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章点赞表';
+
+-- 8. 文章收藏表
+CREATE TABLE `article_favorite` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `article_id` BIGINT NOT NULL COMMENT '文章ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_article_user` (`article_id`, `user_id`),
+    INDEX `idx_article` (`article_id`),
+    INDEX `idx_user` (`user_id`),
+    FOREIGN KEY (`article_id`) REFERENCES `article`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章收藏表';
+
+-- 初始化角色数据
+INSERT INTO `role` (`id`, `role_name`, `description`) VALUES
+(1, 'ADMIN', '系统管理员'),
+(2, 'TEACHER', '教师'),
+(3, 'STUDENT', '学生');
+
+-- 初始化学院数据
+INSERT INTO `college` (`id`, `name`, `code`, `description`) VALUES
+(1, '计算机科学与技术学院', 'CS', '计算机学院'),
+(2, '软件工程学院', 'SE', '软件学院'),
+(3, '人工智能学院', 'AI', 'AI学院'),
+(4, '电子信息工程学院', 'EE', '电子学院'),
+(5, '经济管理学院', 'EM', '经管学院');
+
+-- 初始化管理员账号 (密码: admin123，需要后端加密)
+INSERT INTO `user` (`id`, `username`, `password`, `email`, `real_name`, `status`) VALUES
+(1, 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'admin@campus.edu', '系统管理员', 1);
+
+INSERT INTO `user_role` (`user_id`, `role_id`) VALUES (1, 1);
