@@ -52,7 +52,7 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
         article.setViewCount(0);
         article.setLikeCount(0);
         article.setCommentCount(0);
-        article.setIsApproved(1); // 默认审核通过
+        article.setIsApproved(0); // 默认待审核，需要管理员审核后才能展示
         article.setStatus(1);
         
         articleMapper.insert(article);
@@ -101,7 +101,28 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
             wrapper.eq("is_pinned", request.getIsPinned());
         }
         
-        wrapper.orderByDesc("is_pinned", "created_at");
+        // 首先按置顶排序
+        wrapper.orderByDesc("is_pinned");
+        
+        // 根据排序参数设置排序规则
+        String sortBy = request.getSortBy();
+        boolean isAsc = "asc".equalsIgnoreCase(request.getSortOrder());
+        
+        if ("views".equals(sortBy)) {
+            // 按浏览量(热度)排序
+            if (isAsc) {
+                wrapper.orderByAsc("view_count");
+            } else {
+                wrapper.orderByDesc("view_count");
+            }
+        } else {
+            // 默认按日期排序
+            if (isAsc) {
+                wrapper.orderByAsc("created_at");
+            } else {
+                wrapper.orderByDesc("created_at");
+            }
+        }
         
         Page<Article> resultPage = articleMapper.selectPage(page, wrapper);
         

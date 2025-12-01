@@ -19,24 +19,44 @@
               <el-icon :size="20"><Tickets /></el-icon>
               <h2>最新资讯</h2>
             </div>
-            <el-radio-group v-model="currentBoard" @change="handleBoardChange" class="board-filters">
-              <el-radio-button label="">
-                <el-icon><Grid /></el-icon>
-                <span>全部</span>
-              </el-radio-button>
-              <el-radio-button label="OFFICIAL">
-                <el-icon><Document /></el-icon>
-                <span>官方新闻</span>
-              </el-radio-button>
-              <el-radio-button label="CAMPUS">
-                <el-icon><School /></el-icon>
-                <span>全校新闻</span>
-              </el-radio-button>
-              <el-radio-button label="COLLEGE">
-                <el-icon><OfficeBuilding /></el-icon>
-                <span>学院新闻</span>
-              </el-radio-button>
-            </el-radio-group>
+            <div class="filter-controls">
+              <el-radio-group v-model="currentBoard" @change="handleBoardChange" class="board-filters">
+                <el-radio-button label="">
+                  <el-icon><Grid /></el-icon>
+                  <span>全部</span>
+                </el-radio-button>
+                <el-radio-button label="OFFICIAL">
+                  <el-icon><Document /></el-icon>
+                  <span>官方新闻</span>
+                </el-radio-button>
+                <el-radio-button label="CAMPUS">
+                  <el-icon><School /></el-icon>
+                  <span>全校新闻</span>
+                </el-radio-button>
+                <el-radio-button label="COLLEGE">
+                  <el-icon><OfficeBuilding /></el-icon>
+                  <span>学院新闻</span>
+                </el-radio-button>
+              </el-radio-group>
+              <el-select v-model="sortBy" @change="handleSortChange" class="sort-select" placeholder="排序方式">
+                <el-option label="按日期排序（最新）" value="date_desc">
+                  <el-icon><Clock /></el-icon>
+                  <span>按日期排序（最新）</span>
+                </el-option>
+                <el-option label="按日期排序（最早）" value="date_asc">
+                  <el-icon><Clock /></el-icon>
+                  <span>按日期排序（最早）</span>
+                </el-option>
+                <el-option label="按热度排序（最高）" value="views_desc">
+                  <el-icon><TrendCharts /></el-icon>
+                  <span>按热度排序（最高）</span>
+                </el-option>
+                <el-option label="按热度排序（最低）" value="views_asc">
+                  <el-icon><TrendCharts /></el-icon>
+                  <span>按热度排序（最低）</span>
+                </el-option>
+              </el-select>
+            </div>
           </div>
           
           <!-- 文章列表 -->
@@ -221,15 +241,20 @@ const currentBoard = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const sortBy = ref('date_desc') // 默认按日期降序
 
 const fetchArticles = async () => {
   loading.value = true
   try {
+    // 解析排序参数
+    const [sortField, sortOrder] = sortBy.value.split('_')
     const data = await getArticleList({
       current: currentPage.value,
       size: pageSize.value,
       boardType: currentBoard.value || undefined,
       isApproved: 1,
+      sortBy: sortField === 'views' ? 'views' : 'date',
+      sortOrder: sortOrder,
       _t: Date.now() // 防止缓存
     })
     articles.value = data.records
@@ -256,6 +281,11 @@ const fetchHotArticles = async () => {
 }
 
 const handleBoardChange = () => {
+  currentPage.value = 1
+  fetchArticles()
+}
+
+const handleSortChange = () => {
   currentPage.value = 1
   fetchArticles()
 }
@@ -403,8 +433,29 @@ watch(() => route.path, (newPath) => {
   color: #2c3e50;
 }
 
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .board-filters {
   display: flex;
+  gap: 8px;
+}
+
+.sort-select {
+  width: 180px;
+}
+
+.sort-select :deep(.el-input__inner) {
+  font-weight: 500;
+}
+
+.sort-select :deep(.el-select-dropdown__item) {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 

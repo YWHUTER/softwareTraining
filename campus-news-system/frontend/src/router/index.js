@@ -31,6 +31,27 @@ const routes = [
         name: 'Profile',
         component: () => import('@/views/Profile.vue'),
         meta: { requireAuth: true }
+      },
+      {
+        path: '/ai-assistant',
+        name: 'AiAssistant',
+        component: () => import('@/views/AiAssistant.vue'),
+        meta: { requireAuth: true }
+      },
+      {
+        path: '/about',
+        name: 'About',
+        component: () => import('@/views/About.vue')
+      },
+      {
+        path: '/contact',
+        name: 'Contact',
+        component: () => import('@/views/Contact.vue')
+      },
+      {
+        path: '/privacy',
+        name: 'Privacy',
+        component: () => import('@/views/Privacy.vue')
       }
     ]
   },

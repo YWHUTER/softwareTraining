@@ -37,6 +37,10 @@
               <el-icon><OfficeBuilding /></el-icon>
               <span>学院新闻</span>
             </el-menu-item>
+            <el-menu-item index="/ai-assistant" class="menu-item ai-menu-item">
+              <el-icon><ChatDotRound /></el-icon>
+              <span>AI 助手</span>
+            </el-menu-item>
           </el-menu>
 
           <!-- 用户操作区 -->
@@ -105,15 +109,15 @@
       <el-footer class="footer">
         <div class="footer-content">
           <div class="footer-info">
-            <p class="copyright">© 2024 校园新闻发布系统. All Rights Reserved.</p>
+            <p class="copyright">© 2025 校园新闻发布系统. All Rights Reserved.</p>
             <p class="beian">基于 Vue3 + Spring Boot 构建</p>
           </div>
           <div class="footer-links">
-            <a href="#">关于我们</a>
+            <router-link to="/about">关于我们</router-link>
             <span class="divider">|</span>
-            <a href="#">联系方式</a>
+            <router-link to="/contact">联系方式</router-link>
             <span class="divider">|</span>
-            <a href="#">隐私政策</a>
+            <router-link to="/privacy">隐私政策</router-link>
           </div>
         </div>
       </el-footer>
@@ -252,6 +256,22 @@ const handleUserCommand = (command) => {
 
 .main-menu .el-icon {
   margin-right: 6px;
+}
+
+/* AI 助手菜单项特殊样式 */
+.main-menu .ai-menu-item {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  color: #667eea;
+}
+
+.main-menu .ai-menu-item:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+}
+
+.main-menu .ai-menu-item.is-active {
+  color: #764ba2;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+  border-bottom-color: #764ba2;
 }
 
 /* 用户操作区 */

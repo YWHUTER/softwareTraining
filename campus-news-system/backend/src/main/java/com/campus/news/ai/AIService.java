@@ -1,13 +1,472 @@
 package com.campus.news.ai;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.campus.news.dto.AiChatRequest;
+import com.campus.news.dto.AiChatResponse;
+import com.campus.news.entity.Article;
+import com.campus.news.entity.User;
+import com.campus.news.mapper.ArticleMapper;
+import com.campus.news.mapper.UserMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
- * AI服务接口（预留）
+ * AI服务接口
  * 后期可接入大模型API实现智能功能
  */
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class AIService {
+    
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final ArticleMapper articleMapper;
+    private final UserMapper userMapper;
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    
+    // Kimi API 配置
+    private static final String KIMI_API_URL = "https://api.moonshot.cn/v1/chat/completions";
+    private static final String KIMI_API_KEY = "sk-4hnnoqUMCqXuGIkZ1mwAZHv2RWDFbSeP4WHQWrtosP0FwIGw";
+    private static final String KIMI_MODEL = "moonshot-v1-8k";  // 可选: moonshot-v1-8k, moonshot-v1-32k, moonshot-v1-128k
+    
+    private static final String AI_CHAT_CACHE_PREFIX = "ai:chat:";
+    private static final long CACHE_EXPIRE_HOURS = 24;
+    
+    /**
+     * 处理AI聊天请求
+     * @param request 聊天请求
+     * @return 聊天响应
+     */
+    public AiChatResponse chat(AiChatRequest request) {
+        String sessionId = request.getSessionId();
+        if (sessionId == null || sessionId.isEmpty()) {
+            sessionId = UUID.randomUUID().toString();
+        }
+        
+        // 调用大模型获取回复
+        String answer = callLLM(request.getQuestion());
+        
+        // 构建响应
+        AiChatResponse response = AiChatResponse.builder()
+                .answer(answer)
+                .sessionId(sessionId)
+                .timestamp(System.currentTimeMillis())
+                .build();
+        
+        // 缓存对话记录到 Redis（可选）
+        cacheConversation(sessionId, request.getQuestion(), answer);
+        
+        return response;
+    }
+    
+    /**
+     * 调用 Kimi 大模型 API
+     * 
+     * @param prompt 用户输入的问题
+     * @return AI 回复内容
+     */
+    public String callLLM(String prompt) {
+        log.info("收到AI请求，问题: {}", prompt);
+        
+        try {
+            // 构建请求头
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(KIMI_API_KEY);
+            
+            // 构建请求体
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", KIMI_MODEL);
+            requestBody.put("temperature", 0.7);
+            requestBody.put("max_tokens", 2000);
+            
+            // 构建消息列表
+            List<Map<String, String>> messages = new ArrayList<>();
+            
+            // 系统提示词（设定AI角色，包含系统详细信息）
+            Map<String, String> systemMessage = new HashMap<>();
+            systemMessage.put("role", "system");
+            systemMessage.put("content", buildSystemPrompt());
+            messages.add(systemMessage);
+            
+            // 🔍 检测是否需要查询数据，并获取实时数据上下文
+            String dataContext = buildDataContext(prompt);
+            if (!dataContext.isEmpty()) {
+                Map<String, String> dataMessage = new HashMap<>();
+                dataMessage.put("role", "system");
+                dataMessage.put("content", "以下是从系统数据库查询到的实时数据，请根据这些数据回答用户的问题：\n\n" + dataContext);
+                messages.add(dataMessage);
+            }
+            
+            // 用户消息
+            Map<String, String> userMessage = new HashMap<>();
+            userMessage.put("role", "user");
+            userMessage.put("content", prompt);
+            messages.add(userMessage);
+            
+            requestBody.put("messages", messages);
+            
+            // 发送请求
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(KIMI_API_URL, entity, String.class);
+            
+            // 解析响应
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                JsonNode choices = root.path("choices");
+                if (choices.isArray() && choices.size() > 0) {
+                    String content = choices.get(0).path("message").path("content").asText();
+                    log.info("Kimi AI 回复成功");
+                    return content;
+                }
+            }
+            
+            log.warn("Kimi API 响应异常: {}", response.getBody());
+            return "抱歉，AI 服务暂时无法响应，请稍后再试。";
+            
+        } catch (Exception e) {
+            log.error("调用 Kimi API 失败", e);
+            // 发生错误时返回 Mock 回复
+            return generateFallbackResponse(prompt);
+        }
+    }
+    
+    /**
+     * 根据用户问题构建数据上下文
+     * 检测问题类型，查询相应数据
+     */
+    private String buildDataContext(String prompt) {
+        StringBuilder context = new StringBuilder();
+        String lowerPrompt = prompt.toLowerCase();
+        
+        try {
+            // 🔥 热门/热度相关查询
+            if (containsAny(lowerPrompt, "热门", "热度", "最火", "浏览量最高", "最多人看", "火爆", "受欢迎")) {
+                context.append(getHotArticles());
+            }
+            
+            // 📅 最新文章查询
+            if (containsAny(lowerPrompt, "最新", "最近", "今天", "刚发布", "新发布")) {
+                context.append(getLatestArticles());
+            }
+            
+            // 📊 统计数据查询
+            if (containsAny(lowerPrompt, "多少篇", "文章数", "统计", "总共", "一共", "数量")) {
+                context.append(getStatistics());
+            }
+            
+            // 🏷️ 分类查询
+            if (containsAny(lowerPrompt, "官方新闻", "官方")) {
+                context.append(getArticlesByType("OFFICIAL", "官方新闻"));
+            }
+            if (containsAny(lowerPrompt, "全校新闻", "全校")) {
+                context.append(getArticlesByType("CAMPUS", "全校新闻"));
+            }
+            if (containsAny(lowerPrompt, "学院新闻", "学院")) {
+                context.append(getArticlesByType("COLLEGE", "学院新闻"));
+            }
+            
+            // 📌 置顶文章查询
+            if (containsAny(lowerPrompt, "置顶", "推荐", "重要")) {
+                context.append(getPinnedArticles());
+            }
+            
+            // 👤 用户相关查询
+            if (containsAny(lowerPrompt, "用户数", "多少用户", "注册用户")) {
+                context.append(getUserStatistics());
+            }
+            
+        } catch (Exception e) {
+            log.warn("查询数据失败: {}", e.getMessage());
+        }
+        
+        return context.toString();
+    }
+    
+    /**
+     * 检查字符串是否包含任意关键词
+     */
+    private boolean containsAny(String text, String... keywords) {
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * 获取热门文章（按浏览量排序）
+     */
+    private String getHotArticles() {
+        QueryWrapper<Article> wrapper = new QueryWrapper<>();
+        wrapper.eq("is_approved", 1)
+               .orderByDesc("view_count")
+               .last("LIMIT 5");
+        List<Article> articles = articleMapper.selectList(wrapper);
+        
+        if (articles.isEmpty()) {
+            return "【热门文章】：暂无数据\n\n";
+        }
+        
+        StringBuilder sb = new StringBuilder("【热门文章 TOP5】：\n");
+        for (int i = 0; i < articles.size(); i++) {
+            Article a = articles.get(i);
+            sb.append(String.format("%d. 《%s》 - 浏览量：%d，板块：%s\n", 
+                i + 1, a.getTitle(), a.getViewCount(), getBoardTypeName(a.getBoardType())));
+        }
+        sb.append("\n");
+        return sb.toString();
+    }
+    
+    /**
+     * 获取最新文章
+     */
+    private String getLatestArticles() {
+        QueryWrapper<Article> wrapper = new QueryWrapper<>();
+        wrapper.eq("is_approved", 1)
+               .orderByDesc("created_at")
+               .last("LIMIT 5");
+        List<Article> articles = articleMapper.selectList(wrapper);
+        
+        if (articles.isEmpty()) {
+            return "【最新文章】：暂无数据\n\n";
+        }
+        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd HH:mm");
+        StringBuilder sb = new StringBuilder("【最新文章 TOP5】：\n");
+        for (int i = 0; i < articles.size(); i++) {
+            Article a = articles.get(i);
+            String time = a.getCreatedAt() != null ? a.getCreatedAt().format(formatter) : "未知";
+            sb.append(String.format("%d. 《%s》 - 发布时间：%s，板块：%s\n", 
+                i + 1, a.getTitle(), time, getBoardTypeName(a.getBoardType())));
+        }
+        sb.append("\n");
+        return sb.toString();
+    }
+    
+    /**
+     * 获取统计数据
+     */
+    private String getStatistics() {
+        // 总文章数
+        long totalArticles = articleMapper.selectCount(new QueryWrapper<Article>().eq("is_approved", 1));
+        
+        // 各板块文章数
+        long officialCount = articleMapper.selectCount(new QueryWrapper<Article>()
+                .eq("is_approved", 1).eq("board_type", "OFFICIAL"));
+        long campusCount = articleMapper.selectCount(new QueryWrapper<Article>()
+                .eq("is_approved", 1).eq("board_type", "CAMPUS"));
+        long collegeCount = articleMapper.selectCount(new QueryWrapper<Article>()
+                .eq("is_approved", 1).eq("board_type", "COLLEGE"));
+        
+        // 总浏览量
+        QueryWrapper<Article> viewWrapper = new QueryWrapper<>();
+        viewWrapper.eq("is_approved", 1).select("IFNULL(SUM(view_count), 0) as total_views");
+        Map<String, Object> viewResult = articleMapper.selectMaps(viewWrapper).stream().findFirst().orElse(new HashMap<>());
+        Object totalViews = viewResult.get("total_views");
+        
+        StringBuilder sb = new StringBuilder("【系统统计数据】：\n");
+        sb.append(String.format("- 文章总数：%d 篇\n", totalArticles));
+        sb.append(String.format("- 官方新闻：%d 篇\n", officialCount));
+        sb.append(String.format("- 全校新闻：%d 篇\n", campusCount));
+        sb.append(String.format("- 学院新闻：%d 篇\n", collegeCount));
+        sb.append(String.format("- 总浏览量：%s 次\n", totalViews != null ? totalViews.toString() : "0"));
+        sb.append("\n");
+        return sb.toString();
+    }
+    
+    /**
+     * 获取指定类型的文章
+     */
+    private String getArticlesByType(String boardType, String typeName) {
+        QueryWrapper<Article> wrapper = new QueryWrapper<>();
+        wrapper.eq("is_approved", 1)
+               .eq("board_type", boardType)
+               .orderByDesc("created_at")
+               .last("LIMIT 5");
+        List<Article> articles = articleMapper.selectList(wrapper);
+        
+        if (articles.isEmpty()) {
+            return String.format("【%s】：暂无数据\n\n", typeName);
+        }
+        
+        StringBuilder sb = new StringBuilder(String.format("【最新%s TOP5】：\n", typeName));
+        for (int i = 0; i < articles.size(); i++) {
+            Article a = articles.get(i);
+            sb.append(String.format("%d. 《%s》 - 浏览量：%d\n", 
+                i + 1, a.getTitle(), a.getViewCount()));
+        }
+        sb.append("\n");
+        return sb.toString();
+    }
+    
+    /**
+     * 获取置顶文章
+     */
+    private String getPinnedArticles() {
+        QueryWrapper<Article> wrapper = new QueryWrapper<>();
+        wrapper.eq("is_approved", 1)
+               .eq("is_pinned", 1)
+               .orderByDesc("created_at");
+        List<Article> articles = articleMapper.selectList(wrapper);
+        
+        if (articles.isEmpty()) {
+            return "【置顶文章】：当前没有置顶文章\n\n";
+        }
+        
+        StringBuilder sb = new StringBuilder("【置顶文章】：\n");
+        for (int i = 0; i < articles.size(); i++) {
+            Article a = articles.get(i);
+            sb.append(String.format("%d. 《%s》 - 板块：%s，浏览量：%d\n", 
+                i + 1, a.getTitle(), getBoardTypeName(a.getBoardType()), a.getViewCount()));
+        }
+        sb.append("\n");
+        return sb.toString();
+    }
+    
+    /**
+     * 获取用户统计
+     */
+    private String getUserStatistics() {
+        long totalUsers = userMapper.selectCount(new QueryWrapper<>());
+        
+        StringBuilder sb = new StringBuilder("【用户统计】：\n");
+        sb.append(String.format("- 注册用户总数：%d 人\n", totalUsers));
+        sb.append("\n");
+        return sb.toString();
+    }
+    
+    /**
+     * 获取板块类型中文名
+     */
+    private String getBoardTypeName(String boardType) {
+        if (boardType == null) return "未知";
+        return switch (boardType) {
+            case "OFFICIAL" -> "官方新闻";
+            case "CAMPUS" -> "全校新闻";
+            case "COLLEGE" -> "学院新闻";
+            default -> boardType;
+        };
+    }
+    
+    /**
+     * 构建系统提示词（包含系统详细信息）
+     */
+    private String buildSystemPrompt() {
+        return """
+            你是「校园新闻发布系统」的智能助手，名叫「校园新闻助手」。
+            
+            ## 关于本系统
+            这是一个基于 Vue3 + Spring Boot + MySQL 构建的校园新闻发布平台，主要功能包括：
+            
+            ### 📰 新闻板块（三大分类）
+            1. **官方新闻**：发布学校官方通知、政策解读、重要公告（仅管理员和教师可发布）
+            2. **全校新闻**：涵盖全校范围的活动、赛事、讲座等信息（所有登录用户可发布）
+            3. **学院新闻**：各学院的特色活动、通知和新闻（需绑定学院才能发布）
+            
+            ### 👤 用户角色
+            - **普通用户（学生）**：浏览新闻、发布全校/学院新闻、评论、点赞、收藏
+            - **教师**：除学生权限外，可发布官方新闻
+            - **管理员**：拥有所有权限，可审核文章、管理用户、置顶文章
+            
+            ### 🔧 主要功能
+            1. **首页**：展示最新资讯，支持按分类筛选（全部/官方/全校/学院），支持按日期或热度排序
+            2. **发布文章**：填写标题、摘要、正文、封面图，选择发布板块
+            3. **文章详情**：查看完整内容、评论、点赞、收藏
+            4. **个人中心**：查看/编辑个人信息、我的文章、我的收藏
+            5. **管理后台**（仅管理员）：用户管理、文章审核、学院管理、数据统计
+            
+            ### 📝 发布文章流程
+            1. 登录系统
+            2. 点击导航栏「发布文章」按钮
+            3. 填写文章标题（必填）
+            4. 填写文章摘要（选填，建议150字以内）
+            5. 编写正文内容
+            6. 上传封面图（选填）
+            7. 选择发布板块（官方新闻/全校新闻/学院新闻）
+            8. 点击发布，文章默认审核通过后即可展示
+            
+            ### 🔍 浏览和筛选
+            - 首页可切换查看：全部、官方新闻、全校新闻、学院新闻
+            - 支持按「日期」或「热度（浏览量）」排序
+            - 点击文章卡片进入详情页
+            
+            ### ❤️ 互动功能
+            - **点赞**：对喜欢的文章点赞
+            - **收藏**：收藏文章到个人中心
+            - **评论**：在文章下方发表评论
+            
+            ### 🔐 账号相关
+            - 注册时需填写：用户名、密码、真实姓名、邮箱，可选择学院
+            - 登录后可在个人中心修改信息
+            - 忘记密码请联系管理员重置
+            
+            ## 回答要求
+            1. 当用户询问系统功能时，请根据以上信息准确回答
+            2. 回答要简洁、友好、专业
+            3. 如果用户问的问题与本系统无关，也可以正常回答，但优先引导到系统功能
+            4. 适当使用 emoji 让回答更生动
+            5. 如果不确定的信息，请如实告知用户
+            """;
+    }
+    
+    /**
+     * 生成备用回复（当 API 调用失败时使用）
+     */
+    private String generateFallbackResponse(String prompt) {
+        if (prompt.contains("你好") || prompt.contains("您好")) {
+            return "你好！我是校园新闻助手。目前AI服务暂时不可用，但我仍然可以为您提供基本帮助。请问有什么可以帮您的？";
+        }
+        return "抱歉，AI 服务暂时遇到问题。请稍后再试，或联系管理员。";
+    }
+    
+    /**
+     * 缓存对话记录到 Redis
+     */
+    private void cacheConversation(String sessionId, String question, String answer) {
+        try {
+            String key = AI_CHAT_CACHE_PREFIX + sessionId;
+            String conversation = String.format("Q: %s\nA: %s\n---\n", question, answer);
+            
+            // 追加到现有对话
+            Object existing = redisTemplate.opsForValue().get(key);
+            String history = existing != null ? existing.toString() + conversation : conversation;
+            
+            redisTemplate.opsForValue().set(key, history, CACHE_EXPIRE_HOURS, TimeUnit.HOURS);
+            log.debug("对话已缓存，sessionId: {}", sessionId);
+        } catch (Exception e) {
+            // Redis 不可用时不影响主流程
+            log.warn("缓存对话失败: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取历史对话（可选功能）
+     */
+    public String getConversationHistory(String sessionId) {
+        try {
+            String key = AI_CHAT_CACHE_PREFIX + sessionId;
+            Object history = redisTemplate.opsForValue().get(key);
+            return history != null ? history.toString() : "";
+        } catch (Exception e) {
+            log.warn("获取对话历史失败: {}", e.getMessage());
+            return "";
+        }
+    }
     
     /**
      * 文章智能推荐（预留）
@@ -21,7 +480,7 @@ public class AIService {
      */
     public String generateSummary(String content) {
         // TODO: 接入AI生成摘要
-        return null;
+        return callLLM("请为以下内容生成一个简洁的摘要：\n" + content);
     }
     
     /**

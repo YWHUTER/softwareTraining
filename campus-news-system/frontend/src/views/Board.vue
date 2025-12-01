@@ -2,7 +2,27 @@
   <div class="board-page">
     <el-card>
       <template #header>
-        <h2>{{ boardTitle }}</h2>
+        <div class="board-header">
+          <h2>{{ boardTitle }}</h2>
+          <el-select v-model="sortBy" @change="handleSortChange" class="sort-select" placeholder="排序方式">
+            <el-option label="按日期排序（最新）" value="date_desc">
+              <el-icon><Clock /></el-icon>
+              <span>按日期排序（最新）</span>
+            </el-option>
+            <el-option label="按日期排序（最早）" value="date_asc">
+              <el-icon><Clock /></el-icon>
+              <span>按日期排序（最早）</span>
+            </el-option>
+            <el-option label="按热度排序（最高）" value="views_desc">
+              <el-icon><TrendCharts /></el-icon>
+              <span>按热度排序（最高）</span>
+            </el-option>
+            <el-option label="按热度排序（最低）" value="views_asc">
+              <el-icon><TrendCharts /></el-icon>
+              <span>按热度排序（最低）</span>
+            </el-option>
+          </el-select>
+        </div>
       </template>
       
       <div class="board-content" v-loading="loading">
@@ -65,6 +85,7 @@ const articles = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const sortBy = ref('date_desc') // 默认按日期降序
 
 const boardType = computed(() => route.params.type)
 
@@ -80,11 +101,15 @@ const boardTitle = computed(() => {
 const fetchArticles = async () => {
   loading.value = true
   try {
+    // 解析排序参数
+    const [sortField, sortOrder] = sortBy.value.split('_')
     const data = await getArticleList({
       current: currentPage.value,
       size: pageSize.value,
       boardType: boardType.value,
-      isApproved: 1
+      isApproved: 1,
+      sortBy: sortField === 'views' ? 'views' : 'date',
+      sortOrder: sortOrder
     })
     articles.value = data.records
     total.value = data.total
@@ -93,6 +118,11 @@ const fetchArticles = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleSortChange = () => {
+  currentPage.value = 1
+  fetchArticles()
 }
 
 const goToDetail = (id) => {
@@ -114,8 +144,26 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.board-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
 .board-page h2 {
   margin: 0;
+}
+
+.sort-select {
+  width: 180px;
+}
+
+.sort-select :deep(.el-select-dropdown__item) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .article-list {
