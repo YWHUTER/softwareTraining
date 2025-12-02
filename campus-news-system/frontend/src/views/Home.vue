@@ -101,8 +101,8 @@
                   <!-- 文章元信息 -->
                   <div class="article-meta">
                     <div class="meta-item">
-                      <el-avatar :size="24" class="author-avatar" :src="article.author?.avatar">
-                        {{ !article.author?.avatar ? article.author?.realName?.[0] : '' }}
+                      <el-avatar :size="24" class="author-avatar" :src="getValidAvatar(article.author?.avatar)" fit="cover">
+                        {{ article.author?.realName?.[0] }}
                       </el-avatar>
                       <span class="author-name">{{ article.author?.realName }}</span>
                     </div>
@@ -152,8 +152,8 @@
                   <span class="hot-comment-label">热评</span>
                 </div>
                 <div class="hot-comment-content">
-                  <el-avatar :size="20" class="comment-avatar" :src="article.hotComment.user?.avatar">
-                    {{ !article.hotComment.user?.avatar ? article.hotComment.user?.realName?.[0] : '' }}
+                  <el-avatar :size="20" class="comment-avatar" :src="getValidAvatar(article.hotComment.user?.avatar)" fit="cover">
+                    {{ article.hotComment.user?.realName?.[0] }}
                   </el-avatar>
                   <span class="comment-author">{{ article.hotComment.user?.realName }}：</span>
                   <span class="comment-text">{{ article.hotComment.content }}</span>
@@ -339,6 +339,15 @@ const getRankClass = (index) => {
   if (index === 1) return 'rank-2'
   if (index === 2) return 'rank-3'
   return ''
+}
+
+// 验证头像URL是否有效
+const getValidAvatar = (avatar) => {
+  if (!avatar) return undefined
+  // 只接受以 /api/file 开头的有效头像URL
+  if (avatar.startsWith('/api/file/')) return avatar
+  // 其他URL视为无效
+  return undefined
 }
 
 const formatTime = (time) => {

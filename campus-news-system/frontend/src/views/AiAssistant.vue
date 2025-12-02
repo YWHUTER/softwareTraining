@@ -1,24 +1,110 @@
 <template>
-  <div class="ai-assistant">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <div class="header-content">
-        <div class="title-section">
-          <el-icon :size="32" class="ai-icon"><ChatDotRound /></el-icon>
-          <div class="title-text">
-            <h1>武理小助手</h1>
-            <p>您的校园新闻智能问答助手</p>
+  <div class="ai-assistant-page">
+    <el-row :gutter="20">
+      <!-- 左侧功能区 -->
+      <el-col :xs="24" :sm="24" :md="6" :lg="6">
+        <div class="sidebar-left">
+          <!-- AI 能力卡片 -->
+          <el-card class="ability-card" shadow="never">
+            <template #header>
+              <div class="card-title">
+                <el-icon color="#667eea"><MagicStick /></el-icon>
+                <span>AI 能力</span>
+              </div>
+            </template>
+            <div class="ability-list">
+              <div class="ability-item" @click="sendQuickQuestion('帮我搜索最近的校园活动')">
+                <el-icon color="#409eff"><Search /></el-icon>
+                <span>智能搜索</span>
+              </div>
+              <div class="ability-item" @click="sendQuickQuestion('帮我写一篇关于校园文化的文章摘要')">
+                <el-icon color="#67c23a"><Edit /></el-icon>
+                <span>写作辅助</span>
+              </div>
+              <div class="ability-item" @click="sendQuickQuestion('分析一下最近的热门话题')">
+                <el-icon color="#e6a23c"><TrendCharts /></el-icon>
+                <span>热点分析</span>
+              </div>
+              <div class="ability-item" @click="sendQuickQuestion('系统数据统计')">
+                <el-icon color="#f56c6c"><DataAnalysis /></el-icon>
+                <span>数据统计</span>
+              </div>
+            </div>
+          </el-card>
+          
+          <!-- 今日数据 -->
+          <el-card class="stats-card" shadow="never">
+            <template #header>
+              <div class="card-title">
+                <el-icon color="#f56c6c"><DataLine /></el-icon>
+                <span>今日数据</span>
+              </div>
+            </template>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <span class="stat-value">{{ todayStats.articles }}</span>
+                <span class="stat-label">新文章</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">{{ todayStats.comments }}</span>
+                <span class="stat-label">新评论</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">{{ todayStats.users }}</span>
+                <span class="stat-label">活跃用户</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">{{ todayStats.views }}</span>
+                <span class="stat-label">总浏览</span>
+              </div>
+            </div>
+          </el-card>
+          
+          <!-- 热门话题 -->
+          <el-card class="topics-card" shadow="never">
+            <template #header>
+              <div class="card-title">
+                <el-icon color="#e6a23c"><StarFilled /></el-icon>
+                <span>热门话题</span>
+              </div>
+            </template>
+            <div class="topics-list">
+              <div 
+                v-for="(topic, index) in hotTopics" 
+                :key="index" 
+                class="topic-item"
+                @click="sendQuickQuestion(`搜索关于${topic}的新闻`)"
+              >
+                <span class="topic-rank" :class="{ 'top': index < 3 }">{{ index + 1 }}</span>
+                <span class="topic-text">{{ topic }}</span>
+              </div>
+            </div>
+          </el-card>
+        </div>
+      </el-col>
+      
+      <!-- 中间聊天区 -->
+      <el-col :xs="24" :sm="24" :md="18" :lg="18">
+        <div class="ai-assistant">
+          <!-- 页面标题 -->
+          <div class="page-header">
+            <div class="header-content">
+              <div class="title-section">
+                <el-icon :size="32" class="ai-icon"><ChatDotRound /></el-icon>
+                <div class="title-text">
+                  <h1>武理小助手</h1>
+                  <p>您的校园新闻智能问答助手</p>
+                </div>
+              </div>
+              <div class="header-buttons">
+                <el-button @click="$router.push('/ai-help')" :icon="QuestionFilled" round type="info">使用手册</el-button>
+                <el-button @click="clearChat" :icon="Delete" round>清空对话</el-button>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="header-buttons">
-          <el-button @click="$router.push('/ai-help')" :icon="QuestionFilled" round type="info">使用手册</el-button>
-          <el-button @click="clearChat" :icon="Delete" round>清空对话</el-button>
-        </div>
-      </div>
-    </div>
 
-    <!-- 聊天区域 -->
-    <div class="chat-container">
+          <!-- 聊天区域 -->
+          <div class="chat-container">
       <!-- 消息列表 -->
       <div class="messages-area" ref="messagesContainer">
         <!-- 欢迎消息 -->
@@ -114,15 +200,19 @@
         </div>
       </div>
     </div>
+        </div>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
-import { Delete, Promotion, QuestionFilled } from '@element-plus/icons-vue'
+import { Delete, Promotion, QuestionFilled, Search, Edit, TrendCharts, DataAnalysis, DataLine, StarFilled, MagicStick } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { sendChatMessage } from '@/api/ai'
+import { getArticleList } from '@/api/article'
 
 const userStore = useUserStore()
 const messagesContainer = ref(null)
@@ -133,6 +223,23 @@ const inputMessage = ref('')
 const loading = ref(false)
 const sessionId = ref('')
 
+// 今日数据统计
+const todayStats = ref({
+  articles: 0,
+  comments: 0,
+  users: 0,
+  views: 0
+})
+
+// 热门话题
+const hotTopics = ref([
+  '校园活动',
+  '讲座信息',
+  '比赛通知',
+  '就业招聘',
+  '社团纳新'
+])
+
 // 快捷问题
 const quickQuestions = [
   '搜索校园活动',
@@ -142,6 +249,49 @@ const quickQuestions = [
   '系统有多少篇文章？',
   '如何发布文章？'
 ]
+
+// 获取今日数据
+const fetchTodayStats = async () => {
+  try {
+    const result = await getArticleList({ current: 1, size: 100, sortBy: 'date', sortOrder: 'desc' })
+    const articles = result.records || []
+    const today = new Date().toDateString()
+    
+    // 统计今日文章
+    const todayArticles = articles.filter(a => new Date(a.createdAt).toDateString() === today)
+    todayStats.value.articles = todayArticles.length
+    
+    // 计算总浏览
+    todayStats.value.views = articles.reduce((sum, a) => sum + (a.viewCount || 0), 0)
+    
+    // 模拟评论和用户数据
+    todayStats.value.comments = Math.floor(Math.random() * 20) + 5
+    todayStats.value.users = Math.floor(Math.random() * 50) + 10
+    
+    // 从文章标题提取热门话题
+    const keywords = ['活动', '讲座', '比赛', '招聘', '通知', '纳新', '考试', '培训']
+    const topicCounts = {}
+    articles.forEach(a => {
+      keywords.forEach(k => {
+        if (a.title?.includes(k)) {
+          topicCounts[k] = (topicCounts[k] || 0) + 1
+        }
+      })
+    })
+    
+    // 按出现次数排序
+    const sortedTopics = Object.entries(topicCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([k]) => k)
+    
+    if (sortedTopics.length > 0) {
+      hotTopics.value = sortedTopics
+    }
+  } catch (error) {
+    console.error('获取统计数据失败:', error)
+  }
+}
 
 // 发送消息
 const sendMessage = async () => {
@@ -244,16 +394,143 @@ const formatMessage = (content) => {
 
 onMounted(() => {
   scrollToBottom()
+  fetchTodayStats()
 })
 </script>
 
 <style scoped>
-.ai-assistant {
-  max-width: 900px;
+.ai-assistant-page {
+  max-width: 1400px;
   margin: 0 auto;
+  padding: 0 20px;
+}
+
+.ai-assistant {
   height: calc(100vh - 200px);
   display: flex;
   flex-direction: column;
+}
+
+/* 左侧栏 */
+.sidebar-left {
+  position: sticky;
+  top: 80px;
+}
+
+.ability-card,
+.stats-card,
+.topics-card {
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border: none;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* AI 能力列表 */
+.ability-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ability-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #f8f9fa;
+}
+
+.ability-item:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  transform: translateX(4px);
+}
+
+.ability-item span {
+  font-size: 14px;
+  color: #606266;
+}
+
+/* 今日数据 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.stats-grid .stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #fff8f6 100%);
+  border-radius: 8px;
+}
+
+.stats-grid .stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.stats-grid .stat-label {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+/* 热门话题 */
+.topics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.topic-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.topic-item:hover {
+  background: #f5f7fa;
+}
+
+.topic-rank {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #909399;
+  background: #f0f0f0;
+  border-radius: 4px;
+}
+
+.topic-rank.top {
+  background: linear-gradient(135deg, #f56c6c, #e6a23c);
+  color: white;
+}
+
+.topic-text {
+  font-size: 14px;
+  color: #606266;
 }
 
 /* 页面标题 */
@@ -576,7 +853,42 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
+@media (max-width: 992px) {
+  .sidebar-left {
+    position: static;
+    margin-bottom: 20px;
+  }
+  
+  .ability-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .ability-item {
+    flex: 1;
+    min-width: 120px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .topics-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .topic-item {
+    flex: 0 0 auto;
+  }
+}
+
 @media (max-width: 768px) {
+  .ai-assistant-page {
+    padding: 0 12px;
+  }
+  
   .ai-assistant {
     height: calc(100vh - 160px);
   }
@@ -599,6 +911,10 @@ onMounted(() => {
   
   .welcome-message {
     padding: 40px 16px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

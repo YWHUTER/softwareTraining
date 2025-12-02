@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -217,5 +219,48 @@ public class FollowService {
         }
         
         return recommendUsers;
+    }
+    
+    /**
+     * 获取用户统计信息（文章数、粉丝数、获赞总数）
+     */
+    public Map<String, Object> getUserStats(Long userId) {
+        Map<String, Object> stats = new HashMap<>();
+        
+        // 获取用户信息
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            stats.put("articleCount", 0);
+            stats.put("followerCount", 0);
+            stats.put("totalLikes", 0);
+            return stats;
+        }
+        
+        // 文章数
+        QueryWrapper<Article> articleWrapper = new QueryWrapper<>();
+        articleWrapper.eq("author_id", userId).eq("is_approved", 1);
+        long articleCount = articleMapper.selectCount(articleWrapper);
+        
+        // 粉丝数
+        int followerCount = user.getFollowerCount() != null ? user.getFollowerCount() : 0;
+        
+        // 获赞总数（所有文章的点赞数之和）
+        QueryWrapper<Article> likeWrapper = new QueryWrapper<>();
+        likeWrapper.eq("author_id", userId);
+        likeWrapper.select("IFNULL(SUM(like_count), 0) as total_likes");
+        List<Map<String, Object>> likeResult = articleMapper.selectMaps(likeWrapper);
+        long totalLikes = 0;
+        if (likeResult != null && !likeResult.isEmpty() && likeResult.get(0) != null) {
+            Object val = likeResult.get(0).get("total_likes");
+            if (val != null) {
+                totalLikes = ((Number) val).longValue();
+            }
+        }
+        
+        stats.put("articleCount", articleCount);
+        stats.put("followerCount", followerCount);
+        stats.put("totalLikes", totalLikes);
+        
+        return stats;
     }
 }

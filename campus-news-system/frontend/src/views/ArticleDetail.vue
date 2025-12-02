@@ -1,7 +1,11 @@
 <template>
-  <div class="article-detail" v-loading="loading" element-loading-text="加载中...">
-    <!-- 文章主体 -->
-    <el-card v-if="article" class="article-card" shadow="never">
+  <div class="article-detail-page" v-loading="loading" element-loading-text="加载中...">
+    <el-row :gutter="24">
+      <!-- 左侧主内容区 -->
+      <el-col :xs="24" :sm="24" :md="17" :lg="17">
+        <div class="main-content">
+          <!-- 文章主体 -->
+          <el-card v-if="article" class="article-card" shadow="never">
       <!-- 文章头部 -->
       <div class="article-header">
         <div class="header-meta">
@@ -19,8 +23,8 @@
         
         <div class="article-info">
           <div class="author-section">
-            <el-avatar :size="48" class="author-avatar">
-              {{ article.author?.realName?.[0] }}
+            <el-avatar :size="48" class="author-avatar" :src="article.author?.avatar">
+              {{ !article.author?.avatar ? article.author?.realName?.[0] : '' }}
             </el-avatar>
             <div class="author-info">
               <div class="author-name">{{ article.author?.realName }}</div>
@@ -119,8 +123,8 @@
       
       <!-- 发表评论 -->
       <div v-if="userStore.isLogin" class="comment-form">
-        <el-avatar :size="40" class="comment-avatar">
-          {{ userStore.user?.realName?.[0] }}
+        <el-avatar :size="40" class="comment-avatar" :src="userStore.user?.avatar">
+          {{ !userStore.user?.avatar ? userStore.user?.realName?.[0] : '' }}
         </el-avatar>
         <div class="comment-input-wrapper">
           <el-input
@@ -153,8 +157,8 @@
       <!-- 评论列表 -->
       <div class="comment-list">
         <div v-for="comment in comments" :key="comment.id" class="comment-item">
-          <el-avatar :size="44" class="comment-avatar">
-            {{ comment.user?.realName?.[0] }}
+          <el-avatar :size="44" class="comment-avatar" :src="comment.user?.avatar">
+            {{ !comment.user?.avatar ? comment.user?.realName?.[0] : '' }}
           </el-avatar>
           
           <div class="comment-content">
@@ -185,8 +189,8 @@
             <!-- 回复列表 -->
             <div v-if="comment.replies?.length > 0" class="replies">
               <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
-                <el-avatar :size="32" class="reply-avatar">
-                  {{ reply.user?.realName?.[0] }}
+                <el-avatar :size="32" class="reply-avatar" :src="reply.user?.avatar">
+                  {{ !reply.user?.avatar ? reply.user?.realName?.[0] : '' }}
                 </el-avatar>
                 <div class="reply-content">
                   <div class="reply-user-info">
@@ -203,19 +207,171 @@
         <el-empty v-if="comments.length === 0" description="暂无评论，快来抢沙发吧~" />
       </div>
     </el-card>
+        </div>
+      </el-col>
+      
+      <!-- 右侧侧边栏 -->
+      <el-col :xs="24" :sm="24" :md="7" :lg="7">
+        <div class="sidebar">
+          <!-- 作者信息卡片 -->
+          <el-card v-if="article" class="author-card" shadow="never">
+            <div class="author-card-header">
+              <el-avatar :size="64" class="author-card-avatar" :src="article.author?.avatar">
+                {{ !article.author?.avatar ? article.author?.realName?.[0] : '' }}
+              </el-avatar>
+              <div class="author-card-info">
+                <h4 class="author-card-name">{{ article.author?.realName }}</h4>
+                <p class="author-card-desc">@{{ article.author?.username }}</p>
+              </div>
+            </div>
+            
+            <div class="author-stats">
+              <div class="author-stat-item">
+                <span class="stat-value">{{ authorStats.articleCount || 0 }}</span>
+                <span class="stat-label">文章</span>
+              </div>
+              <div class="author-stat-item">
+                <span class="stat-value">{{ authorStats.followerCount || 0 }}</span>
+                <span class="stat-label">粉丝</span>
+              </div>
+              <div class="author-stat-item">
+                <span class="stat-value">{{ authorStats.totalViews || 0 }}</span>
+                <span class="stat-label">获赞</span>
+              </div>
+            </div>
+            
+            <el-button
+              v-if="userStore.isLogin && article.author?.id !== userStore.user?.id"
+              :type="isFollowingAuthor ? 'default' : 'primary'"
+              class="follow-btn-large"
+              @click="handleFollowAuthor"
+            >
+              <el-icon v-if="!isFollowingAuthor"><Plus /></el-icon>
+              {{ isFollowingAuthor ? '已关注' : '关注作者' }}
+            </el-button>
+            
+            <el-button
+              v-if="userStore.isLogin && article.author?.id === userStore.user?.id"
+              type="info"
+              class="follow-btn-large"
+              disabled
+            >
+              这是我自己
+            </el-button>
+          </el-card>
+          
+          <!-- 热门新闻榜 -->
+          <el-card class="hot-news-card" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <el-icon color="#f56c6c"><Flame /></el-icon>
+                <span>热门新闻榜</span>
+              </div>
+            </template>
+            <div class="hot-news-list">
+              <div 
+                v-for="(news, index) in hotNewsList" 
+                :key="news.id" 
+                class="hot-news-item"
+                @click="goToArticle(news.id)"
+              >
+                <span 
+                  class="hot-rank" 
+                  :class="{ 'rank-top': index < 3 }"
+                >
+                  {{ index + 1 }}
+                </span>
+                <div class="hot-news-info">
+                  <p class="hot-news-title">{{ news.title }}</p>
+                  <span class="hot-news-views">
+                    <el-icon><View /></el-icon>
+                    {{ formatViews(news.viewCount) }}
+                  </span>
+                </div>
+              </div>
+              <el-empty v-if="hotNewsList.length === 0" description="暂无数据" :image-size="60" />
+            </div>
+          </el-card>
+          
+          <!-- 作者其他文章 -->
+          <el-card v-if="authorArticles.length > 0" class="author-articles-card" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <el-icon color="#409eff"><Document /></el-icon>
+                <span>作者其他文章</span>
+              </div>
+            </template>
+            <div class="author-articles-list">
+              <div 
+                v-for="item in authorArticles" 
+                :key="item.id" 
+                class="author-article-item"
+                @click="goToArticle(item.id)"
+              >
+                <p class="author-article-title">{{ item.title }}</p>
+                <div class="author-article-meta">
+                  <span>{{ formatDate(item.createdAt) }}</span>
+                  <span>
+                    <el-icon><View /></el-icon>
+                    {{ item.viewCount }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </el-card>
+          
+          <!-- 快捷操作 -->
+          <el-card class="quick-actions-card" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <el-icon color="#67c23a"><Operation /></el-icon>
+                <span>快捷操作</span>
+              </div>
+            </template>
+            <div class="quick-actions">
+              <el-button 
+                :type="article?.isLiked ? 'primary' : 'default'" 
+                @click="handleLike"
+                class="quick-action-btn"
+              >
+                <el-icon><Star /></el-icon>
+                点赞 {{ article?.likeCount || 0 }}
+              </el-button>
+              <el-button 
+                :type="article?.isFavorited ? 'warning' : 'default'" 
+                @click="handleFavorite"
+                class="quick-action-btn"
+              >
+                <el-icon><Collection /></el-icon>
+                收藏
+              </el-button>
+              <el-button class="quick-action-btn" @click="scrollToComments">
+                <el-icon><ChatDotRound /></el-icon>
+                评论 {{ comments.length }}
+              </el-button>
+              <el-button class="quick-action-btn" @click="scrollToTop">
+                <el-icon><Top /></el-icon>
+                回顶部
+              </el-button>
+            </div>
+          </el-card>
+        </div>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { getArticleDetail, toggleLike, toggleFavorite } from '@/api/article'
+import { getArticleDetail, toggleLike, toggleFavorite, getArticleList } from '@/api/article'
 import { getCommentList, createComment, deleteComment } from '@/api/comment'
-import { toggleFollow, checkFollow } from '@/api/follow'
+import { toggleFollow, checkFollow, getFollowStats } from '@/api/follow'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 
 const loading = ref(false)
@@ -226,6 +382,11 @@ const commentContent = ref('')
 const replyTo = ref(null)
 const isFollowingAuthor = ref(false)
 
+// 侧边栏数据
+const authorStats = ref({ articleCount: 0, followerCount: 0, totalViews: 0 })
+const hotNewsList = ref([])
+const authorArticles = ref([])
+
 const fetchArticle = async () => {
   loading.value = true
   try {
@@ -234,10 +395,62 @@ const fetchArticle = async () => {
     if (userStore.isLogin && article.value?.author?.id) {
       checkFollowStatus()
     }
+    // 获取作者相关数据
+    if (article.value?.author?.id) {
+      fetchAuthorStats()
+      fetchAuthorArticles()
+    }
   } catch (error) {
     console.error(error)
   } finally {
     loading.value = false
+  }
+}
+
+// 获取作者统计数据
+const fetchAuthorStats = async () => {
+  try {
+    const stats = await getFollowStats(article.value.author.id)
+    authorStats.value = {
+      articleCount: stats.articleCount || 0,
+      followerCount: stats.followerCount || 0,
+      totalViews: stats.totalLikes || 0
+    }
+  } catch (error) {
+    console.error('获取作者统计失败:', error)
+  }
+}
+
+// 获取热门新闻列表
+const fetchHotNews = async () => {
+  try {
+    const result = await getArticleList({ 
+      current: 1, 
+      size: 5, 
+      sortBy: 'views',
+      sortOrder: 'desc'
+    })
+    // 确保只取前5条
+    hotNewsList.value = (result.records || []).slice(0, 5)
+  } catch (error) {
+    console.error('获取热门新闻失败:', error)
+  }
+}
+
+// 获取作者其他文章
+const fetchAuthorArticles = async () => {
+  try {
+    const result = await getArticleList({
+      current: 1,
+      size: 5,
+      authorId: article.value.author.id
+    })
+    // 过滤掉当前文章
+    authorArticles.value = (result.records || []).filter(
+      item => item.id !== article.value.id
+    ).slice(0, 4)
+  } catch (error) {
+    console.error('获取作者文章失败:', error)
   }
 }
 
@@ -370,16 +583,65 @@ const formatTime = (time) => {
   return new Date(time).toLocaleString('zh-CN')
 }
 
+const formatDate = (time) => {
+  return new Date(time).toLocaleDateString('zh-CN')
+}
+
+const formatViews = (views) => {
+  if (views >= 10000) {
+    return (views / 10000).toFixed(1) + 'w'
+  }
+  if (views >= 1000) {
+    return (views / 1000).toFixed(1) + 'k'
+  }
+  return views
+}
+
+const goToArticle = (id) => {
+  router.push(`/article/${id}`)
+}
+
+const scrollToComments = () => {
+  document.querySelector('.comment-section')?.scrollIntoView({ behavior: 'smooth' })
+}
+
+const scrollToTop = () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// 监听路由变化，刷新页面数据
+watch(() => route.params.id, (newId) => {
+  if (newId) {
+    fetchArticle()
+    fetchComments()
+  }
+})
+
 onMounted(() => {
   fetchArticle()
   fetchComments()
+  fetchHotNews()
 })
 </script>
 
 <style scoped>
-.article-detail {
-  max-width: 900px;
+.article-detail-page {
+  max-width: 1400px;
   margin: 0 auto;
+  padding: 0 20px;
+}
+
+.main-content {
+  margin-bottom: 24px;
+}
+
+:deep(.el-row) {
+  align-items: flex-start !important;
+}
+
+:deep(.el-col) {
+  display: flex;
+  flex-direction: column;
 }
 
 /* 文章卡片 */
@@ -810,10 +1072,243 @@ onMounted(() => {
   word-break: break-word;
 }
 
+/* ========== 侧边栏样式 ========== */
+.sidebar {
+  position: sticky;
+  top: 80px;
+  margin-top: 0;
+}
+
+/* 作者卡片 */
+.author-card {
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border: none;
+}
+
+.author-card-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.author-card-avatar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 24px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.author-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.author-card-name {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.author-card-desc {
+  margin: 0;
+  font-size: 13px;
+  color: #909399;
+}
+
+.author-stats {
+  display: flex;
+  justify-content: space-around;
+  padding: 16px 0;
+  margin-bottom: 16px;
+  border-top: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.author-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #909399;
+}
+
+.follow-btn-large {
+  width: 100%;
+  height: 40px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* 热门新闻榜 */
+.hot-news-card {
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border: none;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.hot-news-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hot-news-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hot-news-item:hover {
+  background: #f5f7fa;
+}
+
+.hot-rank {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  background: #e4e7ed;
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.hot-rank.rank-top {
+  background: linear-gradient(135deg, #f56c6c, #e6a23c);
+  color: white;
+}
+
+.hot-news-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.hot-news-title {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #2c3e50;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.hot-news-views {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #909399;
+}
+
+/* 作者其他文章 */
+.author-articles-card {
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border: none;
+}
+
+.author-articles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.author-article-item {
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+}
+
+.author-article-item:hover {
+  background: #f5f7fa;
+  border-left-color: #409eff;
+}
+
+.author-article-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #2c3e50;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.author-article-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #909399;
+}
+
+.author-article-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 快捷操作 */
+.quick-actions-card {
+  border-radius: 12px;
+  border: none;
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.quick-action-btn {
+  width: 100%;
+  font-size: 13px;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .article-detail {
-    max-width: 100%;
+  .article-detail-page {
+    padding: 0 12px;
+  }
+  
+  .sidebar {
+    position: static;
+    margin-top: 24px;
   }
 
   .article-header {

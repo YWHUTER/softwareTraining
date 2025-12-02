@@ -145,6 +145,16 @@ public class FollowController {
         return Result.success(followService.getRecommendUsers(currentUserId, limit));
     }
     
+    /**
+     * 获取用户统计信息
+     * GET /api/follow/stats/{userId}
+     */
+    @Operation(summary = "获取用户统计信息")
+    @GetMapping("/stats/{userId}")
+    public Result<Map<String, Object>> getUserStats(@PathVariable Long userId) {
+        return Result.success(followService.getUserStats(userId));
+    }
+    
     private Long getCurrentUserId(Authentication authentication) {
         String username = authentication.getName();
         User user = userService.getOne(

@@ -99,3 +99,14 @@ export const getRecommendUsers = (limit = 5) => {
     params: { limit }
   })
 }
+
+/**
+ * 获取用户的关注统计信息
+ * @param {number} userId - 用户ID
+ */
+export const getFollowStats = (userId) => {
+  return request({
+    url: `/follow/stats/${userId}`,
+    method: 'get'
+  })
+}
