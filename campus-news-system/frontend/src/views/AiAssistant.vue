@@ -6,11 +6,14 @@
         <div class="title-section">
           <el-icon :size="32" class="ai-icon"><ChatDotRound /></el-icon>
           <div class="title-text">
-            <h1>AI 智能助手</h1>
+            <h1>武理小助手</h1>
             <p>您的校园新闻智能问答助手</p>
           </div>
         </div>
-        <el-button @click="clearChat" :icon="Delete" round>清空对话</el-button>
+        <div class="header-buttons">
+          <el-button @click="$router.push('/ai-help')" :icon="QuestionFilled" round type="info">使用手册</el-button>
+          <el-button @click="clearChat" :icon="Delete" round>清空对话</el-button>
+        </div>
       </div>
     </div>
 
@@ -21,7 +24,7 @@
         <!-- 欢迎消息 -->
         <div v-if="messages.length === 0" class="welcome-message">
           <el-icon :size="64" class="welcome-icon"><ChatLineRound /></el-icon>
-          <h2>欢迎使用 AI 助手</h2>
+          <h2>欢迎使用武理小助手</h2>
           <p>我可以帮助您了解校园新闻、解答系统使用问题、提供文章写作建议等。</p>
           <div class="quick-questions">
             <span class="label">快捷提问：</span>
@@ -54,7 +57,7 @@
           </div>
           <div class="message-content">
             <div class="message-header">
-              <span class="sender-name">{{ msg.role === 'user' ? '我' : 'AI 助手' }}</span>
+              <span class="sender-name">{{ msg.role === 'user' ? '我' : '武理小助手' }}</span>
               <span class="message-time">{{ formatTime(msg.timestamp) }}</span>
             </div>
             <div class="message-text" v-html="formatMessage(msg.content)"></div>
@@ -70,7 +73,7 @@
           </div>
           <div class="message-content">
             <div class="message-header">
-              <span class="sender-name">AI 助手</span>
+              <span class="sender-name">武理小助手</span>
             </div>
             <div class="loading-indicator">
               <span class="dot"></span>
@@ -116,7 +119,7 @@
 
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
-import { Delete, Promotion } from '@element-plus/icons-vue'
+import { Delete, Promotion, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { sendChatMessage } from '@/api/ai'
@@ -132,11 +135,11 @@ const sessionId = ref('')
 
 // 快捷问题
 const quickQuestions = [
+  '搜索校园活动',
   '最热门的文章是什么？',
   '最新发布的文章',
-  '谁的粉丝最多？',
+  '帮我找讲座相关',
   '系统有多少篇文章？',
-  '如何关注别人？',
   '如何发布文章？'
 ]
 
@@ -217,7 +220,7 @@ const formatTime = (timestamp) => {
   return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
-// 格式化消息（支持简单的 Markdown）
+// 格式化消息（支持简单的 Markdown 和文章链接）
 const formatMessage = (content) => {
   if (!content) return ''
   
@@ -228,6 +231,10 @@ const formatMessage = (content) => {
     .replace(/>/g, '&gt;')
     // 粗体
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    // 将文章链接转换为可点击的链接
+    .replace(/\/article\/(\d+)/g, '<a href="/article/$1" class="article-link" onclick="event.stopPropagation()">🔗 查看文章</a>')
+    // 将《标题》格式的文章标题加粗
+    .replace(/《(.*?)》/g, '<strong class="article-title">《$1》</strong>')
     // 换行
     .replace(/\n/g, '<br>')
     // 列表项
@@ -263,6 +270,11 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 10px;
 }
 
 .title-section {
@@ -441,6 +453,32 @@ onMounted(() => {
 .message-text :deep(.list-number) {
   color: #667eea;
   font-weight: 600;
+}
+
+.message-text :deep(.article-link) {
+  display: inline-block;
+  color: #667eea;
+  text-decoration: none;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  margin-left: 4px;
+}
+
+.message-text :deep(.article-link:hover) {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+  transform: translateY(-1px);
+}
+
+.message-text :deep(.article-title) {
+  color: #2c3e50;
+}
+
+.message-item.assistant .message-text :deep(.article-title) {
+  color: #409eff;
 }
 
 /* 加载指示器 */

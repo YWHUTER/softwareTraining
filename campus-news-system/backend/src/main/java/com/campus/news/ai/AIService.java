@@ -202,6 +202,12 @@ public class AIService {
                 context.append(getTopFollowedUsers());
             }
             
+            // 🔍 搜索功能 - 提取关键词并搜索文章
+            String searchKeyword = extractSearchKeyword(prompt);
+            if (searchKeyword != null && !searchKeyword.isEmpty()) {
+                context.append(searchArticles(searchKeyword));
+            }
+            
         } catch (Exception e) {
             log.warn("查询数据失败: {}", e.getMessage());
         }
@@ -436,6 +442,12 @@ public class AIService {
             - 登录后可在个人中心修改信息
             - 忘记密码请联系管理员重置
             
+            ### 🔍 搜索功能
+            - 你具有强大的新闻搜索能力！当用户想搜索某个话题的新闻时，你会自动从数据库中搜索相关文章
+            - 用户可以说"搜索xxx"、"帮我找xxx相关新闻"、"有没有关于xxx的文章"等
+            - 搜索结果会包含文章标题、板块、浏览量、发布时间、摘要和访问链接
+            - 你应该友好地总结搜索结果，并引导用户点击链接查看详情
+            
             ## 回答要求
             1. 当用户询问系统功能时，请根据以上信息准确回答
             2. 回答要简洁、友好、专业
@@ -505,6 +517,111 @@ public class AIService {
         if (topUsers.isEmpty()) {
             sb.append("暂无粉丝数据\n");
         }
+        
+        return sb.toString();
+    }
+    
+    /**
+     * 提取搜索关键词
+     * 支持多种搜索表达方式
+     */
+    private String extractSearchKeyword(String prompt) {
+        // 常见的搜索表达方式
+        String[] searchPatterns = {
+            "搜索", "查找", "找一下", "搜一下", "查一下", 
+            "帮我找", "帮我搜", "有没有关于", "有什么关于",
+            "想看", "想了解", "了解一下", "查询"
+        };
+        
+        String lowerPrompt = prompt.toLowerCase();
+        
+        for (String pattern : searchPatterns) {
+            if (lowerPrompt.contains(pattern)) {
+                // 提取关键词 - 移除搜索指令词，保留实际搜索内容
+                String keyword = prompt;
+                
+                // 移除常见前缀
+                String[] prefixes = {"帮我搜索", "帮我查找", "帮我找", "帮我搜", 
+                    "搜索一下", "查找一下", "找一下", "搜一下", "查一下",
+                    "搜索", "查找", "查询",
+                    "有没有关于", "有什么关于", "关于",
+                    "想看看", "想看", "想了解", "了解一下",
+                    "请搜索", "请查找", "请找"};
+                
+                for (String prefix : prefixes) {
+                    if (keyword.startsWith(prefix)) {
+                        keyword = keyword.substring(prefix.length());
+                        break;
+                    }
+                }
+                
+                // 移除常见后缀
+                String[] suffixes = {"的新闻", "的文章", "的资讯", "的内容", 
+                    "新闻", "文章", "资讯", "内容", "相关", "吧", "吗", "呢", "啊"};
+                
+                for (String suffix : suffixes) {
+                    if (keyword.endsWith(suffix)) {
+                        keyword = keyword.substring(0, keyword.length() - suffix.length());
+                    }
+                }
+                
+                keyword = keyword.trim();
+                
+                // 如果关键词不为空且长度合理，返回关键词
+                if (!keyword.isEmpty() && keyword.length() >= 2 && keyword.length() <= 50) {
+                    return keyword;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 搜索文章
+     * 根据关键词搜索标题和内容
+     */
+    private String searchArticles(String keyword) {
+        QueryWrapper<Article> wrapper = new QueryWrapper<>();
+        wrapper.eq("is_approved", 1)
+               .and(w -> w.like("title", keyword).or().like("content", keyword))
+               .orderByDesc("view_count")
+               .last("LIMIT 5");
+        
+        List<Article> articles = articleMapper.selectList(wrapper);
+        
+        if (articles.isEmpty()) {
+            return String.format("\n【搜索结果】关键词“%s”\n未找到相关文章。建议您：\n" +
+                    "1. 尝试使用不同的关键词\n" +
+                    "2. 使用更简短的词语\n" +
+                    "3. 检查是否有错别字\n\n", keyword);
+        }
+        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("\n【搜索结果】关键词“%s”，共找到 %d 篇相关文章：\n\n", keyword, articles.size()));
+        
+        for (int i = 0; i < articles.size(); i++) {
+            Article a = articles.get(i);
+            String time = a.getCreatedAt() != null ? a.getCreatedAt().format(formatter) : "未知";
+            String summary = a.getSummary();
+            if (summary == null || summary.isEmpty()) {
+                summary = a.getContent();
+                if (summary != null && summary.length() > 60) {
+                    summary = summary.substring(0, 60) + "...";
+                }
+            } else if (summary.length() > 60) {
+                summary = summary.substring(0, 60) + "...";
+            }
+            
+            sb.append(String.format("%d. 《%s》\n", i + 1, a.getTitle()));
+            sb.append(String.format("   📌 板块：%s | 👁️ 浏览：%d | 📅 %s\n", 
+                getBoardTypeName(a.getBoardType()), a.getViewCount(), time));
+            sb.append(String.format("   📝 %s\n", summary != null ? summary : "暂无摘要"));
+            sb.append(String.format("   🔗 文章ID：%d，访问链接：/article/%d\n\n", a.getId(), a.getId()));
+        }
+        
+        sb.append("提示：点击文章链接即可查看详情。\n");
         
         return sb.toString();
     }

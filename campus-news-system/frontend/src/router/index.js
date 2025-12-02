@@ -58,6 +58,16 @@ const routes = [
         path: '/privacy',
         name: 'Privacy',
         component: () => import('@/views/Privacy.vue')
+      },
+      {
+        path: '/search',
+        name: 'Search',
+        component: () => import('@/views/Search.vue')
+      },
+      {
+        path: '/ai-help',
+        name: 'AiHelp',
+        component: () => import('@/views/AiHelp.vue')
       }
     ]
   },

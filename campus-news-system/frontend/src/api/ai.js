@@ -16,7 +16,8 @@ export const sendChatMessage = (data) => {
   return request({
     url: '/ai/chat',
     method: 'post',
-    data
+    data,
+    timeout: 60000  // AI请求设置60秒超时
   })
 }
 

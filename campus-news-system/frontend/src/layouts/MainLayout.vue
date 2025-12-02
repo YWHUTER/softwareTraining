@@ -41,9 +41,13 @@
               <el-icon><Star /></el-icon>
               <span>关注</span>
             </el-menu-item>
+            <el-menu-item index="/search" class="menu-item search-menu-item">
+              <el-icon><Search /></el-icon>
+              <span>搜索</span>
+            </el-menu-item>
             <el-menu-item index="/ai-assistant" class="menu-item ai-menu-item">
               <el-icon><ChatDotRound /></el-icon>
-              <span>AI 助手</span>
+              <span>武理小助手</span>
             </el-menu-item>
           </el-menu>
 
@@ -134,6 +138,7 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import bgImage from '@/assets/main-bg.jpg'
 
 const router = useRouter()
@@ -292,6 +297,22 @@ const handleUserCommand = (command) => {
   color: #d97706;
   background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 152, 0, 0.15) 100%);
   border-bottom-color: #f59e0b;
+}
+
+/* 搜索菜单项特殊样式 */
+.main-menu .search-menu-item {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  color: #10b981;
+}
+
+.main-menu .search-menu-item:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
+}
+
+.main-menu .search-menu-item.is-active {
+  color: #059669;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%);
+  border-bottom-color: #10b981;
 }
 
 /* 用户操作区 */
