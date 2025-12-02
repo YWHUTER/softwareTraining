@@ -18,7 +18,7 @@ public class DataInitializer implements CommandLineRunner {
     
     @Override
     public void run(String... args) throws Exception {
-        // 确保admin用户密码正确
+        // 确保admin用户密码正确123
         User admin = userMapper.findByUsername("admin");
         if (admin != null) {
             String newPassword = passwordEncoder.encode("admin123");
