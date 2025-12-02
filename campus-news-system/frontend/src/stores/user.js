@@ -43,6 +43,11 @@ export const useUserStore = defineStore('user', {
       localStorage.setItem('user', JSON.stringify(data))
     },
     
+    setUser(user) {
+      this.user = user
+      localStorage.setItem('user', JSON.stringify(user))
+    },
+    
     logout() {
       this.token = ''
       this.user = null

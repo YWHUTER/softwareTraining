@@ -5,7 +5,23 @@
       <el-col :span="6">
         <el-card class="user-profile-card">
           <div class="user-card">
-            <el-avatar :size="90" class="user-avatar">{{ userStore.user?.realName?.[0] }}</el-avatar>
+            <!-- 头像上传 -->
+            <div class="avatar-wrapper" @click="triggerAvatarUpload">
+              <el-avatar :size="90" class="user-avatar" :src="userStore.user?.avatar">
+                {{ !userStore.user?.avatar ? userStore.user?.realName?.[0] : '' }}
+              </el-avatar>
+              <div class="avatar-overlay">
+                <el-icon :size="24"><Camera /></el-icon>
+                <span>更换头像</span>
+              </div>
+            </div>
+            <input 
+              ref="avatarInput" 
+              type="file" 
+              accept="image/*" 
+              style="display: none;" 
+              @change="handleAvatarChange"
+            />
             <h3>{{ userStore.user?.realName }}</h3>
             <p class="username">@{{ userStore.user?.username }}</p>
             <div class="role-tags">
@@ -249,11 +265,62 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { getArticleList, deleteArticle } from '@/api/article'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { User, Message, Phone, School, Postcard, Document, View, Star, ChatDotRound, PieChart, TrendCharts, List, Plus } from '@element-plus/icons-vue'
+import { uploadFile, updateAvatar } from '@/api/user'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
+import { User, Message, Phone, School, Postcard, Document, View, Star, ChatDotRound, PieChart, TrendCharts, List, Plus, Camera } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+const avatarInput = ref(null)
+
+// 触发头像上传
+const triggerAvatarUpload = () => {
+  avatarInput.value?.click()
+}
+
+// 处理头像文件选择
+const handleAvatarChange = async (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  
+  // 验证文件类型
+  if (!file.type.startsWith('image/')) {
+    ElMessage.error('请选择图片文件')
+    return
+  }
+  
+  // 验证文件大小 (最大 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('图片大小不能超过 5MB')
+    return
+  }
+  
+  const loading = ElLoading.service({
+    lock: true,
+    text: '上传中...',
+    background: 'rgba(0, 0, 0, 0.7)'
+  })
+  
+  try {
+    // 上传文件
+    const fileUrl = await uploadFile(file)
+    
+    // 更新头像
+    const updatedUser = await updateAvatar(fileUrl)
+    
+    // 更新 store 中的用户信息
+    userStore.setUser(updatedUser)
+    
+    ElMessage.success('头像更新成功')
+  } catch (error) {
+    console.error('头像上传失败:', error)
+    ElMessage.error('头像上传失败')
+  } finally {
+    loading.close()
+    // 清空 input，允许再次选择相同文件
+    e.target.value = ''
+  }
+}
 
 const loading = ref(false)
 const articles = ref([])
@@ -416,6 +483,40 @@ onMounted(() => {
 .user-card {
   text-align: center;
   padding: 20px 0;
+}
+
+/* 头像上传样式 */
+.avatar-wrapper {
+  position: relative;
+  cursor: pointer;
+  display: inline-block;
+  border-radius: 50%;
+}
+
+.avatar-wrapper:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.avatar-overlay span {
+  font-size: 12px;
+  margin-top: 4px;
 }
 
 .user-avatar {

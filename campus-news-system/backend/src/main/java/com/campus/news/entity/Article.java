@@ -43,4 +43,7 @@ public class Article {
     
     @TableField(exist = false)
     private Boolean isFavorited;
+    
+    @TableField(exist = false)
+    private Comment hotComment; // 最火评论
 }

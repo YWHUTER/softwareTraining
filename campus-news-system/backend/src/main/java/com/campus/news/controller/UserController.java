@@ -47,4 +47,22 @@ public class UserController {
     public Result<Boolean> updateUserStatus(@PathVariable Long userId, @RequestParam Integer status) {
         return Result.success(userService.updateUserStatus(userId, status));
     }
+    
+    @Operation(summary = "更新用户头像")
+    @PutMapping("/avatar")
+    public Result<User> updateAvatar(@RequestParam String avatar, Authentication authentication) {
+        String username = authentication.getName();
+        Long userId = userService.getUserIdByUsername(username);
+        userService.updateAvatar(userId, avatar);
+        return Result.success(userService.getUserInfo(userId));
+    }
+    
+    @Operation(summary = "更新用户信息")
+    @PutMapping("/update")
+    public Result<User> updateUserInfo(@RequestBody User updateUser, Authentication authentication) {
+        String username = authentication.getName();
+        Long userId = userService.getUserIdByUsername(username);
+        userService.updateUserInfo(userId, updateUser);
+        return Result.success(userService.getUserInfo(userId));
+    }
 }

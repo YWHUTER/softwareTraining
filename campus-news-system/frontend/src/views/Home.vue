@@ -101,8 +101,8 @@
                   <!-- 文章元信息 -->
                   <div class="article-meta">
                     <div class="meta-item">
-                      <el-avatar :size="24" class="author-avatar">
-                        {{ article.author?.realName?.[0] }}
+                      <el-avatar :size="24" class="author-avatar" :src="article.author?.avatar">
+                        {{ !article.author?.avatar ? article.author?.realName?.[0] : '' }}
                       </el-avatar>
                       <span class="author-name">{{ article.author?.realName }}</span>
                     </div>
@@ -142,6 +142,25 @@
                       </div>
                     </template>
                   </el-image>
+                </div>
+              </div>
+              
+              <!-- 热门评论 -->
+              <div v-if="article.hotComment" class="hot-comment" @click.stop>
+                <div class="hot-comment-header">
+                  <el-icon color="#f56c6c"><ChatLineSquare /></el-icon>
+                  <span class="hot-comment-label">热评</span>
+                </div>
+                <div class="hot-comment-content">
+                  <el-avatar :size="20" class="comment-avatar" :src="article.hotComment.user?.avatar">
+                    {{ !article.hotComment.user?.avatar ? article.hotComment.user?.realName?.[0] : '' }}
+                  </el-avatar>
+                  <span class="comment-author">{{ article.hotComment.user?.realName }}：</span>
+                  <span class="comment-text">{{ article.hotComment.content }}</span>
+                  <span class="comment-likes">
+                    <el-icon><Star /></el-icon>
+                    {{ article.hotComment.likeCount || 0 }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -884,6 +903,80 @@ watch(() => route.path, (newPath) => {
     margin-left: 0;
     margin-top: 8px;
     width: 100%;
+  }
+}
+
+/* 热门评论样式 */
+.hot-comment {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #fff5f5 0%, #fef5f0 100%);
+  border-radius: 8px;
+  border-left: 3px solid #f56c6c;
+}
+
+.hot-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.hot-comment-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f56c6c;
+}
+
+.hot-comment-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.comment-avatar {
+  background: linear-gradient(135deg, #f56c6c, #e6a23c);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.comment-author {
+  font-size: 13px;
+  font-weight: 500;
+  color: #606266;
+  flex-shrink: 0;
+}
+
+.comment-text {
+  font-size: 13px;
+  color: #606266;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 500px;
+}
+
+.comment-likes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #f56c6c;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+@media (max-width: 768px) {
+  .hot-comment {
+    padding: 10px 12px;
+  }
+
+  .comment-text {
+    max-width: 200px;
   }
 }
 </style>

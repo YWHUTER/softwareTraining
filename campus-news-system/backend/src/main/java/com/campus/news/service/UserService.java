@@ -124,6 +124,14 @@ public class UserService extends ServiceImpl<UserMapper, User> implements UserDe
         return user;
     }
     
+    public Long getUserIdByUsername(String username) {
+        User user = userMapper.findByUsername(username);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        return user.getId();
+    }
+    
     public PageResult<User> getUserList(Long current, Long size, String keyword, Long collegeId, Integer status) {
         Page<User> page = new Page<>(current, size);
         QueryWrapper<User> wrapper = new QueryWrapper<>();
@@ -159,5 +167,38 @@ public class UserService extends ServiceImpl<UserMapper, User> implements UserDe
                 .eq("id", userId)
                 .set("status", status)
         ) > 0;
+    }
+    
+    @Transactional
+    public boolean updateAvatar(Long userId, String avatar) {
+        return userMapper.update(null,
+            new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<User>()
+                .eq("id", userId)
+                .set("avatar", avatar)
+        ) > 0;
+    }
+    
+    @Transactional
+    public boolean updateUserInfo(Long userId, User updateUser) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        
+        // 只更新允许修改的字段
+        if (updateUser.getRealName() != null) {
+            user.setRealName(updateUser.getRealName());
+        }
+        if (updateUser.getEmail() != null) {
+            user.setEmail(updateUser.getEmail());
+        }
+        if (updateUser.getPhone() != null) {
+            user.setPhone(updateUser.getPhone());
+        }
+        if (updateUser.getAvatar() != null) {
+            user.setAvatar(updateUser.getAvatar());
+        }
+        
+        return userMapper.updateById(user) > 0;
     }
 }

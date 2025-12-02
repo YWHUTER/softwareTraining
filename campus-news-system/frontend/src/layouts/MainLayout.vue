@@ -68,8 +68,8 @@
               <!-- 用户下拉菜单 -->
               <el-dropdown @command="handleUserCommand" trigger="click" class="user-dropdown">
                 <div class="user-info">
-                  <el-avatar :size="38" class="user-avatar">
-                    {{ userStore.user?.realName?.[0] }}
+                  <el-avatar :size="38" class="user-avatar" :src="userStore.user?.avatar">
+                    {{ !userStore.user?.avatar ? userStore.user?.realName?.[0] : '' }}
                   </el-avatar>
                   <span class="user-name">{{ userStore.user?.realName }}</span>
                   <el-icon class="dropdown-icon"><ArrowDown /></el-icon>

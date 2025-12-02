@@ -49,6 +49,7 @@ public class SecurityConfig {
                 .requestMatchers("/comment/list").permitAll()
                 .requestMatchers("/college/list").permitAll()
                 .requestMatchers("/ai/health").permitAll()  // AI健康检查公开
+                .requestMatchers("/file/image/**").permitAll()  // 图片访问公开
                 .anyRequest().authenticated()
             );
         

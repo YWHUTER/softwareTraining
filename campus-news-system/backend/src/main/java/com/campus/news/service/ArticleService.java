@@ -9,7 +9,9 @@ import com.campus.news.dto.ArticleQueryRequest;
 import com.campus.news.entity.Article;
 import com.campus.news.entity.ArticleFavorite;
 import com.campus.news.entity.ArticleLike;
+import com.campus.news.entity.Comment;
 import com.campus.news.entity.User;
+import com.campus.news.mapper.CommentMapper;
 import com.campus.news.exception.BusinessException;
 import com.campus.news.mapper.ArticleMapper;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
     private final CollegeService collegeService;
     private final ArticleLikeService articleLikeService;
     private final ArticleFavoriteService articleFavoriteService;
+    private final CommentMapper commentMapper;
     
     @Transactional
     public Article createArticle(ArticleCreateRequest request, Long userId) {
@@ -158,6 +161,18 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
         if (currentUserId != null) {
             article.setIsLiked(articleLikeService.isLiked(article.getId(), currentUserId));
             article.setIsFavorited(articleFavoriteService.isFavorited(article.getId(), currentUserId));
+        }
+        
+        // 查询最火评论（按点赞数降序取第一条）
+        QueryWrapper<Comment> commentWrapper = new QueryWrapper<>();
+        commentWrapper.eq("article_id", article.getId())
+                .orderByDesc("like_count")
+                .last("LIMIT 1");
+        Comment hotComment = commentMapper.selectOne(commentWrapper);
+        if (hotComment != null) {
+            // 填充评论用户信息
+            hotComment.setUser(userService.getUserInfo(hotComment.getUserId()));
+            article.setHotComment(hotComment);
         }
     }
     
