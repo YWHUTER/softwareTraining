@@ -418,6 +418,7 @@ watch(() => route.path, (newPath) => {
   font-weight: 700;
   margin: 0 0 15px;
   letter-spacing: 1px;
+  animation: slideDown 0.8s ease-out;
 }
 
 .banner-subtitle {
@@ -425,6 +426,18 @@ watch(() => route.path, (newPath) => {
   margin: 0;
   opacity: 0.95;
   font-weight: 300;
+  animation: slideDown 0.8s ease-out 0.2s both;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 内容区域 */
@@ -449,6 +462,12 @@ watch(() => route.path, (newPath) => {
   align-items: center;
   flex-wrap: wrap;
   gap: 20px;
+  animation: fadeInUp 0.5s ease-out;
+  transition: box-shadow 0.3s ease;
+}
+
+.filter-section:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .section-title {
@@ -531,9 +550,21 @@ watch(() => route.path, (newPath) => {
 }
 
 .article-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
-  border-color: #2196f3;
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
+  border-color: #667eea;
+}
+
+.article-card:hover .article-title {
+  color: #667eea;
+}
+
+.article-card:hover .article-cover {
+  transform: scale(1.05);
+}
+
+.article-card:active {
+  transform: translateY(-2px) scale(1.005);
 }
 
 .article-card.pinned {
@@ -590,6 +621,7 @@ watch(() => route.path, (newPath) => {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  transition: color 0.3s ease;
 }
 
 .article-summary {
@@ -656,11 +688,13 @@ watch(() => route.path, (newPath) => {
   flex-shrink: 0;
   border-radius: 8px;
   overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .article-cover .el-image {
   width: 100%;
   height: 100%;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .image-error {
@@ -694,11 +728,17 @@ watch(() => route.path, (newPath) => {
 .sidebar-card {
   border-radius: 12px;
   border: none;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeInUp 0.5s ease-out both;
 }
 
+.sidebar-card:nth-child(1) { animation-delay: 0.1s; }
+.sidebar-card:nth-child(2) { animation-delay: 0.2s; }
+.sidebar-card:nth-child(3) { animation-delay: 0.3s; }
+
 .sidebar-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 .card-title {
@@ -723,13 +763,20 @@ watch(() => route.path, (newPath) => {
   padding: 12px;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: #fafafa;
+  border: 1px solid transparent;
 }
 
 .hot-item:hover {
   background: #f0f2f5;
-  transform: translateX(4px);
+  transform: translateX(6px);
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.hot-item:hover .hot-title {
+  color: #667eea;
 }
 
 .hot-rank {
@@ -778,6 +825,7 @@ watch(() => route.path, (newPath) => {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  transition: color 0.3s ease;
 }
 
 .hot-meta {

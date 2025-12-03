@@ -13,4 +13,14 @@ public class CommentCreateRequest {
     private String content;
     
     private Long parentId;
+    
+    /**
+     * 回复目标用户ID（多级回复时使用）
+     */
+    private Long replyToUserId;
+    
+    /**
+     * 根评论ID（所有回复归属的顶级评论）
+     */
+    private Long rootId;
 }

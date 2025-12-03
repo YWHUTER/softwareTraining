@@ -65,6 +65,49 @@
                 <span>发布文章</span>
               </el-button>
 
+              <!-- 通知图标 -->
+              <el-popover
+                placement="bottom"
+                :width="360"
+                trigger="click"
+                @show="fetchNotifications"
+              >
+                <template #reference>
+                  <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99" class="notification-badge">
+                    <el-button circle class="notification-btn">
+                      <el-icon :size="20"><Bell /></el-icon>
+                    </el-button>
+                  </el-badge>
+                </template>
+                <div class="notification-panel">
+                  <div class="notification-header">
+                    <span class="notification-title">消息通知</span>
+                    <el-button v-if="unreadCount > 0" link type="primary" @click="handleMarkAllRead">
+                      全部已读
+                    </el-button>
+                  </div>
+                  <div class="notification-list" v-loading="notificationLoading">
+                    <div 
+                      v-for="item in notifications" 
+                      :key="item.id" 
+                      class="notification-item"
+                      :class="{ 'is-unread': item.isRead === 0 }"
+                      @click="handleNotificationClick(item)"
+                    >
+                      <el-avatar :size="36" :src="item.fromUser?.avatar" class="notification-avatar">
+                        {{ item.fromUser?.realName?.[0] }}
+                      </el-avatar>
+                      <div class="notification-content">
+                        <p class="notification-text">{{ item.content }}</p>
+                        <span class="notification-time">{{ formatTime(item.createdAt) }}</span>
+                      </div>
+                      <div v-if="item.isRead === 0" class="unread-dot"></div>
+                    </div>
+                    <el-empty v-if="notifications.length === 0 && !notificationLoading" description="暂无通知" :image-size="60" />
+                  </div>
+                </div>
+              </el-popover>
+
               <!-- 用户下拉菜单 -->
               <el-dropdown @command="handleUserCommand" trigger="click" class="user-dropdown">
                 <div class="user-info">
@@ -134,11 +177,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
+import { Search, Bell } from '@element-plus/icons-vue'
+import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '@/api/notification'
 import bgImage from '@/assets/main-bg.jpg'
 
 const router = useRouter()
@@ -146,6 +190,12 @@ const route = useRoute()
 const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
+
+// 通知相关
+const notifications = ref([])
+const unreadCount = ref(0)
+const notificationLoading = ref(false)
+let notificationTimer = null
 
 const handleMenuSelect = (index) => {
   router.push(index)
@@ -166,6 +216,83 @@ const handleUserCommand = (command) => {
       break
   }
 }
+
+// 获取通知列表
+const fetchNotifications = async () => {
+  if (!userStore.isLogin) return
+  notificationLoading.value = true
+  try {
+    const result = await getNotifications({ current: 1, size: 10 })
+    notifications.value = result.records || []
+  } catch (error) {
+    console.error('获取通知失败:', error)
+  } finally {
+    notificationLoading.value = false
+  }
+}
+
+// 获取未读数量
+const fetchUnreadCount = async () => {
+  if (!userStore.isLogin) return
+  try {
+    const result = await getUnreadCount()
+    unreadCount.value = result.count || 0
+  } catch (error) {
+    console.error('获取未读数量失败:', error)
+  }
+}
+
+// 点击通知
+const handleNotificationClick = async (item) => {
+  // 标记已读
+  if (item.isRead === 0) {
+    await markAsRead(item.id)
+    item.isRead = 1
+    unreadCount.value = Math.max(0, unreadCount.value - 1)
+  }
+  // 跳转到文章
+  if (item.articleId) {
+    router.push(`/article/${item.articleId}`)
+  }
+}
+
+// 全部已读
+const handleMarkAllRead = async () => {
+  try {
+    await markAllAsRead()
+    notifications.value.forEach(n => n.isRead = 1)
+    unreadCount.value = 0
+    ElMessage.success('已全部标记为已读')
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+// 格式化时间
+const formatTime = (time) => {
+  if (!time) return ''
+  const date = new Date(time)
+  const now = new Date()
+  const diff = (now - date) / 1000
+  
+  if (diff < 60) return '刚刚'
+  if (diff < 3600) return Math.floor(diff / 60) + '分钟前'
+  if (diff < 86400) return Math.floor(diff / 3600) + '小时前'
+  if (diff < 604800) return Math.floor(diff / 86400) + '天前'
+  return date.toLocaleDateString('zh-CN')
+}
+
+// 定期刷新未读数量
+onMounted(() => {
+  fetchUnreadCount()
+  notificationTimer = setInterval(fetchUnreadCount, 60000) // 每分钟刷新
+})
+
+onUnmounted(() => {
+  if (notificationTimer) {
+    clearInterval(notificationTimer)
+  }
+})
 </script>
 
 <style scoped>
@@ -250,11 +377,30 @@ const handleUserCommand = (command) => {
   font-size: 15px;
   margin: 0 5px;
   border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.main-menu .menu-item::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
   transition: all 0.3s ease;
+  transform: translateX(-50%);
 }
 
 .main-menu .menu-item:hover {
   background: #f5f7fa;
+  transform: translateY(-2px);
+}
+
+.main-menu .menu-item:hover::before {
+  width: 60%;
 }
 
 .main-menu .is-active {
@@ -327,11 +473,130 @@ const handleUserCommand = (command) => {
   font-weight: 600;
   padding: 12px 24px;
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.publish-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
 }
 
 .publish-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 20px rgba(33, 150, 243, 0.4);
+}
+
+.publish-btn:hover::after {
+  width: 300px;
+  height: 300px;
+}
+
+.publish-btn:active {
+  transform: translateY(-1px) scale(1);
+}
+
+/* 通知组件 */
+.notification-badge {
+  margin-right: 8px;
+}
+
+.notification-btn {
+  border: none;
+  background: #f5f7fa;
+  transition: all 0.3s ease;
+}
+
+.notification-btn:hover {
+  background: #e4e7ed;
+  transform: scale(1.05);
+}
+
+.notification-panel {
+  margin: -12px;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.notification-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: #333;
+}
+
+.notification-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  position: relative;
+}
+
+.notification-item:hover {
+  background: #f5f7fa;
+}
+
+.notification-item.is-unread {
+  background: #ecf5ff;
+}
+
+.notification-item.is-unread:hover {
+  background: #d9ecff;
+}
+
+.notification-avatar {
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-text {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: #909399;
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  background: #f56c6c;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 6px;
 }
 
 .user-dropdown {
@@ -357,6 +622,12 @@ const handleUserCommand = (command) => {
   font-weight: 600;
   border: 2px solid #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.user-info:hover .user-avatar {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
 }
 
 .user-name {

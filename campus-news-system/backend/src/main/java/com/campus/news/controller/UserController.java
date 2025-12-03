@@ -48,6 +48,15 @@ public class UserController {
         return Result.success(userService.updateUserStatus(userId, status));
     }
     
+    @Operation(summary = "搜索用户（用于@提及）")
+    @GetMapping("/search")
+    public Result<PageResult<User>> searchUsers(
+            @RequestParam(defaultValue = "1") Long current,
+            @RequestParam(defaultValue = "10") Long size,
+            @RequestParam(required = false) String keyword) {
+        return Result.success(userService.getUserList(current, size, keyword, null, 1));
+    }
+    
     @Operation(summary = "更新用户头像")
     @PutMapping("/avatar")
     public Result<User> updateAvatar(@RequestParam String avatar, Authentication authentication) {

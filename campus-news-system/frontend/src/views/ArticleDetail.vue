@@ -107,6 +107,16 @@
           <el-icon><Share /></el-icon>
           <span>分享</span>
         </el-button>
+        <el-button
+          size="large"
+          class="action-btn"
+          round
+          @click="exportToPDF"
+          :loading="exportLoading"
+        >
+          <el-icon><Download /></el-icon>
+          <span>导出 PDF</span>
+        </el-button>
       </div>
     </el-card>
     
@@ -127,14 +137,43 @@
           {{ !userStore.user?.avatar ? userStore.user?.realName?.[0] : '' }}
         </el-avatar>
         <div class="comment-input-wrapper">
-          <el-input
-            v-model="commentContent"
-            type="textarea"
-            :rows="3"
-            placeholder="发表你的看法..."
-            class="comment-textarea"
-          />
+          <div class="mention-container">
+            <el-input
+              ref="commentInputRef"
+              v-model="commentContent"
+              type="textarea"
+              :rows="3"
+              placeholder="发表你的看法... 输入 @ 可以提及用户"
+              class="comment-textarea"
+              @input="handleMentionInput"
+              @keydown="handleMentionKeydown"
+            />
+            <!-- @提及用户下拉框 -->
+            <div v-if="showMentionList" class="mention-dropdown">
+              <div class="mention-header">选择要提及的用户</div>
+              <div 
+                v-for="(user, index) in mentionUsers" 
+                :key="user.id" 
+                class="mention-item"
+                :class="{ 'is-active': mentionActiveIndex === index }"
+                @click="selectMentionUser(user)"
+                @mouseenter="mentionActiveIndex = index"
+              >
+                <el-avatar :size="28" :src="user.avatar">
+                  {{ user.realName?.[0] }}
+                </el-avatar>
+                <div class="mention-info">
+                  <span class="mention-name">{{ user.realName }}</span>
+                  <span class="mention-username">@{{ user.username }}</span>
+                </div>
+              </div>
+              <div v-if="mentionUsers.length === 0" class="mention-empty">
+                未找到匹配的用户
+              </div>
+            </div>
+          </div>
           <div class="comment-actions">
+            <span class="comment-tip">💡 输入 @ 提及用户</span>
             <el-button 
               type="primary" 
               @click="handleComment" 
@@ -195,10 +234,73 @@
                 <div class="reply-content">
                   <div class="reply-user-info">
                     <span class="reply-user">{{ reply.user?.realName }}</span>
+                    <span v-if="reply.replyToUser" class="reply-to">
+                      回复 <span class="reply-to-name">@{{ reply.replyToUser.realName }}</span>
+                    </span>
                     <span class="reply-time">{{ formatTime(reply.createdAt) }}</span>
                   </div>
                   <div class="reply-text">{{ reply.content }}</div>
+                  <div class="reply-footer">
+                    <el-button text size="small" @click="handleReplyToReply(comment, reply)">
+                      <el-icon><ChatDotRound /></el-icon>
+                      回复
+                    </el-button>
+                    <el-button
+                      v-if="userStore.user?.id === reply.userId"
+                      text
+                      size="small"
+                      type="danger"
+                      @click="handleDeleteComment(reply.id)"
+                    >
+                      <el-icon><Delete /></el-icon>
+                      删除
+                    </el-button>
+                  </div>
                 </div>
+              </div>
+            </div>
+            
+            <!-- 回复输入框 -->
+            <div v-if="replyTo?.id === comment.id" class="reply-form">
+              <div class="mention-container">
+                <el-input
+                  v-model="replyContent"
+                  type="textarea"
+                  :rows="2"
+                  :placeholder="replyPlaceholder"
+                  class="reply-input"
+                  @input="handleReplyMentionInput"
+                  @keydown="handleReplyMentionKeydown"
+                />
+                <!-- 回复框@提及用户下拉框 -->
+                <div v-if="showReplyMentionList" class="mention-dropdown">
+                  <div class="mention-header">选择要提及的用户</div>
+                  <div 
+                    v-for="(user, index) in mentionUsers" 
+                    :key="user.id" 
+                    class="mention-item"
+                    :class="{ 'is-active': mentionActiveIndex === index }"
+                    @click="selectReplyMentionUser(user)"
+                    @mouseenter="mentionActiveIndex = index"
+                  >
+                    <el-avatar :size="28" :src="user.avatar">
+                      {{ user.realName?.[0] }}
+                    </el-avatar>
+                    <div class="mention-info">
+                      <span class="mention-name">{{ user.realName }}</span>
+                      <span class="mention-username">@{{ user.username }}</span>
+                    </div>
+                  </div>
+                  <div v-if="mentionUsers.length === 0" class="mention-empty">
+                    未找到匹配的用户
+                  </div>
+                </div>
+              </div>
+              <div class="reply-form-actions">
+                <el-button size="small" @click="cancelReply">取消</el-button>
+                <el-button type="primary" size="small" @click="submitReply" :loading="commentLoading">
+                  回复
+                </el-button>
               </div>
             </div>
           </div>
@@ -362,13 +464,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { getArticleDetail, toggleLike, toggleFavorite, getArticleList } from '@/api/article'
 import { getCommentList, createComment, deleteComment } from '@/api/comment'
 import { toggleFollow, checkFollow, getFollowStats } from '@/api/follow'
+import { searchUsers } from '@/api/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Download } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -376,11 +480,31 @@ const userStore = useUserStore()
 
 const loading = ref(false)
 const commentLoading = ref(false)
+const exportLoading = ref(false)
 const article = ref(null)
 const comments = ref([])
 const commentContent = ref('')
-const replyTo = ref(null)
+const replyTo = ref(null)  // 当前回复的根评论
+const replyToUser = ref(null)  // 当前回复的目标用户
+const replyContent = ref('')  // 回复内容
 const isFollowingAuthor = ref(false)
+
+// 回复提示文字
+const replyPlaceholder = computed(() => {
+  if (replyToUser.value) {
+    return `回复 @${replyToUser.value.realName}`
+  }
+  return '写下你的回复...'
+})
+
+// @ 提及用户相关
+const commentInputRef = ref(null)
+const showMentionList = ref(false)
+const showReplyMentionList = ref(false)  // 回复框的提及列表
+const mentionUsers = ref([])
+const mentionActiveIndex = ref(0)
+const mentionStartPos = ref(0)
+const replyMentionStartPos = ref(0)  // 回复框的提及起始位置
 
 // 侧边栏数据
 const authorStats = ref({ articleCount: 0, followerCount: 0, totalViews: 0 })
@@ -539,9 +663,54 @@ const handleComment = async () => {
   }
 }
 
+// 回复顶级评论
 const handleReply = (comment) => {
   replyTo.value = comment
-  commentContent.value = `回复 @${comment.user?.realName}: `
+  replyToUser.value = comment.user
+  replyContent.value = ''
+}
+
+// 回复二级评论（回复的回复）
+const handleReplyToReply = (rootComment, reply) => {
+  replyTo.value = rootComment  // 仍然挂在顶级评论下
+  replyToUser.value = reply.user  // 回复的目标是这个回复的作者
+  replyContent.value = ''
+}
+
+// 取消回复
+const cancelReply = () => {
+  replyTo.value = null
+  replyToUser.value = null
+  replyContent.value = ''
+}
+
+// 提交回复
+const submitReply = async () => {
+  if (!replyContent.value.trim()) {
+    ElMessage.warning('请输入回复内容')
+    return
+  }
+  
+  commentLoading.value = true
+  try {
+    await createComment({
+      articleId: article.value.id,
+      content: replyContent.value,
+      parentId: replyTo.value.id,
+      rootId: replyTo.value.id,  // 所有回复都归属于顶级评论
+      replyToUserId: replyToUser.value?.id
+    })
+    ElMessage.success('回复成功')
+    replyContent.value = ''
+    replyTo.value = null
+    replyToUser.value = null
+    fetchComments()
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('回复失败')
+  } finally {
+    commentLoading.value = false
+  }
 }
 
 const handleDeleteComment = async (id) => {
@@ -559,6 +728,236 @@ const handleDeleteComment = async (id) => {
       console.error(error)
     }
   }
+}
+
+// @ 提及用户 - 处理输入
+const handleMentionInput = (value) => {
+  const text = value || commentContent.value
+  const lastAtIndex = text.lastIndexOf('@')
+  
+  if (lastAtIndex !== -1) {
+    const afterAt = text.slice(lastAtIndex + 1)
+    // 检查 @ 后面是否有空格（表示已完成选择）
+    if (!afterAt.includes(' ') && afterAt.length <= 20) {
+      mentionStartPos.value = lastAtIndex
+      searchMentionUsers(afterAt)
+      showMentionList.value = true
+      return
+    }
+  }
+  
+  showMentionList.value = false
+}
+
+// 搜索可提及的用户（从后端搜索所有用户）
+const searchMentionUsers = async (keyword) => {
+  try {
+    // 调用后端 API 搜索用户
+    const result = await searchUsers({
+      current: 1,
+      size: 8,
+      keyword: keyword || ''
+    })
+    
+    // 过滤掉当前用户
+    const users = (result.records || []).filter(user => 
+      user.id !== userStore.user?.id
+    )
+    
+    mentionUsers.value = users.slice(0, 6)
+    mentionActiveIndex.value = 0
+  } catch (error) {
+    console.error('搜索用户失败:', error)
+    mentionUsers.value = []
+  }
+}
+
+// 选择提及的用户
+const selectMentionUser = (user) => {
+  const text = commentContent.value
+  const beforeMention = text.slice(0, mentionStartPos.value)
+  const afterMention = text.slice(text.indexOf(' ', mentionStartPos.value) + 1) || ''
+  
+  commentContent.value = `${beforeMention}@${user.realName} ${afterMention}`
+  showMentionList.value = false
+  
+  // 聚焦输入框
+  commentInputRef.value?.focus()
+}
+
+// 键盘导航
+const handleMentionKeydown = (e) => {
+  if (!showMentionList.value) return
+  
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    mentionActiveIndex.value = Math.min(mentionActiveIndex.value + 1, mentionUsers.value.length - 1)
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    mentionActiveIndex.value = Math.max(mentionActiveIndex.value - 1, 0)
+  } else if (e.key === 'Enter' && mentionUsers.value.length > 0) {
+    e.preventDefault()
+    selectMentionUser(mentionUsers.value[mentionActiveIndex.value])
+  } else if (e.key === 'Escape') {
+    showMentionList.value = false
+  }
+}
+
+// 回复框 @ 提及 - 处理输入
+const handleReplyMentionInput = (value) => {
+  const text = value || replyContent.value
+  const lastAtIndex = text.lastIndexOf('@')
+  
+  if (lastAtIndex !== -1) {
+    const afterAt = text.slice(lastAtIndex + 1)
+    if (!afterAt.includes(' ') && afterAt.length <= 20) {
+      replyMentionStartPos.value = lastAtIndex
+      searchMentionUsers(afterAt)
+      showReplyMentionList.value = true
+      return
+    }
+  }
+  
+  showReplyMentionList.value = false
+}
+
+// 回复框选择提及的用户
+const selectReplyMentionUser = (user) => {
+  const text = replyContent.value
+  const beforeMention = text.slice(0, replyMentionStartPos.value)
+  const afterAt = text.slice(replyMentionStartPos.value + 1)
+  const spaceIndex = afterAt.indexOf(' ')
+  const afterMention = spaceIndex !== -1 ? afterAt.slice(spaceIndex + 1) : ''
+  
+  replyContent.value = `${beforeMention}@${user.realName} ${afterMention}`
+  showReplyMentionList.value = false
+}
+
+// 回复框键盘导航
+const handleReplyMentionKeydown = (e) => {
+  if (!showReplyMentionList.value) return
+  
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    mentionActiveIndex.value = Math.min(mentionActiveIndex.value + 1, mentionUsers.value.length - 1)
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    mentionActiveIndex.value = Math.max(mentionActiveIndex.value - 1, 0)
+  } else if (e.key === 'Enter' && mentionUsers.value.length > 0) {
+    e.preventDefault()
+    selectReplyMentionUser(mentionUsers.value[mentionActiveIndex.value])
+  } else if (e.key === 'Escape') {
+    showReplyMentionList.value = false
+  }
+}
+
+// 导出 PDF（使用浏览器打印功能）
+const exportToPDF = () => {
+  if (!article.value) return
+  
+  exportLoading.value = true
+  
+  // 创建打印窗口
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    ElMessage.error('请允许弹出窗口以导出 PDF')
+    exportLoading.value = false
+    return
+  }
+  
+  // 构建打印内容
+  const printContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>${article.value.title}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Microsoft YaHei', 'SimSun', sans-serif;
+          padding: 40px;
+          max-width: 800px;
+          margin: 0 auto;
+          color: #333;
+          line-height: 1.8;
+        }
+        h1 {
+          font-size: 26px;
+          color: #2c3e50;
+          margin-bottom: 20px;
+          line-height: 1.4;
+          border-bottom: 2px solid #667eea;
+          padding-bottom: 15px;
+        }
+        .meta {
+          color: #909399;
+          font-size: 14px;
+          margin-bottom: 25px;
+          padding: 10px 0;
+        }
+        .meta span { margin-right: 20px; }
+        .summary {
+          color: #666;
+          font-size: 15px;
+          background: #f8f9fa;
+          padding: 15px;
+          border-radius: 8px;
+          margin-bottom: 25px;
+          border-left: 4px solid #667eea;
+        }
+        .content {
+          font-size: 16px;
+          line-height: 1.9;
+        }
+        .content img {
+          max-width: 100%;
+          height: auto;
+          margin: 15px 0;
+        }
+        .content p { margin: 1em 0; }
+        .content h2, .content h3 { margin: 1.5em 0 0.8em; color: #2c3e50; }
+        .footer {
+          margin-top: 40px;
+          padding-top: 20px;
+          border-top: 1px solid #eee;
+          color: #999;
+          font-size: 12px;
+          text-align: center;
+        }
+        @media print {
+          body { padding: 20px; }
+          @page { margin: 1cm; }
+        }
+      </style>
+    </head>
+    <body>
+      <h1>${article.value.title}</h1>
+      <div class="meta">
+        <span>📝 作者：${article.value.author?.realName || '未知'}</span>
+        <span>📅 ${formatTime(article.value.createdAt)}</span>
+        <span>👁️ ${article.value.viewCount} 次浏览</span>
+      </div>
+      ${article.value.summary ? `<div class="summary">${article.value.summary}</div>` : ''}
+      <div class="content">${article.value.content}</div>
+      <div class="footer">
+        导出自 校园新闻发布系统 · ${new Date().toLocaleString('zh-CN')}
+      </div>
+      <script>
+        window.onload = function() {
+          window.print();
+          window.onafterprint = function() { window.close(); }
+        }
+      <\/script>
+    </body>
+    </html>
+  `
+  
+  printWindow.document.write(printContent)
+  printWindow.document.close()
+  
+  ElMessage.success('已打开打印窗口，请选择"另存为 PDF"')
+  exportLoading.value = false
 }
 
 const getBoardTypeName = (type) => {
@@ -650,6 +1049,18 @@ onMounted(() => {
   margin-bottom: 24px;
   border: none;
   overflow: hidden;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 文章头部 */
@@ -697,6 +1108,12 @@ onMounted(() => {
   font-weight: 700;
   font-size: 20px;
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.author-section:hover .author-avatar {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4);
 }
 
 .author-info {
@@ -917,8 +1334,96 @@ onMounted(() => {
 
 .comment-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 12px;
+}
+
+.comment-tip {
+  font-size: 13px;
+  color: #909399;
+}
+
+/* @ 提及用户 */
+.mention-container {
+  position: relative;
+}
+
+.mention-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e4e7ed;
+  margin-bottom: 8px;
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 100;
+  animation: mentionSlideUp 0.2s ease-out;
+}
+
+@keyframes mentionSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mention-header {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #909399;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.mention-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mention-item:hover,
+.mention-item.is-active {
+  background: #f5f7fa;
+}
+
+.mention-item.is-active {
+  background: #ecf5ff;
+}
+
+.mention-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mention-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.mention-username {
+  font-size: 12px;
+  color: #909399;
+}
+
+.mention-empty {
+  padding: 20px;
+  text-align: center;
+  color: #909399;
+  font-size: 13px;
 }
 
 /* 登录提示 */
@@ -1070,6 +1575,48 @@ onMounted(() => {
   font-size: 14px;
   line-height: 1.6;
   word-break: break-word;
+}
+
+/* 回复目标 */
+.reply-to {
+  font-size: 13px;
+  color: #909399;
+  margin-left: 8px;
+}
+
+.reply-to-name {
+  color: #409eff;
+  font-weight: 500;
+}
+
+/* 回复按钮区 */
+.reply-footer {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.reply-footer .el-button {
+  font-size: 12px;
+}
+
+/* 回复输入框 */
+.reply-form {
+  margin-top: 16px;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+.reply-input {
+  margin-bottom: 12px;
+}
+
+.reply-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* ========== 侧边栏样式 ========== */

@@ -88,8 +88,20 @@ const handleMenuSelect = (index) => {
 }
 
 .sidebar {
-  background: #304156;
+  background: linear-gradient(180deg, #304156 0%, #2a3a4e 100%);
   color: #fff;
+  animation: slideInLeft 0.4s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .logo {
@@ -100,24 +112,33 @@ const handleMenuSelect = (index) => {
   font-size: 18px;
   font-weight: bold;
   border-bottom: 1px solid #3a4a5f;
+  transition: all 0.3s ease;
+}
+
+.logo:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .el-menu {
   border: none;
-  background: #304156;
+  background: transparent;
 }
 
 :deep(.el-menu-item) {
   color: #fff;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: 4px 8px;
+  border-radius: 8px;
 }
 
 :deep(.el-menu-item:hover) {
-  background: #3a4a5f;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(4px);
 }
 
 :deep(.el-menu-item.is-active) {
   color: #409eff;
-  background: #3a4a5f;
+  background: rgba(64, 158, 255, 0.2);
 }
 
 .header {

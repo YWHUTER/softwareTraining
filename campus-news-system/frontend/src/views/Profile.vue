@@ -478,6 +478,24 @@ onMounted(() => {
 /* 用户卡片 */
 .user-profile-card {
   border-radius: 12px;
+  animation: fadeInLeft 0.5s ease-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.user-profile-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .user-card {
@@ -491,6 +509,11 @@ onMounted(() => {
   cursor: pointer;
   display: inline-block;
   border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.avatar-wrapper:hover {
+  transform: scale(1.05);
 }
 
 .avatar-wrapper:hover .avatar-overlay {
@@ -556,16 +579,23 @@ onMounted(() => {
   align-items: center;
   cursor: pointer;
   padding: 0 20px;
+  transition: all 0.3s ease;
+}
+
+.follow-item:hover {
+  transform: translateY(-3px);
 }
 
 .follow-item:hover .count {
-  color: #409eff;
+  color: #667eea;
+  transform: scale(1.1);
 }
 
 .follow-item .count {
   font-size: 20px;
   font-weight: 700;
   color: #303133;
+  transition: all 0.3s ease;
 }
 
 .follow-item .label {

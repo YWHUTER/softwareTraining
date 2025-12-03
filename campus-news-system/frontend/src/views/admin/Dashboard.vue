@@ -515,6 +515,12 @@ onUnmounted(() => {
 <style scoped>
 .dashboard {
   padding: 20px;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .dashboard-header {
@@ -522,6 +528,18 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  animation: slideDown 0.5s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dashboard-header h2 {
@@ -533,12 +551,29 @@ onUnmounted(() => {
 /* 统计卡片样式 */
 .stat-card {
   border-radius: 12px;
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: scaleIn 0.4s ease-out both;
+}
+
+.stat-card:nth-child(1) .stat-card { animation-delay: 0.05s; }
+.stat-card:nth-child(2) .stat-card { animation-delay: 0.1s; }
+.stat-card:nth-child(3) .stat-card { animation-delay: 0.15s; }
+.stat-card:nth-child(4) .stat-card { animation-delay: 0.2s; }
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
 }
 
 .stat-card :deep(.el-statistic__head) {

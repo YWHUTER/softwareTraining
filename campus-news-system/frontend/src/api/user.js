@@ -8,6 +8,15 @@ export const getUserList = (params) => {
   })
 }
 
+// 搜索用户（用于@提及，不需要管理员权限）
+export const searchUsers = (params) => {
+  return request({
+    url: '/user/search',
+    method: 'get',
+    params
+  })
+}
+
 export const updateUserStatus = (userId, status) => {
   return request({
     url: `/user/status/${userId}`,

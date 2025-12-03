@@ -335,12 +335,39 @@ onMounted(() => {
 .publish-page {
   max-width: 1100px;
   margin: 0 auto;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .publish-card {
   border-radius: 16px;
   border: none;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  animation: slideUp 0.5s ease-out;
+  transition: box-shadow 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.publish-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
 }
 
 /* 卡片头部 */

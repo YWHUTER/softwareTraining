@@ -776,6 +776,18 @@ onMounted(() => {
   font-weight: 600;
   color: #333;
   margin-bottom: 40px;
+  animation: fadeInDown 0.6s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .suggestion-grid {
@@ -797,17 +809,42 @@ onMounted(() => {
   color: #333;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+.suggestion-card:nth-child(1) { animation-delay: 0.1s; }
+.suggestion-card:nth-child(2) { animation-delay: 0.15s; }
+.suggestion-card:nth-child(3) { animation-delay: 0.2s; }
+.suggestion-card:nth-child(4) { animation-delay: 0.25s; }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .suggestion-card:hover {
   background: #f0f0f0;
-  border-color: #d0d0d0;
+  border-color: #667eea;
   color: #000;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
 
 .suggestion-card .el-icon {
   opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
+.suggestion-card:hover .el-icon {
+  opacity: 1;
+  color: #667eea;
 }
 
 /* 消息列表 */
@@ -820,6 +857,18 @@ onMounted(() => {
 
 .message-row {
   padding: 24px 0;
+  animation: messageSlideIn 0.4s ease-out;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .message-row:not(:last-child) {

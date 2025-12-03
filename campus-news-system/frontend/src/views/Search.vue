@@ -417,12 +417,25 @@ const formatTime = (time) => {
   align-items: center;
   justify-content: center;
   gap: 12px;
+  animation: fadeInDown 0.6s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .banner-subtitle {
   font-size: 16px;
   margin: 0 0 30px;
   opacity: 0.9;
+  animation: fadeInDown 0.6s ease-out 0.1s both;
 }
 
 /* 搜索框 */

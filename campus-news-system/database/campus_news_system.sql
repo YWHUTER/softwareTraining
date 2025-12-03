@@ -113,7 +113,9 @@ CREATE TABLE `comment` (
     `article_id` BIGINT NOT NULL COMMENT '文章ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `content` TEXT NOT NULL COMMENT '评论内容',
-    `parent_id` BIGINT COMMENT '父评论ID（支持一层回复）',
+    `parent_id` BIGINT COMMENT '父评论ID',
+    `reply_to_user_id` BIGINT COMMENT '回复目标用户ID（多级回复显示"回复 @xxx"）',
+    `root_id` BIGINT COMMENT '根评论ID（所有回复归属的顶级评论）',
     `like_count` INT DEFAULT 0 COMMENT '点赞数',
     `status` TINYINT DEFAULT 1 COMMENT '状态: 0-已删除 1-正常',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -121,9 +123,12 @@ CREATE TABLE `comment` (
     INDEX `idx_article` (`article_id`),
     INDEX `idx_user` (`user_id`),
     INDEX `idx_parent` (`parent_id`),
+    INDEX `idx_root` (`root_id`),
     FOREIGN KEY (`article_id`) REFERENCES `article`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`parent_id`) REFERENCES `comment`(`id`) ON DELETE CASCADE
+    FOREIGN KEY (`parent_id`) REFERENCES `comment`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`reply_to_user_id`) REFERENCES `user`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`root_id`) REFERENCES `comment`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='评论表';
 
 -- 8. 文章点赞表
@@ -151,6 +156,24 @@ CREATE TABLE `article_favorite` (
     FOREIGN KEY (`article_id`) REFERENCES `article`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章收藏表';
+
+-- 10. 通知表
+CREATE TABLE `notification` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `user_id` BIGINT NOT NULL COMMENT '接收通知的用户ID',
+    `from_user_id` BIGINT COMMENT '触发通知的用户ID',
+    `type` VARCHAR(20) NOT NULL COMMENT '通知类型: MENTION-被@提及, COMMENT-评论, LIKE-点赞, FOLLOW-关注',
+    `article_id` BIGINT COMMENT '相关文章ID',
+    `comment_id` BIGINT COMMENT '相关评论ID',
+    `content` VARCHAR(500) NOT NULL COMMENT '通知内容',
+    `is_read` TINYINT NOT NULL DEFAULT 0 COMMENT '是否已读: 0-未读 1-已读',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_is_read` (`is_read`),
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`from_user_id`) REFERENCES `user`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`article_id`) REFERENCES `article`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知表';
 
 -- ============================================
 -- 初始化数据

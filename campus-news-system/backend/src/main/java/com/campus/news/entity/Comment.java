@@ -15,6 +15,17 @@ public class Comment {
     private Long userId;
     private String content;
     private Long parentId;
+    
+    /**
+     * 回复目标用户ID（用于多级回复显示"回复 @xxx"）
+     */
+    private Long replyToUserId;
+    
+    /**
+     * 根评论ID（所有回复都归属于哪个顶级评论）
+     */
+    private Long rootId;
+    
     private Integer likeCount;
     
     @TableLogic(value = "1", delval = "0")
@@ -28,6 +39,9 @@ public class Comment {
     
     @TableField(exist = false)
     private User user;
+    
+    @TableField(exist = false)
+    private User replyToUser;
     
     @TableField(exist = false)
     private List<Comment> replies;
