@@ -9,6 +9,7 @@ import com.campus.news.entity.User;
 import com.campus.news.exception.BusinessException;
 import com.campus.news.mapper.CommentMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,8 @@ public class CommentService extends ServiceImpl<CommentMapper, Comment> {
     private final UserService userService;
     private final ArticleService articleService;
     private final NotificationService notificationService;
+    @Lazy
+    private final RealtimeNotificationService realtimeNotificationService;
     
     @Transactional
     public Comment createComment(CommentCreateRequest request, Long userId) {
@@ -42,6 +45,14 @@ public class CommentService extends ServiceImpl<CommentMapper, Comment> {
         // 更新文章评论数
         updateArticleCommentCount(request.getArticleId(), 1);
         
+        // 🔔 发送实时通知给文章作者
+        Article article = articleService.getById(request.getArticleId());
+        if (article != null && !article.getAuthorId().equals(userId)) {
+            realtimeNotificationService.sendCommentNotification(
+                article.getAuthorId(), userId, request.getArticleId(),
+                article.getTitle(), request.getContent());
+        }
+        
         // 解析 @ 提及并发送通知
         notificationService.parseAndNotifyMentions(
             request.getContent(), 
@@ -53,7 +64,7 @@ public class CommentService extends ServiceImpl<CommentMapper, Comment> {
         // 如果是回复别人的评论，给被回复者发送通知
         if (request.getReplyToUserId() != null && !request.getReplyToUserId().equals(userId)) {
             User fromUser = userService.getUserInfo(userId);
-            Article article = articleService.getById(request.getArticleId());
+            // 复用上面已查询的 article 变量
             String content = (fromUser != null ? fromUser.getRealName() : "某用户") 
                 + " 回复了你在「" + (article != null ? article.getTitle() : "某篇文章") + "」的评论";
             notificationService.createNotification(

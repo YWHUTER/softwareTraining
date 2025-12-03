@@ -30,6 +30,7 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
     private final ArticleLikeService articleLikeService;
     private final ArticleFavoriteService articleFavoriteService;
     private final CommentMapper commentMapper;
+    private final TagService tagService;
     
     @Transactional
     public Article createArticle(ArticleCreateRequest request, Long userId) {
@@ -54,6 +55,12 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
         article.setStatus(1);
         
         articleMapper.insert(article);
+        
+        // 处理标签
+        if (request.getTags() != null && !request.getTags().isEmpty()) {
+            tagService.addTagsToArticle(article.getId(), request.getTags());
+        }
+        
         return article;
     }
     
@@ -208,7 +215,14 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
         article.setSummary(request.getSummary());
         article.setCoverImage(request.getCoverImage());
         
-        return articleMapper.updateById(article) > 0;
+        boolean result = articleMapper.updateById(article) > 0;
+        
+        // 更新标签
+        if (request.getTags() != null) {
+            tagService.updateArticleTags(id, request.getTags());
+        }
+        
+        return result;
     }
     
     @Transactional

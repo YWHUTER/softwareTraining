@@ -7,6 +7,7 @@ import com.campus.news.entity.ArticleLike;
 import com.campus.news.mapper.ArticleLikeMapper;
 import com.campus.news.mapper.ArticleMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,8 @@ public class ArticleLikeService extends ServiceImpl<ArticleLikeMapper, ArticleLi
     
     private final ArticleLikeMapper articleLikeMapper;
     private final ArticleMapper articleMapper;
+    @Lazy
+    private final RealtimeNotificationService realtimeNotificationService;
     
     @Transactional
     public boolean toggleLike(Long articleId, Long userId) {
@@ -36,6 +39,14 @@ public class ArticleLikeService extends ServiceImpl<ArticleLikeMapper, ArticleLi
             like.setUserId(userId);
             articleLikeMapper.insert(like);
             updateArticleLikeCount(articleId, 1);
+            
+            // 🔔 发送实时通知
+            Article article = articleMapper.selectById(articleId);
+            if (article != null) {
+                realtimeNotificationService.sendLikeNotification(
+                    article.getAuthorId(), userId, articleId, article.getTitle());
+            }
+            
             return true;
         }
     }

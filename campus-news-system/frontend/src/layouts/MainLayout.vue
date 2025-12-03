@@ -177,13 +177,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 import { Search, Bell } from '@element-plus/icons-vue'
 import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '@/api/notification'
 import bgImage from '@/assets/main-bg.jpg'
+import notificationWS from '@/utils/websocket'
 
 const router = useRouter()
 const route = useRoute()
@@ -282,16 +283,90 @@ const formatTime = (time) => {
   return date.toLocaleDateString('zh-CN')
 }
 
+// 🔔 WebSocket 实时通知处理
+const setupWebSocket = () => {
+  if (!userStore.isLogin) return
+  
+  // 连接WebSocket
+  notificationWS.connect()
+  
+  // 监听实时通知
+  notificationWS.on('LIKE', (data) => {
+    showRealtimeNotification(data, 'success', '👍')
+  })
+  
+  notificationWS.on('COMMENT', (data) => {
+    showRealtimeNotification(data, 'info', '💬')
+  })
+  
+  notificationWS.on('FOLLOW', (data) => {
+    showRealtimeNotification(data, 'warning', '⭐')
+  })
+  
+  notificationWS.on('FAVORITE', (data) => {
+    showRealtimeNotification(data, 'success', '❤️')
+  })
+  
+  notificationWS.on('SYSTEM', (data) => {
+    showRealtimeNotification(data, 'info', '📢')
+  })
+  
+  // 收到任何消息都刷新未读数量和通知列表
+  notificationWS.on('message', (data) => {
+    // 跳过连接成功消息
+    if (data.type === 'CONNECTED') return
+    fetchUnreadCount()
+    fetchNotifications()  // 同时刷新通知列表
+  })
+}
+
+// 显示实时通知弹窗
+const showRealtimeNotification = (data, type, icon) => {
+  // 增加未读数
+  unreadCount.value++
+  
+  // 显示桌面通知弹窗
+  ElNotification({
+    title: `${icon} ${data.title || '新消息'}`,
+    message: data.content,
+    type: type,
+    duration: 5000,
+    position: 'top-right',
+    onClick: () => {
+      // 点击通知跳转
+      if (data.articleId) {
+        router.push(`/article/${data.articleId}`)
+      } else if (data.fromUserId) {
+        router.push(`/profile/${data.fromUserId}`)
+      }
+    }
+  })
+}
+
+// 监听登录状态变化
+watch(() => userStore.isLogin, (isLogin) => {
+  if (isLogin) {
+    setupWebSocket()
+  } else {
+    notificationWS.disconnect()
+  }
+})
+
 // 定期刷新未读数量
 onMounted(() => {
   fetchUnreadCount()
   notificationTimer = setInterval(fetchUnreadCount, 60000) // 每分钟刷新
+  
+  // 🔔 初始化WebSocket连接
+  setupWebSocket()
 })
 
 onUnmounted(() => {
   if (notificationTimer) {
     clearInterval(notificationTimer)
   }
+  // 断开WebSocket
+  notificationWS.disconnect()
 })
 </script>
 

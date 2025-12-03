@@ -25,8 +25,8 @@ public class UserController {
     @GetMapping("/info")
     public Result<User> getUserInfo(Authentication authentication) {
         String username = authentication.getName();
-        User user = (User) userService.loadUserByUsername(username);
-        return Result.success(userService.getUserInfo(user.getId()));
+        Long userId = userService.getUserIdByUsername(username);
+        return Result.success(userService.getUserInfo(userId));
     }
     
     @Operation(summary = "获取用户列表")

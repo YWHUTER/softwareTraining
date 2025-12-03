@@ -318,8 +318,8 @@ const handleToggleFollow = async (user) => {
       recommendList.value = recommendList.value.filter(u => u.id !== user.id)
     }
     
-    // 刷新用户信息
-    userStore.fetchUserInfo()
+    // 刷新用户信息（等待完成）
+    await userStore.fetchUserInfo()
   } catch (error) {
     ElMessage.error('操作失败')
   }

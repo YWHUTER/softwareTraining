@@ -464,7 +464,14 @@ const formatTime = (time) => {
   return new Date(time).toLocaleString('zh-CN')
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 刷新用户信息，确保关注/粉丝数最新
+  try {
+    await userStore.fetchUserInfo()
+  } catch (error) {
+    console.log('获取用户信息失败:', error)
+  }
+  
   fetchArticles()
   fetchAllStats()
 })

@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class ArticleCreateRequest {
     @NotBlank(message = "标题不能为空")
@@ -20,4 +22,9 @@ public class ArticleCreateRequest {
     
     private Long collegeId;
     private Integer isPinned = 0;
+    
+    /**
+     * 文章标签列表
+     */
+    private List<String> tags;
 }

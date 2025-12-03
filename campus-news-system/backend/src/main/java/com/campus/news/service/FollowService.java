@@ -10,6 +10,7 @@ import com.campus.news.mapper.ArticleMapper;
 import com.campus.news.mapper.UserFollowMapper;
 import com.campus.news.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,8 @@ public class FollowService {
     private final UserFollowMapper userFollowMapper;
     private final UserMapper userMapper;
     private final ArticleMapper articleMapper;
+    @Lazy
+    private final RealtimeNotificationService realtimeNotificationService;
     
     /**
      * 关注/取消关注用户
@@ -59,6 +62,10 @@ public class FollowService {
             userFollowMapper.insert(follow);
             // 更新计数
             updateFollowCount(followerId, followingId, 1);
+            
+            // 🔔 发送实时通知
+            realtimeNotificationService.sendFollowNotification(followingId, followerId);
+            
             return true;
         }
     }

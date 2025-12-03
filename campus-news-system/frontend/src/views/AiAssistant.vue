@@ -15,20 +15,20 @@
       <div class="sidebar-content" v-show="!sidebarCollapsed">
         <!-- 快捷功能 -->
         <div class="sidebar-section">
-          <div class="section-title">快捷功能</div>
-          <div class="nav-item" @click="sendQuickQuestion('帮我搜索最近的校园活动')">
+          <div class="section-title">💡 快捷功能</div>
+          <div class="nav-item" @click="sendQuickQuestion('帮我搜索关于讲座的新闻')">
             <el-icon><Search /></el-icon>
             <span>智能搜索</span>
           </div>
-          <div class="nav-item" @click="sendQuickQuestion('帮我写一篇关于校园文化的文章摘要')">
+          <div class="nav-item" @click="sendQuickQuestion('请帮我写一篇校园活动的新闻稿，包含标题、摘要和正文框架')">
             <el-icon><Edit /></el-icon>
             <span>写作辅助</span>
           </div>
-          <div class="nav-item" @click="sendQuickQuestion('分析一下最近的热门话题')">
+          <div class="nav-item" @click="sendQuickQuestion('帮我看看浏览量最高的热门文章有哪些')">
             <el-icon><TrendCharts /></el-icon>
-            <span>热点分析</span>
+            <span>热门排行</span>
           </div>
-          <div class="nav-item" @click="sendQuickQuestion('系统数据统计')">
+          <div class="nav-item" @click="sendQuickQuestion('统计一下系统目前有多少文章、用户和总浏览量')">
             <el-icon><DataAnalysis /></el-icon>
             <span>数据统计</span>
           </div>
@@ -133,7 +133,8 @@
       <div class="chat-area" ref="messagesContainer">
         <!-- 欢迎界面 -->
         <div v-if="messages.length === 0" class="welcome-screen">
-          <h1 class="welcome-title">有什么可以帮忙的？</h1>
+          <h1 class="welcome-title">🎓 你好，我是WHUTGPT</h1>
+          <p class="welcome-subtitle">你的校园新闻智能助手，可以搜索新闻、查看数据、辅助写作</p>
           <div class="suggestion-grid">
             <div 
               v-for="(item, index) in suggestionCards" 
@@ -164,13 +165,16 @@
               </div>
               <div class="message-body">
                 <div class="message-sender">{{ msg.role === 'user' ? '你' : 'WHUTGPT' }}</div>
-                <div class="message-content" v-html="formatMessage(msg.content)"></div>
+                <div class="message-content">
+                  <span v-html="formatMessage(msg.content)"></span>
+                  <span v-if="msg.streaming" class="typing-cursor">|</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- 加载状态 -->
-          <div v-if="loading" class="message-row assistant">
+          <!-- 加载状态 - 仅在流式输出开始前显示 -->
+          <div v-if="loading && !messages.some(m => m.streaming)" class="message-row assistant">
             <div class="message-container">
               <div class="avatar-wrapper">
                 <el-avatar :size="36" :src="logoUrl" class="avatar assistant" />
@@ -197,7 +201,7 @@
             </button>
             <textarea 
               v-model="inputMessage"
-              placeholder="询问任何问题"
+              placeholder="试试问我：最近有什么热门新闻？帮我写一篇活动稿..."
               rows="1"
               @keydown.enter.exact.prevent="sendMessage"
               @input="autoResize"
@@ -215,7 +219,7 @@
             </button>
           </div>
           <div class="input-hint">
-            WHUTGPT可搜索校园新闻、解答问题、辅助写作
+            💡 WHUTGPT可查询实时数据、搜索新闻、辅助写作、解答系统问题
           </div>
         </div>
       </div>
@@ -235,7 +239,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import logoUrl from '@/assets/whut-logo.png'
 import { useUserStore } from '@/stores/user'
-import { sendChatMessage } from '@/api/ai'
+import { sendChatMessage, streamChat } from '@/api/ai'
 import { getArticleList } from '@/api/article'
 
 const userStore = useUserStore()
@@ -303,12 +307,14 @@ const hotTopics = ref([
   '社团纳新'
 ])
 
-// 建议卡片
+// 建议卡片 - 覆盖AI的主要能力场景
 const suggestionCards = [
-  { text: '搜索最新校园活动', prompt: '搜索最新的校园活动', icon: 'Search' },
-  { text: '查看热门文章', prompt: '最热门的文章是什么？', icon: 'Document' },
-  { text: '帮我写文章摘要', prompt: '帮我写一篇关于校园文化的文章摘要', icon: 'EditPen' },
-  { text: '了解系统功能', prompt: '系统有哪些主要功能？', icon: 'Compass' }
+  { text: '🔥 热门文章排行', prompt: '帮我看看浏览量最高的热门文章有哪些？', icon: 'Document' },
+  { text: '📊 系统数据统计', prompt: '统计一下系统目前有多少文章、用户和总浏览量', icon: 'DataAnalysis' },
+  { text: '✍️ 帮我写新闻稿', prompt: '请帮我写一篇关于校园文化活动的新闻稿，包含标题、摘要和正文框架', icon: 'EditPen' },
+  { text: '📖 系统使用指南', prompt: '请详细介绍一下这个系统怎么使用？如何发布文章、关注用户？', icon: 'Compass' },
+  { text: '🆕 最新发布文章', prompt: '最近有什么新发布的文章？', icon: 'Search' },
+  { text: '⭐ 粉丝排行榜', prompt: '平台上粉丝最多的用户是谁？给我看看排行榜', icon: 'TrendCharts' }
 ]
 
 // 自动调整输入框高度
@@ -362,7 +368,7 @@ const fetchTodayStats = async () => {
   }
 }
 
-// 发送消息
+// 发送消息 - 使用流式输出实现打字机效果
 const sendMessage = async () => {
   const question = inputMessage.value.trim()
   if (!question || loading.value) return
@@ -376,37 +382,55 @@ const sendMessage = async () => {
   
   inputMessage.value = ''
   loading.value = true
+  
+  // 预先添加一个空的AI回复消息，用于流式更新
+  const aiMessageIndex = messages.value.length
+  messages.value.push({
+    role: 'assistant',
+    content: '',
+    timestamp: Date.now(),
+    streaming: true  // 标记正在流式输出
+  })
+  
   scrollToBottom()
 
   try {
-    const response = await sendChatMessage({
-      question,
-      sessionId: sessionId.value || undefined,
-      model: currentModel.value
-    })
-    
-    // 保存会话ID
-    if (response.sessionId) {
-      sessionId.value = response.sessionId
-    }
-    
-    // 添加AI回复
-    messages.value.push({
-      role: 'assistant',
-      content: response.answer,
-      timestamp: response.timestamp || Date.now()
-    })
+    // 🔥 使用流式API - 实现打字机效果
+    await streamChat(
+      {
+        question,
+        sessionId: sessionId.value || undefined,
+        model: currentModel.value
+      },
+      // onMessage: 每收到一个字符/片段就更新消息
+      (content) => {
+        messages.value[aiMessageIndex].content += content
+        scrollToBottom()
+      },
+      // onError: 发生错误
+      (error) => {
+        console.error('流式聊天错误:', error)
+        messages.value[aiMessageIndex].content = '抱歉，AI服务暂时出现问题，请稍后重试。'
+        messages.value[aiMessageIndex].streaming = false
+        loading.value = false
+      },
+      // onComplete: 流式输出完成
+      (newSessionId) => {
+        if (newSessionId) {
+          sessionId.value = newSessionId
+        }
+        messages.value[aiMessageIndex].streaming = false
+        loading.value = false
+        scrollToBottom()
+      }
+    )
   } catch (error) {
     console.error('发送消息失败:', error)
     ElMessage.error('发送失败，请稍后重试')
     
-    // 添加错误提示消息
-    messages.value.push({
-      role: 'assistant',
-      content: '抱歉，我暂时无法回复。请稍后再试。',
-      timestamp: Date.now()
-    })
-  } finally {
+    // 更新错误消息
+    messages.value[aiMessageIndex].content = '抱歉，我暂时无法回复。请稍后再试。'
+    messages.value[aiMessageIndex].streaming = false
     loading.value = false
     scrollToBottom()
   }
@@ -775,8 +799,15 @@ onMounted(() => {
   font-size: 32px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 40px;
+  margin-bottom: 12px;
   animation: fadeInDown 0.6s ease-out;
+}
+
+.welcome-subtitle {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 40px;
+  animation: fadeInDown 0.6s ease-out 0.1s both;
 }
 
 @keyframes fadeInDown {
@@ -794,7 +825,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-  max-width: 600px;
+  max-width: 680px;
   width: 100%;
 }
 
@@ -817,6 +848,8 @@ onMounted(() => {
 .suggestion-card:nth-child(2) { animation-delay: 0.15s; }
 .suggestion-card:nth-child(3) { animation-delay: 0.2s; }
 .suggestion-card:nth-child(4) { animation-delay: 0.25s; }
+.suggestion-card:nth-child(5) { animation-delay: 0.3s; }
+.suggestion-card:nth-child(6) { animation-delay: 0.35s; }
 
 @keyframes fadeInUp {
   from {
@@ -978,6 +1011,20 @@ onMounted(() => {
 @keyframes typing {
   0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
   40% { transform: scale(1); opacity: 1; }
+}
+
+/* 打字光标 - 流式输出时显示 */
+.typing-cursor {
+  display: inline-block;
+  color: #10a37f;
+  font-weight: bold;
+  animation: blink 1s step-end infinite;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }
 
 /* 输入区域 */

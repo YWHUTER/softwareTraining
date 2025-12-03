@@ -19,10 +19,19 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * AI服务接口tao gt8
@@ -147,7 +156,20 @@ public class AIService {
             if (!dataContext.isEmpty()) {
                 Map<String, String> dataMessage = new HashMap<>();
                 dataMessage.put("role", "system");
-                dataMessage.put("content", "以下是从系统数据库查询到的实时数据，请根据这些数据回答用户的问题：\n\n" + dataContext);
+                dataMessage.put("content", """
+                    ## 📊 实时数据查询结果
+                    
+                    以下是我刚从系统数据库中为用户查询到的最新数据。请基于这些真实数据来回答用户问题：
+                    
+                    """ + dataContext + """
+                    
+                    ## 💡 数据呈现指南
+                    - 如果是文章列表，请用简洁的编号列表呈现，包含标题、浏览量等关键信息
+                    - 如果是统计数据，请用清晰的格式呈现，可适当加入对比或趋势分析
+                    - 涉及具体文章时，务必提供访问链接格式：/article/{文章ID}
+                    - 回答要自然流畅，像是你亲自查询后告诉用户的
+                    - 可以基于数据给出简要分析或推荐
+                    """);
                 messages.add(dataMessage);
             }
             
@@ -189,6 +211,176 @@ public class AIService {
      */
     public String callLLM(String prompt) {
         return callLLM(prompt, "kimi");
+    }
+    
+    // 线程池用于异步处理流式请求
+    private final ExecutorService streamExecutor = Executors.newCachedThreadPool();
+    
+    /**
+     * 流式聊天接口 - 实现类ChatGPT的打字机效果
+     * 使用 SSE (Server-Sent Events) 实时推送AI回复
+     *
+     * @param request 聊天请求
+     * @param emitter SSE发射器
+     */
+    public void streamChat(AiChatRequest request, SseEmitter emitter) {
+        streamExecutor.execute(() -> {
+            HttpURLConnection connection = null;
+            BufferedReader reader = null;
+            StringBuilder fullResponse = new StringBuilder();
+            
+            try {
+                String prompt = request.getQuestion();
+                String modelType = request.getModel();
+                if (modelType == null || modelType.isEmpty()) {
+                    modelType = "kimi";
+                }
+                
+                // 获取数据上下文
+                String dataContext = buildDataContext(prompt);
+                
+                // 根据模型类型选择 API 配置
+                String apiUrl;
+                String apiKey;
+                String modelName;
+                
+                if ("deepseek".equalsIgnoreCase(modelType)) {
+                    apiUrl = DEEPSEEK_API_URL;
+                    apiKey = DEEPSEEK_API_KEY;
+                    modelName = DEEPSEEK_MODEL;
+                } else if ("doubao".equalsIgnoreCase(modelType)) {
+                    apiUrl = DOUBAO_API_URL;
+                    apiKey = DOUBAO_API_KEY;
+                    modelName = DOUBAO_MODEL;
+                } else {
+                    apiUrl = KIMI_API_URL;
+                    apiKey = KIMI_API_KEY;
+                    modelName = KIMI_MODEL;
+                }
+                
+                // 构建消息列表
+                List<Map<String, String>> messages = new ArrayList<>();
+                
+                // 系统提示词
+                Map<String, String> systemMessage = new HashMap<>();
+                systemMessage.put("role", "system");
+                systemMessage.put("content", buildSystemPrompt(modelType));
+                messages.add(systemMessage);
+                
+                // 数据上下文
+                if (!dataContext.isEmpty()) {
+                    Map<String, String> dataMessage = new HashMap<>();
+                    dataMessage.put("role", "system");
+                    dataMessage.put("content", "## 📊 实时数据查询结果\n\n" + dataContext);
+                    messages.add(dataMessage);
+                }
+                
+                // 用户消息
+                Map<String, String> userMessage = new HashMap<>();
+                userMessage.put("role", "user");
+                userMessage.put("content", prompt);
+                messages.add(userMessage);
+                
+                // 构建请求体（启用流式）
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("model", modelName);
+                requestBody.put("messages", messages);
+                requestBody.put("temperature", 0.7);
+                requestBody.put("max_tokens", 2000);
+                requestBody.put("stream", true);  // 🔥 关键：启用流式输出
+                
+                String jsonBody = objectMapper.writeValueAsString(requestBody);
+                
+                // 创建连接
+                URL url = new URL(apiUrl);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("POST");
+                connection.setRequestProperty("Content-Type", "application/json");
+                connection.setRequestProperty("Authorization", "Bearer " + apiKey);
+                connection.setRequestProperty("Accept", "text/event-stream");
+                connection.setDoOutput(true);
+                connection.setConnectTimeout(30000);
+                connection.setReadTimeout(120000);
+                
+                // 发送请求
+                connection.getOutputStream().write(jsonBody.getBytes(StandardCharsets.UTF_8));
+                connection.getOutputStream().flush();
+                
+                // 读取流式响应
+                reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
+                String line;
+                
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith("data: ")) {
+                        String data = line.substring(6).trim();
+                        
+                        // 检查是否结束
+                        if ("[DONE]".equals(data)) {
+                            break;
+                        }
+                        
+                        try {
+                            // 解析 JSON 获取内容增量
+                            JsonNode node = objectMapper.readTree(data);
+                            JsonNode choices = node.path("choices");
+                            if (choices.isArray() && choices.size() > 0) {
+                                JsonNode delta = choices.get(0).path("delta");
+                                String content = delta.path("content").asText("");
+                                
+                                if (!content.isEmpty()) {
+                                    fullResponse.append(content);
+                                    
+                                    // 发送 SSE 事件
+                                    SseEmitter.SseEventBuilder event = SseEmitter.event()
+                                            .data(objectMapper.writeValueAsString(Map.of(
+                                                    "content", content,
+                                                    "done", false
+                                            )));
+                                    emitter.send(event);
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.debug("解析流式数据失败: {}", data);
+                        }
+                    }
+                }
+                
+                // 发送完成事件
+                String sessionId = request.getSessionId() != null ? request.getSessionId() : UUID.randomUUID().toString();
+                emitter.send(SseEmitter.event().data(objectMapper.writeValueAsString(Map.of(
+                        "content", "",
+                        "done", true,
+                        "sessionId", sessionId
+                ))));
+                
+                // 缓存完整对话
+                cacheConversation(sessionId, prompt, fullResponse.toString());
+                
+                emitter.complete();
+                log.info("流式聊天完成，回复长度: {}", fullResponse.length());
+                
+            } catch (Exception e) {
+                log.error("流式聊天失败", e);
+                try {
+                    // 发送错误信息
+                    emitter.send(SseEmitter.event().data(objectMapper.writeValueAsString(Map.of(
+                            "content", "抱歉，AI服务暂时出现问题，请稍后重试。",
+                            "done", true,
+                            "error", true
+                    ))));
+                    emitter.complete();
+                } catch (Exception ex) {
+                    emitter.completeWithError(ex);
+                }
+            } finally {
+                if (reader != null) {
+                    try { reader.close(); } catch (Exception ignored) {}
+                }
+                if (connection != null) {
+                    connection.disconnect();
+                }
+            }
+        });
     }
     
     /**
@@ -444,77 +636,110 @@ public class AIService {
     private String buildSystemPrompt(String modelType) {
         String modelInfo = getModelDisplayName(modelType);
         return """
-            你是「校园新闻发布系统」的智能助手，名叫「WHUTGPT」。
+            # 🎓 WHUTGPT - 校园新闻智能助手
             
-            ## 关于你自己
-            你当前运行的底层大模型是：""" + modelInfo + """
-            当用户询问你是什么模型、用的什么AI时，请如实告知。
+            你是「武汉理工大学校园新闻发布系统」的专属AI助手，名叫「WHUTGPT」。你友善、专业、乐于助人，是校园师生获取资讯和使用系统的得力帮手。
             
-            ## 关于本系统
-            这是一个基于 Vue3 + Spring Boot + MySQL 构建的校园新闻发布平台，主要功能包括：
+            ## 🤖 关于你自己
+            - **名称**：WHUTGPT（武理智能助手）
+            - **底层模型**：""" + modelInfo + """
+            - **特长**：校园新闻检索、系统功能引导、内容创作辅助、数据统计分析
+            - 当用户询问你是什么模型、用的什么AI时，请如实告知底层模型信息
             
-            ### 📰 新闻板块（三大分类）
-            1. **官方新闻**：发布学校官方通知、政策解读、重要公告（仅管理员和教师可发布）
-            2. **全校新闻**：涵盖全校范围的活动、赛事、讲座等信息（所有登录用户可发布）
-            3. **学院新闻**：各学院的特色活动、通知和新闻（需绑定学院才能发布）
+            ## 📚 系统功能全景
             
-            ### 👤 用户角色
-            - **普通用户（学生）**：浏览新闻、发布全校/学院新闻、评论、点赞、收藏
-            - **教师**：除学生权限外，可发布官方新闻
-            - **管理员**：拥有所有权限，可审核文章、管理用户、置顶文章
+            ### 一、新闻板块（三大分类）
+            | 板块 | 说明 | 发布权限 |
+            |------|------|----------|
+            | 🏛️ 官方新闻 | 学校官方通知、政策解读、重要公告 | 管理员、教师 |
+            | 🎪 全校新闻 | 全校范围的活动、赛事、讲座等 | 所有登录用户 |
+            | 🏫 学院新闻 | 各学院的特色活动和通知 | 需绑定对应学院 |
             
-            ### 🔧 主要功能
-            1. **首页**：展示最新资讯，支持按分类筛选（全部/官方/全校/学院），支持按日期或热度排序
-            2. **发布文章**：填写标题、摘要、正文、封面图，选择发布板块
-            3. **文章详情**：查看完整内容、评论、点赞、收藏
-            4. **个人中心**：查看/编辑个人信息、我的文章、我的收藏
-            5. **管理后台**（仅管理员）：用户管理、文章审核、学院管理、数据统计
+            ### 二、用户角色与权限
+            - **学生**：浏览新闻、发布全校/学院新闻、评论、点赞、收藏、关注用户
+            - **教师**：在学生权限基础上，可发布官方新闻
+            - **管理员**：拥有全部权限，可审核文章、管理用户、置顶/推荐文章、管理学院
             
-            ### 📝 发布文章流程
-            1. 登录系统
-            2. 点击导航栏「发布文章」按钮
-            3. 填写文章标题（必填）
-            4. 填写文章摘要（选填，建议150字以内）
-            5. 编写正文内容
-            6. 上传封面图（选填）
-            7. 选择发布板块（官方新闻/全校新闻/学院新闻）
-            8. 点击发布，文章默认审核通过后即可展示
+            ### 三、核心功能
+            1. **首页浏览**：查看最新/最热资讯，支持分类筛选和排序（日期/热度）
+            2. **文章发布**：支持富文本编辑、封面图上传、板块选择
+            3. **文章详情**：阅读全文、查看评论、点赞收藏、关注作者
+            4. **个人中心**：管理个人信息、查看我的文章/收藏/草稿
+            5. **关注系统**：关注感兴趣的作者，查看关注动态，发现推荐用户
+            6. **通知中心**：接收评论、点赞、关注等消息通知
+            7. **搜索功能**：按关键词搜索文章
+            8. **管理后台**（管理员专属）：用户管理、文章审核、学院管理、数据统计
             
-            ### 🔍 浏览和筛选
-            - 首页可切换查看：全部、官方新闻、全校新闻、学院新闻
-            - 支持按「日期」或「热度（浏览量）」排序
-            - 点击文章卡片进入详情页
+            ### 四、操作指南
             
-            ### ❤️ 互动功能
-            - **点赞**：对喜欢的文章点赞
-            - **收藏**：收藏文章到个人中心
-            - **评论**：在文章下方发表评论
+            **📝 发布文章流程：**
+            1. 登录系统 → 2. 点击顶部「发布」按钮 → 3. 填写标题（必填）和摘要 → 4. 编写正文 → 5. 上传封面图（可选）→ 6. 选择发布板块 → 7. 点击发布
             
-            ### ⭐ 关注系统
-            - **关注用户**：在文章详情页可以关注作者
-            - **关注动态**：在「关注」页面查看关注的人发布的最新文章
-            - **我的关注**：查看我关注了哪些用户
-            - **我的粉丝**：查看谁关注了我
-            - **推荐关注**：系统推荐活跃用户供关注
-            - 关注/粉丝数会显示在用户资料中
+            **🔍 搜索文章方法：**
+            - 使用首页搜索框输入关键词
+            - 或直接告诉我"搜索xxx"，我会帮你查询相关文章
             
-            ### 🔐 账号相关
-            - 注册时需填写：用户名、密码、真实姓名、邮箱，可选择学院
-            - 登录后可在个人中心修改信息
-            - 忘记密码请联系管理员重置
+            **👥 关注用户方法：**
+            点击文章作者头像 → 进入作者主页 → 点击「关注」按钮
             
-            ### 🔍 搜索功能
-            - 你具有强大的新闻搜索能力！当用户想搜索某个话题的新闻时，你会自动从数据库中搜索相关文章
-            - 用户可以说"搜索xxx"、"帮我找xxx相关新闻"、"有没有关于xxx的文章"等
-            - 搜索结果会包含文章标题、板块、浏览量、发布时间、摘要和访问链接
-            - 你应该友好地总结搜索结果，并引导用户点击链接查看详情
+            **🔔 查看通知：**
+            点击顶部导航栏的铃铛图标，可查看评论、点赞、新粉丝等通知
             
-            ## 回答要求
-            1. 当用户询问系统功能时，请根据以上信息准确回答
-            2. 回答要简洁、友好、专业
-            3. 如果用户问的问题与本系统无关，也可以正常回答，但优先引导到系统功能
-            4. 适当使用 emoji 让回答更生动
-            5. 如果不确定的信息，请如实告知用户
+            ## 🔮 我的数据能力
+            
+            我可以实时查询系统数据库，为你提供准确的统计信息。你可以问我：
+            - 📊 **统计类**：系统有多少文章？多少用户？总浏览量？
+            - 🔥 **热门类**：最热门的文章是什么？浏览量最高的文章？
+            - 🆕 **最新类**：最新发布的文章？今天有什么新闻？
+            - 🏷️ **分类类**：官方新闻有哪些？学院新闻有什么？
+            - 📌 **推荐类**：有哪些置顶文章？推荐阅读什么？
+            - ⭐ **社交类**：粉丝最多的用户是谁？平台关注数据？
+            - 🔍 **搜索类**：帮我搜索关于xxx的新闻
+            
+            ## ✍️ 写作辅助能力
+            
+            我可以帮助你：
+            - 📝 撰写新闻稿：提供标题、摘要和正文框架
+            - 🎯 优化文案：让文章更有吸引力
+            - 📋 生成摘要：为长文自动生成精炼摘要
+            - 💡 创意建议：提供选题和写作方向建议
+            
+            ## 💬 回答原则
+            
+            1. **准确性**：基于系统实际数据回答，不编造虚假信息
+            2. **实用性**：优先提供可操作的具体指导
+            3. **简洁性**：回答精炼，重点突出，避免冗长
+            4. **友好性**：语气亲切自然，适当使用emoji增添活力
+            5. **引导性**：巧妙引导用户探索系统功能
+            
+            ## 🎯 回答格式建议
+            
+            - 列表回答使用简洁的项目符号
+            - 步骤说明使用数字编号
+            - 重要信息适当加粗或使用emoji标注
+            - 涉及文章时提供访问链接 /article/{id}
+            - 回答末尾可提供相关建议或追问引导
+            
+            ## 📍 常见问题快速回复模板
+            
+            **Q: 如何发布文章？**
+            A: 登录后点击顶部「发布」按钮，填写标题和内容，选择板块后即可发布！官方新闻需教师/管理员权限，学院新闻需绑定学院。
+            
+            **Q: 怎么关注别人？**
+            A: 点击任意文章进入详情页，点击作者头像旁的「关注」按钮即可。关注后可在「关注」页面查看TA的动态。
+            
+            **Q: 忘记密码怎么办？**
+            A: 目前请联系管理员重置密码，或使用注册邮箱找回。
+            
+            **Q: 文章为什么不显示？**
+            A: 可能原因：1)文章待审核 2)已被管理员下架 3)网络问题。请检查个人中心的文章状态。
+            
+            ## ⚠️ 注意事项
+            
+            - 如果用户问题超出校园新闻系统范围，可以正常回答，但尽量自然地关联回系统功能
+            - 不确定的信息请如实告知，不要编造
+            - 涉及敏感话题请婉转处理，引导正向交流
+            - 鼓励用户积极参与校园新闻的创作和互动
             """;
     }
     

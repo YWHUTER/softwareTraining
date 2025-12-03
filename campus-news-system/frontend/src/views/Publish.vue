@@ -107,6 +107,37 @@
               <span>建议尺寸：16:9，推荐使用高质量图片</span>
             </div>
           </el-form-item>
+          
+          <!-- 标签选择 -->
+          <el-form-item label="文章标签">
+            <el-select
+              v-model="form.tags"
+              multiple
+              filterable
+              allow-create
+              default-first-option
+              placeholder="选择或输入标签（最多5个）"
+              size="large"
+              style="width: 100%"
+              :max-collapse-tags="3"
+              collapse-tags
+              collapse-tags-tooltip
+            >
+              <el-option
+                v-for="tag in availableTags"
+                :key="tag.id"
+                :label="tag.name"
+                :value="tag.name"
+              >
+                <span>{{ tag.name }}</span>
+                <span class="tag-count">{{ tag.useCount }} 篇</span>
+              </el-option>
+            </el-select>
+            <div class="form-tip">
+              <el-icon><Info /></el-icon>
+              <span>可从热门标签中选择，或输入新标签后按回车添加</span>
+            </div>
+          </el-form-item>
         </div>
 
         <!-- 内容编辑区 -->
@@ -164,6 +195,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { createArticle, updateArticle, getArticleDetail } from '@/api/article'
+import { getAllTags, getArticleTags } from '@/api/tag'
 import { ElMessage } from 'element-plus'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
@@ -184,8 +216,12 @@ const form = ref({
   coverImage: '',
   boardType: '',
   collegeId: null,
-  isPinned: 0
+  isPinned: 0,
+  tags: []  // 标签数组
 })
+
+// 可选标签列表
+const availableTags = ref([])
 
 // 处理编辑器内容变化
 const handleContentChange = (content) => {
@@ -284,7 +320,8 @@ const handleSubmit = async () => {
           coverImage: form.value.coverImage,
           boardType: form.value.boardType,
           collegeId: form.value.collegeId,
-          isPinned: form.value.isPinned
+          isPinned: form.value.isPinned,
+          tags: form.value.tags.slice(0, 5)  // 最多5个标签
         }
         
         console.log('提交数据:', submitData)
@@ -306,6 +343,16 @@ const handleSubmit = async () => {
   })
 }
 
+// 获取所有可用标签
+const fetchTags = async () => {
+  try {
+    const data = await getAllTags()
+    availableTags.value = data || []
+  } catch (error) {
+    console.error('获取标签失败:', error)
+  }
+}
+
 const fetchArticle = async (id) => {
   try {
     const data = await getArticleDetail(id)
@@ -316,7 +363,16 @@ const fetchArticle = async (id) => {
       coverImage: data.coverImage,
       boardType: data.boardType,
       collegeId: data.collegeId,
-      isPinned: data.isPinned
+      isPinned: data.isPinned,
+      tags: []
+    }
+    
+    // 获取文章的标签
+    try {
+      const tags = await getArticleTags(id)
+      form.value.tags = tags.map(t => t.name)
+    } catch (e) {
+      console.log('获取文章标签失败')
     }
   } catch (error) {
     console.error(error)
@@ -324,6 +380,9 @@ const fetchArticle = async (id) => {
 }
 
 onMounted(() => {
+  // 获取标签列表
+  fetchTags()
+  
   if (route.query.id) {
     isEdit.value = true
     fetchArticle(route.query.id)
@@ -500,6 +559,13 @@ onMounted(() => {
   margin-top: 8px;
   color: #909399;
   font-size: 13px;
+}
+
+/* 标签选项 */
+.tag-count {
+  float: right;
+  color: #909399;
+  font-size: 12px;
 }
 
 /* 富文本编辑器 */

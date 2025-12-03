@@ -99,6 +99,12 @@ const routes = [
     ]
   },
   {
+    path: '/data-screen',
+    name: 'DataScreen',
+    component: () => import('@/views/admin/DataScreen.vue'),
+    meta: { requireAuth: true, requireAdmin: true }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login.vue')

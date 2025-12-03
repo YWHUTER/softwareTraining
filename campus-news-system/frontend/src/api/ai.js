@@ -45,44 +45,99 @@ export const checkAiHealth = () => {
 }
 
 /**
- * 流式聊天（预留接口，后续实现 SSE）
- * 当后端支持流式输出时使用
+ * 流式聊天 - 实现类ChatGPT打字机效果
+ * 使用 Server-Sent Events (SSE) 接收流式响应
  * 
  * @param {Object} data - 请求数据
- * @param {Function} onMessage - 消息回调
- * @param {Function} onError - 错误回调
- * @param {Function} onComplete - 完成回调
+ * @param {string} data.question - 用户问题
+ * @param {string} [data.sessionId] - 会话ID
+ * @param {string} [data.model] - 模型类型
+ * @param {Function} onMessage - 收到消息片段时的回调 (content: string)
+ * @param {Function} onError - 发生错误时的回调 (error: Error)
+ * @param {Function} onComplete - 流式传输完成的回调 (sessionId: string)
  */
 export const streamChat = async (data, onMessage, onError, onComplete) => {
+  let reader = null
+  
   try {
     const token = localStorage.getItem('token')
     const response = await fetch('/api/ai/chat/stream', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': token ? `Bearer ${token}` : ''
+        'Authorization': token ? `Bearer ${token}` : '',
+        'Accept': 'text/event-stream'
       },
       body: JSON.stringify(data)
     })
 
     if (!response.ok) {
-      throw new Error('Stream request failed')
+      const errorText = await response.text()
+      throw new Error(`请求失败: ${response.status} ${errorText}`)
     }
 
-    const reader = response.body.getReader()
+    reader = response.body.getReader()
     const decoder = new TextDecoder()
+    let buffer = ''
 
     while (true) {
       const { done, value } = await reader.read()
+      
       if (done) {
-        onComplete && onComplete()
         break
       }
       
-      const text = decoder.decode(value, { stream: true })
-      onMessage && onMessage(text)
+      // 解码数据块
+      buffer += decoder.decode(value, { stream: true })
+      
+      // 按行处理 SSE 数据
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || '' // 保留不完整的行
+      
+      for (const line of lines) {
+        if (line.startsWith('data:')) {
+          const jsonStr = line.slice(5).trim()
+          if (!jsonStr) continue
+          
+          try {
+            const data = JSON.parse(jsonStr)
+            
+            if (data.error) {
+              // AI服务返回错误
+              onError && onError(new Error(data.content || 'AI服务错误'))
+              return
+            }
+            
+            if (data.done) {
+              // 流式传输完成
+              onComplete && onComplete(data.sessionId)
+              return
+            }
+            
+            if (data.content) {
+              // 收到消息片段，触发回调
+              onMessage && onMessage(data.content)
+            }
+          } catch (e) {
+            console.debug('解析SSE数据失败:', jsonStr)
+          }
+        }
+      }
     }
+    
+    // 正常结束
+    onComplete && onComplete()
+    
   } catch (error) {
+    console.error('流式聊天错误:', error)
     onError && onError(error)
+  } finally {
+    if (reader) {
+      try {
+        reader.releaseLock()
+      } catch (e) {
+        // ignore
+      }
+    }
   }
 }

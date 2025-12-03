@@ -38,6 +38,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, 
                                     FilterChain filterChain) throws ServletException, IOException {
+        // 跳过 WebSocket 路径，WebSocket 在 Handler 中自行验证 token
+        String path = request.getRequestURI();
+        if (path.startsWith("/ws/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         try {
             String token = getJwtFromRequest(request);
             

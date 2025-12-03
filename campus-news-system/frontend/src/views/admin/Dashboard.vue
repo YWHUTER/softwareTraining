@@ -3,7 +3,17 @@
     <!-- 页面标题和刷新按钮 -->
     <div class="dashboard-header">
       <h2>数据概览</h2>
-      <el-button :icon="Refresh" :loading="loading" @click="refreshAll">刷新数据</el-button>
+      <div class="header-actions">
+        <el-button 
+          type="primary" 
+          @click="$router.push('/data-screen')"
+          class="screen-btn"
+        >
+          <el-icon><DataAnalysis /></el-icon>
+          <span>数据大屏</span>
+        </el-button>
+        <el-button :icon="Refresh" :loading="loading" @click="refreshAll">刷新数据</el-button>
+      </div>
     </div>
     
     <!-- 主要统计卡片 -->
@@ -150,7 +160,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { Refresh, View } from '@element-plus/icons-vue'
+import { Refresh, View, DataAnalysis } from '@element-plus/icons-vue'
 import { getArticleList, approveArticle } from '@/api/article'
 import { getStatistics, getChartData } from '@/api/admin'
 import { ElMessage } from 'element-plus'
@@ -546,6 +556,16 @@ onUnmounted(() => {
   margin: 0;
   font-size: 22px;
   color: #303133;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.screen-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
 }
 
 /* 统计卡片样式 */

@@ -1,7 +1,7 @@
 -- ============================================
 -- 校园新闻发布系统 - 完整数据库脚本
 -- MySQL Version: 8.0+
--- 最后更新: 2025-12-01
+-- 最后更新: 2025-12-03
 -- ============================================
 
 -- 创建数据库
@@ -175,6 +175,29 @@ CREATE TABLE `notification` (
     FOREIGN KEY (`article_id`) REFERENCES `article`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知表';
 
+-- 11. 标签表
+CREATE TABLE `tag` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(50) NOT NULL UNIQUE COMMENT '标签名称',
+    `use_count` INT DEFAULT 0 COMMENT '使用次数（热度）',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_use_count` (`use_count` DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='标签表';
+
+-- 12. 文章标签关联表
+CREATE TABLE `article_tag` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `article_id` BIGINT NOT NULL COMMENT '文章ID',
+    `tag_id` BIGINT NOT NULL COMMENT '标签ID',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_article_tag` (`article_id`, `tag_id`),
+    INDEX `idx_article_id` (`article_id`),
+    INDEX `idx_tag_id` (`tag_id`),
+    FOREIGN KEY (`article_id`) REFERENCES `article`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`tag_id`) REFERENCES `tag`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章标签关联表';
+
 -- ============================================
 -- 初始化数据
 -- ============================================
@@ -198,6 +221,24 @@ INSERT INTO `user` (`id`, `username`, `password`, `email`, `real_name`, `status`
 (1, 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'admin@campus.edu', '系统管理员', 1);
 
 INSERT INTO `user_role` (`user_id`, `role_id`) VALUES (1, 1);
+
+-- 初始化热门标签
+INSERT INTO `tag` (`name`, `use_count`) VALUES
+('校园活动', 15),
+('学术讲座', 12),
+('招聘信息', 10),
+('社团招新', 9),
+('比赛通知', 8),
+('奖学金', 7),
+('考试安排', 6),
+('通知公告', 5),
+('科研动态', 4),
+('校园风光', 4),
+('体育赛事', 3),
+('文艺演出', 3),
+('志愿服务', 2),
+('创新创业', 2),
+('国际交流', 1);
 
 -- ============================================
 -- 完成

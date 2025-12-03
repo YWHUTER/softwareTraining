@@ -239,6 +239,9 @@
               </div>
             </div>
           </el-card>
+          
+          <!-- 标签云 -->
+          <TagCloud class="sidebar-card" />
         </div>
       </el-col>
     </el-row>
@@ -249,6 +252,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getArticleList } from '@/api/article'
+import TagCloud from '@/components/TagCloud.vue'
 
 const router = useRouter()
 const route = useRoute()

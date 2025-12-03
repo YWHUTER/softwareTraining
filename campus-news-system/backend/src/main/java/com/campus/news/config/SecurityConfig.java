@@ -51,6 +51,8 @@ public class SecurityConfig {
                 .requestMatchers("/ai/health").permitAll()  // AI健康检查公开
                 .requestMatchers("/file/image/**").permitAll()  // 图片访问公开
                 .requestMatchers("/follow/stats/**").permitAll()  // 用户统计公开
+                .requestMatchers("/ws/**").permitAll()  // WebSocket端点公开（内部做token验证）
+                .requestMatchers("/tag/hot", "/tag/list", "/tag/article/**").permitAll()  // 标签接口公开
                 .anyRequest().authenticated()
             );
         
