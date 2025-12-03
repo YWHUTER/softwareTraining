@@ -45,6 +45,16 @@ public class AIService {
     private static final String KIMI_API_KEY = "sk-4hnnoqUMCqXuGIkZ1mwAZHv2RWDFbSeP4WHQWrtosP0FwIGw";
     private static final String KIMI_MODEL = "moonshot-v1-8k";  // 可选: moonshot-v1-8k, moonshot-v1-32k, moonshot-v1-128k
     
+    // DeepSeek API 配置
+    private static final String DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
+    private static final String DEEPSEEK_API_KEY = "sk-13c4824da49f430ea15255cfbccf46be";
+    private static final String DEEPSEEK_MODEL = "deepseek-chat";  // 可选: deepseek-chat, deepseek-coder
+    
+    // 豆包 API 配置（火山引擎）
+    private static final String DOUBAO_API_URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
+    private static final String DOUBAO_API_KEY = "771ea12e-5ee3-4c36-9927-11a7584fb8e4";
+    private static final String DOUBAO_MODEL = "ep-20251203124851-pc6tv";
+    
     private static final String AI_CHAT_CACHE_PREFIX = "ai:chat:";
     private static final long CACHE_EXPIRE_HOURS = 24;
     
@@ -59,8 +69,14 @@ public class AIService {
             sessionId = UUID.randomUUID().toString();
         }
         
+        // 获取选择的模型，默认为 kimi
+        String model = request.getModel();
+        if (model == null || model.isEmpty()) {
+            model = "kimi";
+        }
+        
         // 调用大模型获取回复
-        String answer = callLLM(request.getQuestion());
+        String answer = callLLM(request.getQuestion(), model);
         
         // 构建响应
         AiChatResponse response = AiChatResponse.builder()
@@ -76,23 +92,44 @@ public class AIService {
     }
     
     /**
-     * 调用 Kimi 大模型 API
+     * 调用大模型 API（支持 Kimi 和 DeepSeek）
      * 
      * @param prompt 用户输入的问题
+     * @param modelType 模型类型：kimi 或 deepseek
      * @return AI 回复内容
      */
-    public String callLLM(String prompt) {
-        log.info("收到AI请求，问题: {}", prompt);
+    public String callLLM(String prompt, String modelType) {
+        log.info("收到AI请求，模型: {}, 问题: {}", modelType, prompt);
+        
+        // 根据模型类型选择 API 配置
+        String apiUrl;
+        String apiKey;
+        String modelName;
+        
+        if ("deepseek".equalsIgnoreCase(modelType)) {
+            apiUrl = DEEPSEEK_API_URL;
+            apiKey = DEEPSEEK_API_KEY;
+            modelName = DEEPSEEK_MODEL;
+        } else if ("doubao".equalsIgnoreCase(modelType)) {
+            apiUrl = DOUBAO_API_URL;
+            apiKey = DOUBAO_API_KEY;
+            modelName = DOUBAO_MODEL;
+        } else {
+            // 默认使用 Kimi
+            apiUrl = KIMI_API_URL;
+            apiKey = KIMI_API_KEY;
+            modelName = KIMI_MODEL;
+        }
         
         try {
             // 构建请求头
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(KIMI_API_KEY);
+            headers.setBearerAuth(apiKey);
             
             // 构建请求体
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", KIMI_MODEL);
+            requestBody.put("model", modelName);
             requestBody.put("temperature", 0.7);
             requestBody.put("max_tokens", 2000);
             
@@ -102,7 +139,7 @@ public class AIService {
             // 系统提示词（设定AI角色，包含系统详细信息）
             Map<String, String> systemMessage = new HashMap<>();
             systemMessage.put("role", "system");
-            systemMessage.put("content", buildSystemPrompt());
+            systemMessage.put("content", buildSystemPrompt(modelType));
             messages.add(systemMessage);
             
             // 🔍 检测是否需要查询数据，并获取实时数据上下文
@@ -124,7 +161,7 @@ public class AIService {
             
             // 发送请求
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-            ResponseEntity<String> response = restTemplate.postForEntity(KIMI_API_URL, entity, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(apiUrl, entity, String.class);
             
             // 解析响应
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
@@ -132,19 +169,26 @@ public class AIService {
                 JsonNode choices = root.path("choices");
                 if (choices.isArray() && choices.size() > 0) {
                     String content = choices.get(0).path("message").path("content").asText();
-                    log.info("Kimi AI 回复成功");
+                    log.info("{} AI 回复成功", modelType.toUpperCase());
                     return content;
                 }
             }
             
-            log.warn("Kimi API 响应异常: {}", response.getBody());
+            log.warn("{} API 响应异常: {}", modelType, response.getBody());
             return "抱歉，AI 服务暂时无法响应，请稍后再试。";
             
         } catch (Exception e) {
-            log.error("调用 Kimi API 失败", e);
+            log.error("调用 {} API 失败", modelType, e);
             // 发生错误时返回 Mock 回复
             return generateFallbackResponse(prompt);
         }
+    }
+    
+    /**
+     * 调用大模型 API（兼容旧接口，默认使用 Kimi）
+     */
+    public String callLLM(String prompt) {
+        return callLLM(prompt, "kimi");
     }
     
     /**
@@ -383,11 +427,28 @@ public class AIService {
     }
     
     /**
+     * 获取模型显示名称
+     */
+    private String getModelDisplayName(String modelType) {
+        return switch (modelType.toLowerCase()) {
+            case "kimi" -> "Kimi（月之暗面 Moonshot AI）";
+            case "deepseek" -> "DeepSeek（深度求索）";
+            case "doubao" -> "豆包（字节跳动）";
+            default -> modelType;
+        };
+    }
+    
+    /**
      * 构建系统提示词（包含系统详细信息）
      */
-    private String buildSystemPrompt() {
+    private String buildSystemPrompt(String modelType) {
+        String modelInfo = getModelDisplayName(modelType);
         return """
-            你是「校园新闻发布系统」的智能助手，名叫「校园新闻助手」。
+            你是「校园新闻发布系统」的智能助手，名叫「WHUTGPT」。
+            
+            ## 关于你自己
+            你当前运行的底层大模型是：""" + modelInfo + """
+            当用户询问你是什么模型、用的什么AI时，请如实告知。
             
             ## 关于本系统
             这是一个基于 Vue3 + Spring Boot + MySQL 构建的校园新闻发布平台，主要功能包括：

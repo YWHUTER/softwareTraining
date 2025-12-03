@@ -62,9 +62,14 @@ jwt:
   prefix: Bearer 
 
 # 文件上传配置
+# path: 自定义上传目录，留空则使用用户主目录下的 campus-news-uploads 文件夹
+# 支持环境变量: FILE_UPLOAD_PATH
+# 示例（Windows）: D:/campus-uploads
+# 示例（Linux 服务器）: /var/www/campus-news/uploads
+# 示例（Docker）: /app/uploads（需挂载卷）
 file:
   upload:
-    path: ./uploads/
+    path: ${FILE_UPLOAD_PATH:}
     max-size: 10485760 # 10MB
 
 logging:

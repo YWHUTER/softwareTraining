@@ -16,4 +16,10 @@ public class AiChatRequest {
      * 会话ID（可选，用于上下文管理）
      */
     private String sessionId;
+    
+    /**
+     * 模型选择（可选，默认kimi）
+     * 可选值：kimi, deepseek
+     */
+    private String model = "kimi";
 }

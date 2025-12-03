@@ -23,23 +23,37 @@ import java.util.UUID;
 @RequestMapping("/file")
 public class FileController {
 
-    @Value("${file.upload.path:./uploads/}")
+    @Value("${file.upload.path:}")
     private String configuredPath;
     
     private String uploadPath;
 
     @PostConstruct
     public void init() {
-        // 使用用户目录下的固定路径，避免 Tomcat 临时目录问题
-        String userHome = System.getProperty("user.home");
-        uploadPath = userHome + File.separator + "campus-news-uploads";
+        // 如果配置了自定义路径，使用配置的路径；否则使用用户目录下的默认路径
+        if (configuredPath != null && !configuredPath.trim().isEmpty()) {
+            uploadPath = configuredPath;
+        } else {
+            // 默认使用用户目录下的固定路径，避免 Tomcat 临时目录问题
+            String userHome = System.getProperty("user.home");
+            uploadPath = userHome + File.separator + "campus-news-uploads";
+        }
         
-        // 确保上传目录存在
+        // 确保上传目录存在且可写
         File dir = new File(uploadPath);
         if (!dir.exists()) {
-            dir.mkdirs();
+            boolean created = dir.mkdirs();
+            if (!created) {
+                log.error("无法创建上传目录: {}，请检查权限或在 application.yml 中配置 file.upload.path", dir.getAbsolutePath());
+            }
         }
-        log.info("文件上传目录: {}", dir.getAbsolutePath());
+        
+        // 检查目录是否可写
+        if (dir.exists() && !dir.canWrite()) {
+            log.error("上传目录无写入权限: {}，请检查权限或在 application.yml 中配置其他路径", dir.getAbsolutePath());
+        }
+        
+        log.info("文件上传目录: {} (可写: {})", dir.getAbsolutePath(), dir.canWrite());
     }
 
     @Operation(summary = "上传图片")

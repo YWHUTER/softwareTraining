@@ -401,16 +401,6 @@ const formatTime = (time) => {
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
 }
 
-.search-banner::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 100%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-}
-
 .banner-content {
   position: relative;
   z-index: 1;
