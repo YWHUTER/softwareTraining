@@ -634,6 +634,7 @@ watch(() => route.path, (newPath) => {
   position: absolute;
   top: 16px;
   right: 16px;
+  z-index: 10;
   background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
   color: white;
   padding: 4px 12px;

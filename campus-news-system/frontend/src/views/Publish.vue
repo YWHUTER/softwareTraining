@@ -93,18 +93,30 @@
           </div>
           
           <el-form-item label="封面图片" prop="coverImage">
-            <el-input 
-              v-model="form.coverImage" 
-              placeholder="请输入图片URL（https://...）" 
-              size="large"
-            >
-              <template #prefix>
-                <el-icon><Picture /></el-icon>
-              </template>
-            </el-input>
+            <div class="cover-upload-wrapper">
+              <el-upload
+                class="cover-uploader"
+                :show-file-list="false"
+                :before-upload="beforeCoverUpload"
+                :http-request="handleCoverUpload"
+                accept="image/*"
+              >
+                <div v-if="form.coverImage" class="cover-preview">
+                  <el-image :src="form.coverImage" fit="cover" />
+                  <div class="cover-actions">
+                    <el-icon @click.stop="form.coverImage = ''"><Delete /></el-icon>
+                  </div>
+                </div>
+                <div v-else class="cover-placeholder">
+                  <el-icon v-if="!coverUploading" :size="40"><Plus /></el-icon>
+                  <el-icon v-else :size="40" class="is-loading"><Loading /></el-icon>
+                  <span>{{ coverUploading ? '上传中...' : '点击上传封面图片' }}</span>
+                </div>
+              </el-upload>
+            </div>
             <div class="form-tip">
               <el-icon><Info /></el-icon>
-              <span>建议尺寸：16:9，推荐使用高质量图片</span>
+              <span>建议尺寸：16:9，支持 JPG、PNG 格式，最大 5MB</span>
             </div>
           </el-form-item>
           
@@ -196,6 +208,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { createArticle, updateArticle, getArticleDetail } from '@/api/article'
 import { getAllTags, getArticleTags } from '@/api/tag'
+import { uploadFile } from '@/api/user'
 import { ElMessage } from 'element-plus'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
@@ -208,6 +221,7 @@ const formRef = ref(null)
 const quillEditorRef = ref(null)
 const loading = ref(false)
 const isEdit = ref(false)
+const coverUploading = ref(false)
 
 const form = ref({
   title: '',
@@ -288,6 +302,37 @@ watch(() => form.value.boardType, (newType) => {
     form.value.collegeId = null
   }
 })
+
+// 封面图片上传前校验
+const beforeCoverUpload = (file) => {
+  const isImage = file.type.startsWith('image/')
+  const isLt5M = file.size / 1024 / 1024 < 5
+  
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件！')
+    return false
+  }
+  if (!isLt5M) {
+    ElMessage.error('图片大小不能超过 5MB！')
+    return false
+  }
+  return true
+}
+
+// 封面图片上传
+const handleCoverUpload = async ({ file }) => {
+  coverUploading.value = true
+  try {
+    const url = await uploadFile(file)
+    form.value.coverImage = url
+    ElMessage.success('封面上传成功')
+  } catch (error) {
+    console.error('上传失败:', error)
+    ElMessage.error('上传失败，请重试')
+  } finally {
+    coverUploading.value = false
+  }
+}
 
 const handleSubmit = async () => {
   // 提交前确保获取最新的编辑器内容
@@ -747,5 +792,102 @@ onMounted(() => {
 :deep(.el-input__wrapper.is-focus) {
   border-color: #2196f3;
   box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+/* 封面上传样式 */
+.cover-upload-wrapper {
+  width: 100%;
+}
+
+.cover-uploader {
+  width: 320px;
+}
+
+.cover-uploader :deep(.el-upload) {
+  width: 100%;
+  border: 2px dashed #dcdfe6;
+  border-radius: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.cover-uploader :deep(.el-upload:hover) {
+  border-color: #2196f3;
+  background: #f5f7fa;
+}
+
+.cover-placeholder {
+  width: 100%;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #909399;
+  background: #fafafa;
+}
+
+.cover-placeholder span {
+  font-size: 14px;
+}
+
+.cover-preview {
+  position: relative;
+  width: 100%;
+  height: 180px;
+}
+
+.cover-preview .el-image {
+  width: 100%;
+  height: 100%;
+}
+
+.cover-actions {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.cover-preview:hover .cover-actions {
+  opacity: 1;
+}
+
+.cover-actions .el-icon {
+  font-size: 28px;
+  color: white;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.cover-actions .el-icon:hover {
+  background: rgba(255, 77, 79, 0.8);
+}
+
+.is-loading {
+  animation: rotating 1.5s linear infinite;
+}
+
+@keyframes rotating {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .cover-uploader {
+    width: 100%;
+  }
 }
 </style>
