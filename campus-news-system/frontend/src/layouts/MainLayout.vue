@@ -771,10 +771,13 @@ onUnmounted(() => {
 
 /* 底部样式 */
 .footer {
-  background: #fff;
-  border-top: 1px solid #e4e7ed;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
   padding: 30px 20px;
   height: auto;
+  margin-top: auto;
 }
 
 .footer-content {
@@ -792,14 +795,16 @@ onUnmounted(() => {
 .copyright {
   margin: 0 0 5px;
   color: #2c3e50;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 14px;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 
 .beian {
   margin: 0;
-  color: #909399;
+  color: #606266;
   font-size: 13px;
+  font-weight: 500;
 }
 
 .footer-links {
@@ -809,13 +814,15 @@ onUnmounted(() => {
 }
 
 .footer-links a {
-  color: #606266;
+  color: #4a5568;
   font-size: 14px;
-  transition: color 0.3s ease;
+  font-weight: 500;
+  transition: all 0.3s ease;
 }
 
 .footer-links a:hover {
   color: #2196f3;
+  text-shadow: 0 0 1px rgba(33, 150, 243, 0.3);
 }
 
 .footer-links .divider {

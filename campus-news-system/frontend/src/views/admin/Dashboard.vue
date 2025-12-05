@@ -569,10 +569,26 @@ onUnmounted(() => {
 }
 
 /* 统计卡片样式 */
+.el-card {
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+}
+
+.dashboard-header h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
 .stat-card {
   border-radius: 12px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   animation: scaleIn 0.4s ease-out both;
+  background: rgba(255, 255, 255, 0.85) !important;
 }
 
 .stat-card:nth-child(1) .stat-card { animation-delay: 0.05s; }
@@ -594,11 +610,13 @@ onUnmounted(() => {
 .stat-card:hover {
   transform: translateY(-6px) scale(1.02);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.95) !important;
 }
 
 .stat-card :deep(.el-statistic__head) {
   font-size: 14px;
-  color: #909399;
+  color: #606266;
+  font-weight: 600;
 }
 
 .stat-card :deep(.el-statistic__content) {

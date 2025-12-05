@@ -267,16 +267,6 @@ const handleLogin = async () => {
   overflow: hidden;
 }
 
-.login-box::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 5px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-  border-radius: 24px 24px 0 0;
-}
 
 /* Tab 切换 - 隐藏样式，保留结构 */
 .login-tabs {
@@ -379,14 +369,14 @@ const handleLogin = async () => {
 }
 
 .register-row a {
-  color: #667eea;
+  color: #1890ff;
   margin-left: 6px;
   font-weight: 700;
   transition: all 0.3s ease;
 }
 
 .register-row a:hover {
-  color: #764ba2;
+  color: #096dd9;
   text-decoration: underline;
 }
 

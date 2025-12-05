@@ -60,110 +60,145 @@
           </div>
           
           <!-- 文章列表 -->
-          <div v-loading="loading" class="article-list" element-loading-text="加载中...">
-            <el-empty v-if="articles.length === 0 && !loading" description="暂无文章" />
-            
-            <div
-              v-for="(article, index) in articles"
-              :key="article.id"
-              class="article-card hover-lift"
-              :class="{ 'pinned': article.isPinned }"
-              @click="goToDetail(article.id)"
-              :style="{ animationDelay: `${index * 0.05}s` }"
-            >
-              <!-- 置顶标识 -->
-              <div class="pinned-badge" v-if="article.isPinned">
-                <el-icon><Star /></el-icon>
-                <span>置顶</span>
-              </div>
-
-              <div class="article-content">
-                <!-- 左侧主要内容 -->
-                <div class="article-main">
-                  <!-- 文章头部信息 -->
-                  <div class="article-header">
-                    <el-tag 
-                      :type="getBoardTypeTag(article.boardType)" 
-                      size="small"
-                      effect="plain"
-                      class="board-tag"
-                    >
-                      {{ getBoardTypeName(article.boardType) }}
-                    </el-tag>
-                    <h3 class="article-title">{{ article.title }}</h3>
-                  </div>
-                  
-                  <!-- 文章摘要 -->
-                  <p class="article-summary">
-                    {{ article.summary || article.content?.substring(0, 120) + '...' }}
-                  </p>
-                  
-                  <!-- 文章元信息 -->
-                  <div class="article-meta">
-                    <div class="meta-item">
-                      <el-avatar :size="24" class="author-avatar" :src="getValidAvatar(article.author?.avatar)" fit="cover">
-                        {{ article.author?.realName?.[0] }}
-                      </el-avatar>
-                      <span class="author-name">{{ article.author?.realName }}</span>
-                    </div>
-                    <span class="meta-divider">·</span>
-                    <div class="meta-item" v-if="article.college">
-                      <el-icon><School /></el-icon>
-                      <span>{{ article.college?.name }}</span>
-                    </div>
-                    <span class="meta-divider" v-if="article.college">·</span>
-                    <div class="meta-item">
-                      <el-icon><Clock /></el-icon>
-                      <span>{{ formatTime(article.createdAt) }}</span>
-                    </div>
-                    <div class="meta-stats">
-                      <span class="stat-item">
-                        <el-icon><View /></el-icon>
-                        {{ article.viewCount }}
-                      </span>
-                      <span class="stat-item">
-                        <el-icon><ChatDotRound /></el-icon>
-                        {{ article.commentCount }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- 右侧封面图 -->
-                <div v-if="article.coverImage" class="article-cover">
-                  <el-image 
-                    :src="article.coverImage" 
-                    fit="cover"
-                    lazy
-                  >
-                    <template #error>
-                      <div class="image-error">
-                        <el-icon><Picture /></el-icon>
+          <div class="article-list">
+            <el-skeleton :loading="loading" animated :count="5">
+              <template #template>
+                <div class="article-card skeleton-card">
+                  <div class="article-content">
+                    <div class="article-main">
+                      <!-- 头部骨架 -->
+                      <div class="article-header" style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <el-skeleton-item variant="text" style="width: 60px; height: 24px; border-radius: 6px; margin-right: 12px;" />
+                        <el-skeleton-item variant="h3" style="width: 50%; height: 24px;" />
                       </div>
-                    </template>
-                  </el-image>
+                      
+                      <!-- 摘要骨架 -->
+                      <div class="article-summary" style="margin: 12px 0;">
+                        <el-skeleton-item variant="p" style="width: 100%; height: 16px; margin-bottom: 8px;" />
+                        <el-skeleton-item variant="p" style="width: 80%; height: 16px;" />
+                      </div>
+                      
+                      <!-- 元信息骨架 -->
+                      <div class="article-meta" style="display: flex; align-items: center; margin-top: 16px;">
+                        <el-skeleton-item variant="circle" style="width: 24px; height: 24px; margin-right: 8px;" />
+                        <el-skeleton-item variant="text" style="width: 60px; margin-right: 16px;" />
+                        <el-skeleton-item variant="text" style="width: 100px;" />
+                        <el-skeleton-item variant="text" style="width: 80px; margin-left: auto;" />
+                      </div>
+                    </div>
+                    
+                    <!-- 封面图骨架 -->
+                    <el-skeleton-item variant="image" class="article-cover" style="width: 200px; height: 150px;" />
+                  </div>
                 </div>
-              </div>
+              </template>
               
-              <!-- 热门评论 -->
-              <div v-if="article.hotComment" class="hot-comment" @click.stop>
-                <div class="hot-comment-header">
-                  <el-icon color="#f56c6c"><ChatLineSquare /></el-icon>
-                  <span class="hot-comment-label">热评</span>
-                </div>
-                <div class="hot-comment-content">
-                  <el-avatar :size="20" class="comment-avatar" :src="getValidAvatar(article.hotComment.user?.avatar)" fit="cover">
-                    {{ article.hotComment.user?.realName?.[0] }}
-                  </el-avatar>
-                  <span class="comment-author">{{ article.hotComment.user?.realName }}：</span>
-                  <span class="comment-text">{{ article.hotComment.content }}</span>
-                  <span class="comment-likes">
+              <template #default>
+                <el-empty v-if="articles.length === 0" description="暂无文章" />
+                
+                <div
+                  v-for="(article, index) in articles"
+                  :key="article.id"
+                  class="article-card hover-lift"
+                  :class="{ 'pinned': article.isPinned }"
+                  @click="goToDetail(article.id)"
+                  :style="{ animationDelay: `${index * 0.05}s` }"
+                >
+                  <!-- 置顶标识 -->
+                  <div class="pinned-badge" v-if="article.isPinned">
                     <el-icon><Star /></el-icon>
-                    {{ article.hotComment.likeCount || 0 }}
-                  </span>
+                    <span>置顶</span>
+                  </div>
+    
+                  <div class="article-content">
+                    <!-- 左侧主要内容 -->
+                    <div class="article-main">
+                      <!-- 文章头部信息 -->
+                      <div class="article-header">
+                        <el-tag 
+                          :type="getBoardTypeTag(article.boardType)" 
+                          size="small"
+                          effect="plain"
+                          class="board-tag"
+                        >
+                          {{ getBoardTypeName(article.boardType) }}
+                        </el-tag>
+                        <h3 class="article-title">{{ article.title }}</h3>
+                      </div>
+                      
+                      <!-- 文章摘要 -->
+                      <p class="article-summary">
+                        {{ article.summary || article.content?.substring(0, 120) + '...' }}
+                      </p>
+                      
+                      <!-- 文章元信息 -->
+                      <div class="article-meta">
+                        <div class="meta-item">
+                          <el-avatar :size="24" class="author-avatar" :src="getValidAvatar(article.author?.avatar)" fit="cover">
+                            {{ article.author?.realName?.[0] }}
+                          </el-avatar>
+                          <span class="author-name">{{ article.author?.realName }}</span>
+                        </div>
+                        <span class="meta-divider">·</span>
+                        <div class="meta-item" v-if="article.college">
+                          <el-icon><School /></el-icon>
+                          <span>{{ article.college?.name }}</span>
+                        </div>
+                        <span class="meta-divider" v-if="article.college">·</span>
+                        <div class="meta-item">
+                          <el-icon><Clock /></el-icon>
+                          <span>{{ formatTime(article.createdAt) }}</span>
+                        </div>
+                        <div class="meta-stats">
+                          <span class="stat-item">
+                            <el-icon><View /></el-icon>
+                            {{ article.viewCount }}
+                          </span>
+                          <span class="stat-item">
+                            <el-icon><ChatDotRound /></el-icon>
+                            {{ article.commentCount }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- 右侧封面图 -->
+                    <div v-if="article.coverImage" class="article-cover">
+                      <el-image 
+                        :src="article.coverImage" 
+                        fit="cover"
+                        lazy
+                      >
+                        <template #error>
+                          <div class="image-error">
+                            <el-icon><Picture /></el-icon>
+                          </div>
+                        </template>
+                      </el-image>
+                    </div>
+                  </div>
+                  
+                  <!-- 热门评论 -->
+                  <div v-if="article.hotComment" class="hot-comment" @click.stop>
+                    <div class="hot-comment-header">
+                      <el-icon color="#f56c6c"><ChatLineSquare /></el-icon>
+                      <span class="hot-comment-label">热评</span>
+                    </div>
+                    <div class="hot-comment-content">
+                      <el-avatar :size="20" class="comment-avatar" :src="getValidAvatar(article.hotComment.user?.avatar)" fit="cover">
+                        {{ article.hotComment.user?.realName?.[0] }}
+                      </el-avatar>
+                      <span class="comment-author">{{ article.hotComment.user?.realName }}：</span>
+                      <span class="comment-text">{{ article.hotComment.content }}</span>
+                      <span class="comment-likes">
+                        <el-icon><Star /></el-icon>
+                        {{ article.hotComment.likeCount || 0 }}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </template>
+            </el-skeleton>
           </div>
           
           <!-- 分页 -->
@@ -643,6 +678,7 @@ watch(() => route.path, (newPath) => {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   transition: color 0.3s ease;
 }
@@ -656,6 +692,7 @@ watch(() => route.path, (newPath) => {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -854,6 +891,7 @@ watch(() => route.path, (newPath) => {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   transition: color 0.3s ease;
 }
@@ -1066,4 +1104,15 @@ watch(() => route.path, (newPath) => {
     max-width: 200px;
   }
 }
+
+/* 骨架屏样式 */
+.skeleton-card {
+  pointer-events: none;
+  cursor: default;
+}
+
+.skeleton-card .article-cover {
+  background: #f2f3f5;
+}
+
 </style>
