@@ -1047,9 +1047,14 @@ onMounted(() => {
 .article-card {
   border-radius: 16px;
   margin-bottom: 24px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.5);
   overflow: hidden;
   animation: fadeInUp 0.6s ease-out;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
 }
 
 @keyframes fadeInUp {
@@ -1280,7 +1285,12 @@ onMounted(() => {
 /* 评论区 */
 .comment-section {
   border-radius: 16px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
 }
 
 .comment-header {
@@ -1628,9 +1638,14 @@ onMounted(() => {
 
 /* 作者卡片 */
 .author-card {
-  border-radius: 12px;
+  border-radius: 16px;
   margin-bottom: 16px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
 }
 
 .author-card-header {
@@ -1702,9 +1717,14 @@ onMounted(() => {
 
 /* 热门新闻榜 */
 .hot-news-card {
-  border-radius: 12px;
+  border-radius: 16px;
   margin-bottom: 16px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
 }
 
 .card-header {
@@ -1768,6 +1788,7 @@ onMounted(() => {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -1781,9 +1802,14 @@ onMounted(() => {
 
 /* 作者其他文章 */
 .author-articles-card {
-  border-radius: 12px;
+  border-radius: 16px;
   margin-bottom: 16px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
 }
 
 .author-articles-list {
@@ -1814,6 +1840,7 @@ onMounted(() => {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -1832,8 +1859,13 @@ onMounted(() => {
 
 /* 快捷操作 */
 .quick-actions-card {
-  border-radius: 12px;
-  border: none;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
 }
 
 .quick-actions {

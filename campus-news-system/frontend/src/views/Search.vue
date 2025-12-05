@@ -47,6 +47,30 @@
             {{ tag }}
           </el-tag>
         </div>
+
+        <!-- 搜索历史 -->
+        <div class="search-history" v-if="!hasSearched && searchHistory.length > 0">
+          <div class="history-header">
+            <span class="history-label">搜索历史</span>
+            <el-button link type="info" @click="clearHistory" size="small" class="clear-btn">
+              <el-icon><Delete /></el-icon> 清空
+            </el-button>
+          </div>
+          <div class="history-tags">
+            <el-tag 
+              v-for="tag in searchHistory" 
+              :key="tag"
+              @click="quickSearch(tag)"
+              closable
+              @close="deleteHistoryItem(tag)"
+              class="history-tag"
+              type="info"
+              effect="plain"
+            >
+              {{ tag }}
+            </el-tag>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -101,21 +125,45 @@
       </div>
 
       <!-- 结果列表 -->
-      <div v-loading="loading" class="article-list" element-loading-text="搜索中...">
-        <el-empty v-if="articles.length === 0 && !loading" description="未找到相关结果，请尝试其他关键词">
-          <template #image>
-            <el-icon :size="80" color="#c0c4cc"><SearchOutlined /></el-icon>
-          </template>
-        </el-empty>
-        
-        <div
-          v-for="(article, index) in articles"
-          :key="article.id"
-          class="article-card hover-lift"
-          :class="{ 'pinned': article.isPinned }"
-          @click="goToDetail(article.id)"
-          :style="{ animationDelay: `${index * 0.05}s` }"
-        >
+      <div class="article-list">
+        <!-- 骨架屏加载状态 -->
+        <div v-if="loading" class="skeleton-list">
+          <el-card v-for="i in 5" :key="i" class="article-card skeleton-card">
+            <div class="skeleton-content">
+              <div class="skeleton-main">
+                <el-skeleton animated>
+                  <template #template>
+                    <el-skeleton-item variant="text" style="width: 60px; margin-bottom: 10px" />
+                    <el-skeleton-item variant="h3" style="width: 60%; margin-bottom: 15px" />
+                    <el-skeleton-item variant="p" style="width: 100%; margin-bottom: 5px" />
+                    <el-skeleton-item variant="p" style="width: 80%; margin-bottom: 15px" />
+                    <div style="display: flex; align-items: center; gap: 10px">
+                      <el-skeleton-item variant="circle" style="width: 24px; height: 24px" />
+                      <el-skeleton-item variant="text" style="width: 100px" />
+                    </div>
+                  </template>
+                </el-skeleton>
+              </div>
+              <el-skeleton-item variant="image" style="width: 200px; height: 150px; border-radius: 8px" />
+            </div>
+          </el-card>
+        </div>
+
+        <template v-else>
+          <el-empty v-if="articles.length === 0" description="未找到相关结果，请尝试其他关键词">
+            <template #image>
+              <el-icon :size="80" color="#c0c4cc"><Search /></el-icon>
+            </template>
+          </el-empty>
+          
+          <div
+            v-for="(article, index) in articles"
+            :key="article.id"
+            class="article-card hover-lift"
+            :class="{ 'pinned': article.isPinned }"
+            @click="goToDetail(article.id)"
+            :style="{ animationDelay: `${index * 0.05}s` }"
+          >
           <!-- 置顶标识 -->
           <div class="pinned-badge" v-if="article.isPinned">
             <el-icon><Star /></el-icon>
@@ -188,8 +236,9 @@
               </el-image>
             </div>
           </div>
-        </div>
       </div>
+      </template>
+    </div>
       
       <!-- 分页 -->
       <div class="pagination-wrapper" v-if="total > 0">
@@ -223,6 +272,7 @@
         </ul>
       </el-card>
     </div>
+    <el-backtop :right="40" :bottom="40" />
   </div>
 </template>
 
@@ -245,12 +295,14 @@ const pageSize = ref(10)
 const total = ref(0)
 const sortBy = ref('relevance')
 const boardType = ref('')
+const searchHistory = ref([])
 
 // 热门搜索关键词
 const hotKeywords = ['校园活动', '讲座', '竞赛', '招聘', '学术', '通知']
 
 // 从URL参数初始化搜索
 onMounted(() => {
+  loadHistory()
   if (route.query.keyword) {
     keyword.value = route.query.keyword
     handleSearch()
@@ -271,6 +323,7 @@ const handleSearch = async () => {
   }
   
   searchedKeyword.value = keyword.value.trim()
+  saveHistory(searchedKeyword.value)
   currentPage.value = 1
   hasSearched.value = true
   
@@ -336,6 +389,46 @@ const handleSortChange = () => {
 const handleBoardChange = () => {
   currentPage.value = 1
   fetchResults()
+}
+
+const loadHistory = () => {
+  try {
+    const history = localStorage.getItem('searchHistory')
+    if (history) {
+      searchHistory.value = JSON.parse(history)
+    }
+  } catch (e) {
+    console.error('Failed to load search history', e)
+  }
+}
+
+const saveHistory = (kw) => {
+  if (!kw) return
+  // 移除已存在的相同关键词
+  const index = searchHistory.value.indexOf(kw)
+  if (index > -1) {
+    searchHistory.value.splice(index, 1)
+  }
+  // 添加到头部
+  searchHistory.value.unshift(kw)
+  // 限制数量
+  if (searchHistory.value.length > 10) {
+    searchHistory.value.pop()
+  }
+  localStorage.setItem('searchHistory', JSON.stringify(searchHistory.value))
+}
+
+const clearHistory = () => {
+  searchHistory.value = []
+  localStorage.removeItem('searchHistory')
+}
+
+const deleteHistoryItem = (tag) => {
+  const index = searchHistory.value.indexOf(tag)
+  if (index > -1) {
+    searchHistory.value.splice(index, 1)
+    localStorage.setItem('searchHistory', JSON.stringify(searchHistory.value))
+  }
 }
 
 const goToDetail = (id) => {
@@ -544,6 +637,66 @@ const formatTime = (time) => {
   transform: translateY(-2px);
 }
 
+/* 搜索历史 */
+.search-history {
+  margin-top: 24px;
+  animation: fadeInDown 0.6s ease-out;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.history-label {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.clear-btn {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+}
+
+.clear-btn:hover {
+  color: white;
+}
+
+.history-tags {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.history-tag {
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+  transition: all 0.3s ease;
+}
+
+.history-tag:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+  color: white;
+}
+
+.history-tag :deep(.el-tag__close) {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.history-tag :deep(.el-tag__close:hover) {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
 /* 搜索结果 */
 .search-results {
   width: 100%;
@@ -688,6 +841,7 @@ const formatTime = (time) => {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -700,6 +854,7 @@ const formatTime = (time) => {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -780,6 +935,29 @@ const formatTime = (time) => {
   background: #f5f7fa;
   color: #c0c4cc;
   font-size: 32px;
+}
+
+/* 骨架屏样式 */
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skeleton-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.skeleton-content {
+  display: flex;
+  gap: 24px;
+}
+
+.skeleton-main {
+  flex: 1;
 }
 
 /* 分页 */
