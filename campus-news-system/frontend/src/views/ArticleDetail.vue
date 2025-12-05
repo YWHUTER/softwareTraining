@@ -99,14 +99,38 @@
           <el-icon><Star /></el-icon>
           <span>{{ article.isFavorited ? '已收藏' : '收藏' }}</span>
         </el-button>
-        <el-button
-          size="large"
-          class="action-btn"
-          round
-        >
-          <el-icon><Share /></el-icon>
-          <span>分享</span>
-        </el-button>
+        <el-dropdown trigger="click" @command="handleShare">
+          <el-button size="large" class="action-btn" round>
+            <el-icon><Share /></el-icon>
+            <span>分享</span>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="wechat">
+                <svg class="share-icon" viewBox="0 0 24 24" width="18" height="18">
+                  <path fill="#07C160" d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.007-.269-.026-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/>
+                </svg>
+                <span style="margin-left: 8px">微信</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="weibo">
+                <svg class="share-icon" viewBox="0 0 24 24" width="18" height="18">
+                  <path fill="#E6162D" d="M10.098 20.323c-3.977.391-7.414-1.406-7.672-4.02-.259-2.609 2.759-5.047 6.74-5.441 3.979-.394 7.413 1.404 7.671 4.018.259 2.6-2.759 5.049-6.739 5.443zM9.05 17.219c-.384.616-1.208.884-1.829.602-.612-.279-.793-.991-.406-1.593.379-.595 1.176-.861 1.793-.601.622.263.82.972.442 1.592zm1.27-1.627c-.141.237-.449.353-.689.253-.236-.09-.313-.361-.177-.586.138-.227.436-.346.672-.254.241.09.327.36.194.587zm.176-2.719c-1.893-.493-4.033.45-4.857 2.118-.836 1.704-.026 3.591 1.886 4.21 1.983.64 4.318-.341 5.132-2.179.8-1.793-.201-3.642-2.161-4.149zm7.563-1.224c-.346-.105-.579-.18-.401-.649.386-1.018.426-1.898.001-2.521-.797-1.17-2.982-1.105-5.452-.03 0 0-.782.345-.583-.279.387-1.205.328-2.21-.273-2.789-1.368-1.317-5.009.052-8.134 3.06C.672 11.857-.32 14.063-.32 15.899c0 3.514 4.516 5.652 8.931 5.652 5.787 0 9.635-3.359 9.635-6.026 0-1.613-1.361-2.525-2.157-2.876zm2.631-6.019c-.685-.756-1.7-1.103-2.691-.982-.305.039-.449-.17-.395-.45.055-.288.229-.456.547-.504 1.317-.178 2.674.292 3.55 1.26.878.972 1.18 2.283.869 3.504-.093.372-.344.453-.593.203-.239-.24-.329-.527-.246-.867.236-.967-.048-2.009-.841-2.764zm1.457-2.863c-1.34-1.478-3.324-2.142-5.307-1.894-.377.045-.602-.235-.536-.638.067-.399.341-.629.735-.681 2.41-.32 4.842.481 6.485 2.291 1.644 1.812 2.224 4.254 1.689 6.544-.103.439-.417.528-.696.206-.263-.297-.344-.621-.255-.996.433-1.86-.046-3.881-1.315-4.832z"/>
+                </svg>
+                <span style="margin-left: 8px">微博</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="qq">
+                <svg class="share-icon" viewBox="0 0 24 24" width="18" height="18">
+                  <path fill="#12B7F5" d="M21.395 15.035a39.548 39.548 0 0 0-.803-2.264l-1.079-2.695c.001-.032.014-.396.014-.396 0-4.636-3.023-8.39-6.756-8.39-.24 0-.48.015-.718.044C8.71 1.834 5.626 5.632 5.626 9.676c0 .24.015.48.044.717l-.941 2.352a39.69 39.69 0 0 0-.784 2.29c-.252.9-.39 1.655-.39 2.21 0 .592.148.996.469 1.262.339.28.834.345 1.377.345.932 0 2.107-.288 3.14-.598-.016.133-.03.265-.03.4 0 1.053.386 2.02 1.063 2.79-.48.225-.906.455-1.285.692-.823.517-1.31 1.074-1.31 1.77 0 .968 1.144 1.575 3.145 1.575 1.496 0 3.054-.357 4.063-.996.957.64 2.503.996 3.998.996 2.001 0 3.146-.607 3.146-1.575 0-.696-.488-1.253-1.31-1.77-.38-.237-.806-.467-1.285-.692.677-.77 1.063-1.737 1.063-2.79 0-.135-.014-.267-.03-.4 1.033.31 2.208.598 3.14.598.543 0 1.038-.065 1.377-.345.321-.266.469-.67.469-1.263 0-.554-.138-1.31-.39-2.21z"/>
+                </svg>
+                <span style="margin-left: 8px">QQ</span>
+              </el-dropdown-item>
+              <el-dropdown-item divided command="copy">
+                <el-icon><Link /></el-icon>
+                <span style="margin-left: 8px">复制链接</span>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <el-button
           size="large"
           class="action-btn"
@@ -119,6 +143,23 @@
         </el-button>
       </div>
     </el-card>
+    
+    <!-- 微信分享弹窗 -->
+    <el-dialog
+      v-model="showWechatDialog"
+      title="微信扫码分享"
+      width="360px"
+      center
+      class="wechat-share-dialog"
+    >
+      <div class="wechat-share-content">
+        <div class="qrcode-wrapper">
+          <div ref="qrcodeRef" class="qrcode-container"></div>
+        </div>
+        <p class="share-tip">打开微信扫一扫，分享给好友</p>
+        <p class="share-title">{{ article?.title }}</p>
+      </div>
+    </el-dialog>
     
     <!-- 评论区 -->
     <el-card class="comment-section" shadow="never">
@@ -472,7 +513,8 @@ import { getCommentList, createComment, deleteComment } from '@/api/comment'
 import { toggleFollow, checkFollow, getFollowStats } from '@/api/follow'
 import { searchUsers } from '@/api/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Download } from '@element-plus/icons-vue'
+import { Download, Link } from '@element-plus/icons-vue'
+import QRCode from 'qrcode'
 
 const route = useRoute()
 const router = useRouter()
@@ -488,6 +530,10 @@ const replyTo = ref(null)  // 当前回复的根评论
 const replyToUser = ref(null)  // 当前回复的目标用户
 const replyContent = ref('')  // 回复内容
 const isFollowingAuthor = ref(false)
+
+// 分享相关
+const showWechatDialog = ref(false)
+const qrcodeRef = ref(null)
 
 // 回复提示文字
 const replyPlaceholder = computed(() => {
@@ -637,6 +683,74 @@ const handleFavorite = async () => {
     ElMessage.success(article.value.isFavorited ? '收藏成功' : '取消收藏')
   } catch (error) {
     console.error(error)
+  }
+}
+
+// 分享功能
+const handleShare = async (platform) => {
+  const shareUrl = window.location.href
+  const shareTitle = article.value?.title || '校园新闻'
+  const shareSummary = article.value?.summary || ''
+  
+  switch (platform) {
+    case 'wechat':
+      // 显示微信二维码弹窗
+      showWechatDialog.value = true
+      // 等待DOM更新后生成二维码
+      setTimeout(async () => {
+        if (qrcodeRef.value) {
+          qrcodeRef.value.innerHTML = ''
+          try {
+            const canvas = document.createElement('canvas')
+            await QRCode.toCanvas(canvas, shareUrl, {
+              width: 200,
+              margin: 2,
+              color: {
+                dark: '#333333',
+                light: '#ffffff'
+              }
+            })
+            qrcodeRef.value.appendChild(canvas)
+          } catch (err) {
+            console.error('生成二维码失败:', err)
+            ElMessage.error('生成二维码失败')
+          }
+        }
+      }, 100)
+      break
+      
+    case 'weibo':
+      // 分享到微博
+      const weiboUrl = `https://service.weibo.com/share/share.php?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareTitle)}&pic=`
+      window.open(weiboUrl, '_blank', 'width=600,height=500')
+      ElMessage.success('已打开微博分享窗口')
+      break
+      
+    case 'qq':
+      // 分享到QQ
+      const qqUrl = `https://connect.qq.com/widget/shareqq/index.html?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareTitle)}&summary=${encodeURIComponent(shareSummary)}`
+      window.open(qqUrl, '_blank', 'width=600,height=500')
+      ElMessage.success('已打开QQ分享窗口')
+      break
+      
+    case 'copy':
+      // 复制链接
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        ElMessage.success('链接已复制到剪贴板')
+      } catch (err) {
+        // 降级方案
+        const textarea = document.createElement('textarea')
+        textarea.value = shareUrl
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
+        ElMessage.success('链接已复制到剪贴板')
+      }
+      break
   }
 }
 
@@ -1877,6 +1991,53 @@ onMounted(() => {
 .quick-action-btn {
   width: 100%;
   font-size: 13px;
+}
+
+/* 分享下拉菜单图标 */
+.share-icon {
+  vertical-align: middle;
+}
+
+/* 微信分享弹窗 */
+.wechat-share-content {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.qrcode-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.qrcode-container {
+  padding: 16px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.qrcode-container canvas {
+  display: block;
+}
+
+.share-tip {
+  color: #909399;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.share-title {
+  color: #2c3e50;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 0 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* 响应式设计 */

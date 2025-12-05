@@ -15,6 +15,29 @@
       </div>
       
       <div class="header-right">
+        <div class="view-controls">
+          <el-tooltip content="网格视图" placement="top">
+            <div class="view-btn" :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">
+              <el-icon><Grid /></el-icon>
+            </div>
+          </el-tooltip>
+          <el-tooltip content="列表视图" placement="top">
+            <div class="view-btn" :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">
+              <el-icon><List /></el-icon>
+            </div>
+          </el-tooltip>
+          <el-tooltip content="大图视图" placement="top">
+            <div class="view-btn" :class="{ active: viewMode === 'card' }" @click="viewMode = 'card'">
+              <el-icon><Files /></el-icon>
+            </div>
+          </el-tooltip>
+          <el-tooltip content="瀑布流" placement="top">
+            <div class="view-btn" :class="{ active: viewMode === 'masonry' }" @click="viewMode = 'masonry'">
+              <el-icon><Menu /></el-icon>
+            </div>
+          </el-tooltip>
+        </div>
+        <el-divider direction="vertical" class="header-divider" />
         <el-select v-model="sortBy" @change="handleSortChange" class="sort-select" placeholder="排序方式" size="large">
           <template #prefix><el-icon><Sort /></el-icon></template>
           <el-option label="最新发布" value="date_desc" />
@@ -28,7 +51,7 @@
     <!-- 内容区域 -->
     <div class="board-content">
       <!-- 加载骨架屏 -->
-      <div v-if="loading" class="article-grid">
+      <div v-if="loading" class="article-container mode-grid">
         <div v-for="i in 8" :key="i" class="news-card skeleton-card">
           <el-skeleton animated>
             <template #template>
@@ -53,7 +76,7 @@
       <template v-else>
         <el-empty v-if="articles.length === 0" description="暂无文章" />
         
-        <div v-else class="article-grid">
+        <div v-else class="article-container" :class="`mode-${viewMode}`" :key="viewMode">
           <div
             v-for="(article, index) in articles"
             :key="article.id"
@@ -135,7 +158,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getArticleList } from '@/api/article'
-import { Document, School, OfficeBuilding, Sort, Picture, Top, View, ChatDotRound } from '@element-plus/icons-vue'
+import { Document, School, OfficeBuilding, Sort, Picture, Top, View, ChatDotRound, Grid, List, Files, Menu } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -146,6 +169,7 @@ const currentPage = ref(1)
 const pageSize = ref(12) // Grid layout fits better with multiples of 3/4
 const total = ref(0)
 const sortBy = ref('date_desc')
+const viewMode = ref('grid') // grid, list, card, masonry
 
 const boardType = computed(() => route.params.type)
 
@@ -498,6 +522,185 @@ onMounted(() => {
   margin: 0 auto;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.view-controls {
+  display: flex;
+  background: rgba(255, 255, 255, 0.4);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  gap: 2px;
+}
+
+.view-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #606266;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.view-btn:hover {
+  background: rgba(255, 255, 255, 0.6);
+  color: #409eff;
+  transform: translateY(-1px);
+}
+
+.view-btn:active {
+  transform: scale(0.92);
+}
+
+.view-btn.active {
+  background: #fff;
+  color: #409eff;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+  transform: scale(1.05);
+}
+
+.view-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: #409eff;
+  border-radius: 50%;
+}
+
+.header-divider {
+  height: 24px;
+  margin: 0 20px;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.sort-select {
+  width: 150px;
+}
+
+/* ================= Layout Modes ================= */
+
+.article-container {
+  width: 100%;
+  padding-bottom: 40px;
+}
+
+/* 1. Grid Mode (Default) */
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+/* 2. List Mode */
+.mode-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mode-list .news-card {
+  flex-direction: row;
+  height: 180px;
+  align-items: stretch;
+}
+
+.mode-list .card-cover {
+  width: 280px;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.mode-list .card-body {
+  padding: 16px 24px;
+}
+
+.mode-list .news-summary {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  margin-bottom: 12px;
+}
+
+/* 3. Card Mode (Large) */
+.mode-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+  gap: 30px;
+}
+
+.mode-card .card-cover {
+  height: 280px;
+}
+
+.mode-card .news-title {
+  font-size: 22px;
+}
+
+/* 4. Masonry Mode */
+.mode-masonry {
+  column-count: 4;
+  column-gap: 24px;
+}
+
+.mode-masonry .news-card {
+  break-inside: avoid;
+  margin-bottom: 24px;
+  display: inline-block;
+  width: 100%;
+}
+
+/* News Card Base Styles */
+.news-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  animation: fadeInUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform-origin: center center;
+}
+
+.news-card:hover {
+  transform: translateY(-8px) scale(1.01);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+  z-index: 2;
+}
+
+.news-card:active {
+  transform: scale(0.98);
+}
+
+@keyframes fadeInUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(40px) scale(0.95); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
   .board-header-bar {
     flex-direction: column;
@@ -507,14 +710,33 @@ onMounted(() => {
   
   .header-right {
     width: 100%;
+    justify-content: space-between;
   }
   
   .sort-select {
-    width: 100%;
+    width: 140px;
   }
   
-  .article-grid {
+  .header-divider {
+    margin: 0 10px;
+  }
+  
+  .mode-grid, .mode-card {
     grid-template-columns: 1fr;
+  }
+  
+  .mode-list .news-card {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .mode-list .card-cover {
+    width: 100%;
+    height: 180px;
+  }
+  
+  .mode-masonry {
+    column-count: 1;
   }
 }
 </style>
