@@ -376,19 +376,33 @@ onMounted(() => {
 
 <style scoped>
 .follow-page {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 20px;
 }
 
 .page-header {
   text-align: center;
-  margin-bottom: 30px;
-  padding: 30px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
+  margin-bottom: 40px;
+  padding: 60px 40px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+  backdrop-filter: blur(10px);
+  border-radius: 24px;
   color: white;
+  box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+  position: relative;
+  overflow: hidden;
   animation: fadeInDown 0.6s ease-out;
+}
+
+.page-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+  border-radius: 50%;
 }
 
 @keyframes fadeInDown {
@@ -403,17 +417,27 @@ onMounted(() => {
 }
 
 .page-header h1 {
-  margin: 0 0 8px;
-  font-size: 28px;
+  margin: 0 0 12px;
+  font-size: 36px;
+  font-weight: 800;
+  position: relative;
+  z-index: 1;
 }
 
 .page-header p {
   margin: 0;
-  opacity: 0.9;
+  opacity: 0.95;
+  font-size: 16px;
+  position: relative;
+  z-index: 1;
 }
 
 .content-card {
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   animation: fadeInUp 0.6s ease-out 0.1s both;
 }
 
@@ -440,11 +464,14 @@ onMounted(() => {
 }
 
 .feed-item {
-  padding: 16px;
-  border: 1px solid #ebeef5;
-  border-radius: 12px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   animation: fadeInUp 0.4s ease-out both;
 }
 
@@ -455,9 +482,10 @@ onMounted(() => {
 .feed-item:nth-child(5) { animation-delay: 0.25s; }
 
 .feed-item:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  transform: translateY(-4px);
-  border-color: #667eea;
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.15);
+  transform: translateY(-6px);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: #a18cd1;
 }
 
 .feed-item:hover .feed-title {
@@ -541,9 +569,20 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 16px;
-  border: 1px solid #ebeef5;
-  border-radius: 12px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.user-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.85);
+  border-color: #a18cd1;
 }
 
 .user-info {
@@ -573,8 +612,13 @@ onMounted(() => {
 
 /* 推荐卡片 */
 .recommend-card {
-  border-radius: 12px;
-  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  animation: fadeInUp 0.6s ease-out 0.2s both;
 }
 
 .card-header {
@@ -613,11 +657,16 @@ onMounted(() => {
 
 /* 统计卡片 */
 .stats-card {
-  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 30px 20px;
+  animation: fadeInUp 0.6s ease-out 0.3s both;
 }
 
 .stats-item {
@@ -626,9 +675,12 @@ onMounted(() => {
 }
 
 .stats-number {
-  font-size: 28px;
-  font-weight: 700;
-  color: #409eff;
+  font-size: 32px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .stats-label {

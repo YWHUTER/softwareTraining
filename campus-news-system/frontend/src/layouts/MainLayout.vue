@@ -1,6 +1,6 @@
 <template>
   <div class="main-layout" :style="{ backgroundImage: `url(${bgImage})` }">
-    <el-container class="main-container">
+    <el-container class="main-container" style="position: relative; z-index: 1;">
       <!-- 顶部导航栏 -->
       <el-header class="header">
         <div class="header-content">
@@ -377,18 +377,35 @@ onUnmounted(() => {
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
-  background-color: #f5f7fa;
+  position: relative;
+}
+
+.main-layout::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(245, 247, 250, 0.4); /* 降低遮罩浓度，让背景图清晰可见 */
+  backdrop-filter: blur(3px); /* 降低模糊度 */
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* 顶部导航栏 */
 .header {
-  background: #fff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
   padding: 0;
   height: 70px;
   position: sticky;
   top: 0;
   z-index: 1000;
+  transition: all 0.3s ease;
 }
 
 .header-content {
@@ -726,7 +743,7 @@ onUnmounted(() => {
 /* 主内容区 */
 .main-content {
   padding: 0;
-  background: rgba(245, 247, 250, 0.7);
+  background: transparent;
   min-height: calc(100vh - 140px);
 }
 

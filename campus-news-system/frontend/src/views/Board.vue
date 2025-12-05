@@ -1,103 +1,133 @@
 <template>
   <div class="board-page">
-    <el-card>
-      <template #header>
-        <div class="board-header">
-          <h2>{{ boardTitle }}</h2>
-          <el-select v-model="sortBy" @change="handleSortChange" class="sort-select" placeholder="排序方式">
-            <el-option label="按日期排序（最新）" value="date_desc">
-              <el-icon><Clock /></el-icon>
-              <span>按日期排序（最新）</span>
-            </el-option>
-            <el-option label="按日期排序（最早）" value="date_asc">
-              <el-icon><Clock /></el-icon>
-              <span>按日期排序（最早）</span>
-            </el-option>
-            <el-option label="按热度排序（最高）" value="views_desc">
-              <el-icon><TrendCharts /></el-icon>
-              <span>按热度排序（最高）</span>
-            </el-option>
-            <el-option label="按热度排序（最低）" value="views_asc">
-              <el-icon><TrendCharts /></el-icon>
-              <span>按热度排序（最低）</span>
-            </el-option>
-          </el-select>
+    <!-- 顶部功能栏 -->
+    <div class="board-header-bar">
+      <div class="header-left">
+        <div class="board-icon" :class="boardType">
+          <el-icon v-if="boardType === 'OFFICIAL'"><Document /></el-icon>
+          <el-icon v-else-if="boardType === 'CAMPUS'"><School /></el-icon>
+          <el-icon v-else><OfficeBuilding /></el-icon>
+        </div>
+        <div class="header-info">
+          <h2 class="board-title">{{ boardTitle }}</h2>
+          <span class="board-desc">共 {{ total }} 篇文章</span>
+        </div>
+      </div>
+      
+      <div class="header-right">
+        <el-select v-model="sortBy" @change="handleSortChange" class="sort-select" placeholder="排序方式" size="large">
+          <template #prefix><el-icon><Sort /></el-icon></template>
+          <el-option label="最新发布" value="date_desc" />
+          <el-option label="最早发布" value="date_asc" />
+          <el-option label="最多浏览" value="views_desc" />
+          <el-option label="最少浏览" value="views_asc" />
+        </el-select>
+      </div>
+    </div>
+    
+    <!-- 内容区域 -->
+    <div class="board-content">
+      <!-- 加载骨架屏 -->
+      <div v-if="loading" class="article-grid">
+        <div v-for="i in 8" :key="i" class="news-card skeleton-card">
+          <el-skeleton animated>
+            <template #template>
+              <el-skeleton-item variant="image" style="width: 100%; height: 180px;" />
+              <div style="padding: 20px;">
+                <el-skeleton-item variant="h3" style="width: 60%; margin-bottom: 16px;" />
+                <el-skeleton-item variant="text" style="width: 100%; margin-bottom: 8px;" />
+                <el-skeleton-item variant="text" style="width: 80%; margin-bottom: 16px;" />
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <el-skeleton-item variant="circle" style="width: 24px; height: 24px;" />
+                    <el-skeleton-item variant="text" style="width: 60px;" />
+                  </div>
+                  <el-skeleton-item variant="text" style="width: 40px;" />
+                </div>
+              </div>
+            </template>
+          </el-skeleton>
+        </div>
+      </div>
+
+      <template v-else>
+        <el-empty v-if="articles.length === 0" description="暂无文章" />
+        
+        <div v-else class="article-grid">
+          <div
+            v-for="(article, index) in articles"
+            :key="article.id"
+            class="news-card"
+            :class="{ 'is-pinned': article.isPinned }"
+            @click="goToDetail(article.id)"
+            :style="{ animationDelay: `${index * 0.05}s` }"
+          >
+            <!-- 封面图区域 -->
+            <div class="card-cover" v-if="article.coverImage">
+              <el-image :src="article.coverImage" fit="cover" loading="lazy">
+                <template #placeholder>
+                  <div class="image-placeholder">
+                    <el-icon><Picture /></el-icon>
+                  </div>
+                </template>
+              </el-image>
+              <div class="card-overlay"></div>
+              <div class="pinned-badge" v-if="article.isPinned">
+                <el-icon><Top /></el-icon> 置顶
+              </div>
+            </div>
+            <!-- 无封面图时的置顶标记 -->
+            <div class="pinned-mark" v-else-if="article.isPinned">
+              <el-icon><Top /></el-icon> 置顶
+            </div>
+
+            <div class="card-body">
+              <h3 class="news-title" :title="article.title">{{ article.title }}</h3>
+              <p class="news-summary">
+                {{ article.summary || article.content?.replace(/<[^>]+>/g, '').substring(0, 80) + '...' }}
+              </p>
+              
+              <div class="card-footer">
+                <div class="author-row">
+                  <el-avatar :size="24" :src="getValidAvatar(article.author?.avatar)" class="author-avatar">
+                    {{ article.author?.realName?.[0] }}
+                  </el-avatar>
+                  <span class="author-name">{{ article.author?.realName }}</span>
+                  <span class="divider">•</span>
+                  <span class="publish-time">{{ getRelativeTime(article.createdAt) }}</span>
+                </div>
+                
+                <div class="stats-row">
+                  <span class="stat-item">
+                    <el-icon><View /></el-icon> {{ formatCount(article.viewCount) }}
+                  </span>
+                  <span class="stat-item">
+                    <el-icon><ChatDotRound /></el-icon> {{ article.commentCount }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 分页 -->
+        <div class="pagination-container" v-if="total > 0">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :total="total"
+            :page-sizes="[12, 24, 36]"
+            layout="total, prev, pager, next, jumper"
+            @current-change="fetchArticles"
+            @size-change="fetchArticles"
+            background
+          />
         </div>
       </template>
-      
-      <div class="board-content" v-loading="loading">
-        <el-empty v-if="articles.length === 0 && !loading" description="暂无文章" />
-        
-        <div class="article-list">
-          <el-card
-            v-for="article in articles"
-            :key="article.id"
-            class="article-card"
-            shadow="hover"
-            @click="goToDetail(article.id)"
-          >
-            <div class="article-content">
-              <div class="article-main">
-                <div class="article-header">
-                  <el-tag v-if="article.isPinned" type="danger" size="small">置顶</el-tag>
-                  <span class="article-title">{{ article.title }}</span>
-                </div>
-                <div class="article-summary">{{ article.summary || article.content?.substring(0, 100) + '...' }}</div>
-                <div class="article-meta">
-                  <div class="author-info">
-                    <el-avatar :size="22" :src="getValidAvatar(article.author?.avatar)" class="author-avatar" fit="cover">
-                      {{ article.author?.realName?.[0] }}
-                    </el-avatar>
-                    <span class="author-name-text">{{ article.author?.realName }}</span>
-                  </div>
-                  <span v-if="article.college"><el-icon><School /></el-icon> {{ article.college?.name }}</span>
-                  <span><el-icon><View /></el-icon> {{ article.viewCount }}</span>
-                  <span><el-icon><ChatDotRound /></el-icon> {{ article.commentCount }}</span>
-                </div>
-              </div>
-              <div class="article-right">
-                <div v-if="article.coverImage" class="article-cover">
-                  <el-image :src="article.coverImage" fit="cover" />
-                </div>
-                <div class="publish-time-badge">
-                  <el-icon><Clock /></el-icon>
-                  <span>{{ getRelativeTime(article.createdAt) }}</span>
-                </div>
-              </div>
-            </div>
-            
-            <!-- 热门评论 -->
-            <div v-if="article.hotComment" class="hot-comment" @click.stop>
-              <div class="hot-comment-header">
-                <el-icon color="#f56c6c"><ChatLineSquare /></el-icon>
-                <span class="hot-comment-label">热评</span>
-              </div>
-              <div class="hot-comment-content">
-                <el-avatar :size="20" class="comment-avatar" :src="getValidAvatar(article.hotComment.user?.avatar)" fit="cover">
-                  {{ article.hotComment.user?.realName?.[0] }}
-                </el-avatar>
-                <span class="comment-author">{{ article.hotComment.user?.realName }}：</span>
-                <span class="comment-text">{{ article.hotComment.content }}</span>
-                <span class="comment-likes">
-                  <el-icon><Star /></el-icon>
-                  {{ article.hotComment.likeCount || 0 }}
-                </span>
-              </div>
-            </div>
-          </el-card>
-        </div>
-        
-        <el-pagination
-          v-if="total > 0"
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :total="total"
-          layout="total, prev, pager, next"
-          @current-change="fetchArticles"
-          style="margin-top: 20px; justify-content: center;"
-        />
-      </div>
-    </el-card>
+    </div>
+
+    <!-- 回到顶部 -->
+    <el-backtop :right="40" :bottom="40" />
   </div>
 </template>
 
@@ -105,6 +135,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getArticleList } from '@/api/article'
+import { Document, School, OfficeBuilding, Sort, Picture, Top, View, ChatDotRound } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -112,9 +143,9 @@ const router = useRouter()
 const loading = ref(false)
 const articles = ref([])
 const currentPage = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(12) // Grid layout fits better with multiples of 3/4
 const total = ref(0)
-const sortBy = ref('date_desc') // 默认按日期降序
+const sortBy = ref('date_desc')
 
 const boardType = computed(() => route.params.type)
 
@@ -130,7 +161,6 @@ const boardTitle = computed(() => {
 const fetchArticles = async () => {
   loading.value = true
   try {
-    // 解析排序参数
     const [sortField, sortOrder] = sortBy.value.split('_')
     const data = await getArticleList({
       current: currentPage.value,
@@ -138,7 +168,8 @@ const fetchArticles = async () => {
       boardType: boardType.value,
       isApproved: 1,
       sortBy: sortField === 'views' ? 'views' : 'date',
-      sortOrder: sortOrder
+      sortOrder: sortOrder,
+      _t: Date.now() // Add timestamp to prevent caching
     })
     articles.value = data.records
     total.value = data.total
@@ -158,34 +189,26 @@ const goToDetail = (id) => {
   router.push(`/article/${id}`)
 }
 
-const formatTime = (time) => {
-  return new Date(time).toLocaleString('zh-CN')
-}
-
-// 获取相对时间
 const getRelativeTime = (time) => {
   const now = new Date()
   const past = new Date(time)
-  const diff = now - past
+  const diff = (now - past) / 1000
   
-  const minutes = Math.floor(diff / 60000)
-  const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
-  
-  if (minutes < 1) return '刚刚'
-  if (minutes < 60) return `${minutes}分钟前`
-  if (hours < 24) return `${hours}小时前`
-  if (days < 30) return `${days}天前`
-  if (days < 365) return `${Math.floor(days / 30)}个月前`
-  return `${Math.floor(days / 365)}年前`
+  if (diff < 60) return '刚刚'
+  if (diff < 3600) return Math.floor(diff / 60) + '分钟前'
+  if (diff < 86400) return Math.floor(diff / 3600) + '小时前'
+  if (diff < 604800) return Math.floor(diff / 86400) + '天前'
+  return past.toLocaleDateString('zh-CN')
 }
 
-// 验证头像URL是否有效
+const formatCount = (num) => {
+  if (num >= 10000) return (num / 10000).toFixed(1) + 'w'
+  return num
+}
+
 const getValidAvatar = (avatar) => {
   if (!avatar) return undefined
-  // 只接受以 /api/file 开头的有效头像URL
   if (avatar.startsWith('/api/file/')) return avatar
-  // 其他URL视为无效
   return undefined
 }
 
@@ -201,7 +224,7 @@ onMounted(() => {
 
 <style scoped>
 .board-page {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   animation: fadeIn 0.5s ease-out;
 }
@@ -211,320 +234,287 @@ onMounted(() => {
   to { opacity: 1; }
 }
 
-.board-page > .el-card {
+/* Header Bar */
+.board-header-bar {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
   border-radius: 16px;
-  border: none;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  animation: slideUp 0.5s ease-out;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.board-header {
+  padding: 20px 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
+  margin-bottom: 30px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 
+              0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  border: 2px solid rgba(255, 255, 255, 0.5);
 }
 
-.board-page h2 {
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.board-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: white;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.board-icon.OFFICIAL { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); }
+.board-icon.CAMPUS { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
+.board-icon.COLLEGE { background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); }
+
+.header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.board-title {
   margin: 0;
   font-size: 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-weight: 800;
+  color: #2c3e50;
+  letter-spacing: -0.5px;
+}
+
+.board-desc {
+  font-size: 14px;
+  color: #606266;
 }
 
 .sort-select {
-  width: 180px;
+  width: 160px;
 }
 
-.sort-select :deep(.el-select-dropdown__item) {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* Grid Layout */
+.article-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+  padding-bottom: 40px;
 }
 
-.article-list {
-  min-height: 400px;
+/* News Card */
+.news-card {
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.article-card {
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 12px;
-  border: none;
-  overflow: hidden;
   position: relative;
-  animation: fadeInUp 0.4s ease-out both;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+  animation: fadeInUp 0.6s ease-out both;
 }
 
-.article-card:nth-child(1) { animation-delay: 0.05s; }
-.article-card:nth-child(2) { animation-delay: 0.1s; }
-.article-card:nth-child(3) { animation-delay: 0.15s; }
-.article-card:nth-child(4) { animation-delay: 0.2s; }
-.article-card:nth-child(5) { animation-delay: 0.25s; }
+.news-card:hover {
+  transform: translateY(-8px);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12), 
+              0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+  border-color: rgba(255, 255, 255, 0.8);
+}
 
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* 交替背景色 */
-.article-card:nth-child(odd) {
-  background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+/* Cover Image */
+.card-cover {
+  height: 180px;
+  position: relative;
+  overflow: hidden;
 }
 
-.article-card:nth-child(even) {
-  background: linear-gradient(135deg, #fff8f6 0%, #ffffff 100%);
+.card-cover .el-image {
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s ease;
 }
 
-.article-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
+.news-card:hover .card-cover .el-image {
+  transform: scale(1.08);
 }
 
-.article-card:nth-child(even)::before {
-  background: linear-gradient(180deg, #f093fb 0%, #f5576c 100%);
-}
-
-.article-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(102, 126, 234, 0.15);
-}
-
-.article-card:hover::before {
-  opacity: 1;
-}
-
-.article-content {
-  display: flex;
-  gap: 20px;
-  padding: 4px;
-}
-
-.article-main {
-  flex: 1;
-}
-
-.article-header {
+.image-placeholder {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+  justify-content: center;
+  background: #f5f7fa;
+  color: #c0c4cc;
+  font-size: 32px;
 }
 
-.article-title {
+.pinned-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(255, 87, 34, 0.9);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(255, 87, 34, 0.4);
+  z-index: 2;
+}
+
+.pinned-mark {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  color: #ff5722;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 87, 34, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+/* Card Body */
+.card-body {
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.news-title {
+  margin: 0 0 12px;
   font-size: 18px;
   font-weight: 700;
   color: #2c3e50;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   transition: color 0.3s ease;
 }
 
-.article-card:hover .article-title {
+.news-card:hover .news-title {
   color: #667eea;
 }
 
-.article-summary {
-  color: #606266;
-  margin-bottom: 12px;
-  line-height: 1.7;
+.news-summary {
   font-size: 14px;
+  color: #606266;
+  line-height: 1.6;
+  margin: 0 0 20px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
 }
 
-.article-meta {
+/* Footer */
+.card-footer {
   display: flex;
-  gap: 16px;
-  color: #909399;
-  font-size: 13px;
-  flex-wrap: wrap;
-}
-
-.article-meta span {
-  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: rgba(0, 0, 0, 0.02);
-  border-radius: 20px;
-  transition: all 0.2s ease;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.article-meta span:hover {
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
-}
-
-.author-info {
+.author-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 12px 4px 4px;
-  background: rgba(0, 0, 0, 0.02);
-  border-radius: 20px;
-}
-
-.author-info:hover {
-  background: rgba(102, 126, 234, 0.1);
+  font-size: 13px;
+  color: #909399;
 }
 
 .author-avatar {
-  flex-shrink: 0;
-  width: 22px !important;
-  height: 22px !important;
-  min-width: 22px !important;
-  min-height: 22px !important;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
+  font-weight: 600;
   font-size: 10px;
-  font-weight: 600;
-  overflow: hidden;
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
 }
 
-.author-avatar :deep(img) {
-  width: 22px !important;
-  height: 22px !important;
-  min-width: 22px !important;
-  min-height: 22px !important;
-  object-fit: cover !important;
-  display: block !important;
-}
-
-.author-name-text {
-  font-size: 13px;
-  color: #606266;
-}
-
-.article-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.article-cover {
-  width: 160px;
-  height: 110px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.article-cover .el-image {
-  width: 100%;
-  height: 100%;
-  transition: transform 0.3s ease;
-}
-
-.article-card:hover .article-cover .el-image {
-  transform: scale(1.05);
-}
-
-.publish-time-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  background: #f5f7fa;
-  color: #909399;
-  border-radius: 6px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-/* 热门评论样式 */
-.hot-comment {
-  margin-top: 12px;
-  padding: 10px 14px;
-  background: linear-gradient(135deg, #fff5f5 0%, #fef5f0 100%);
-  border-radius: 8px;
-  border-left: 3px solid #f56c6c;
-}
-
-.hot-comment-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.hot-comment-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #f56c6c;
-}
-
-.hot-comment-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.comment-avatar {
-  background: linear-gradient(135deg, #f56c6c, #e6a23c);
-  color: white;
-  font-size: 10px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.comment-author {
-  font-size: 13px;
+.author-name {
   font-weight: 500;
   color: #606266;
-  flex-shrink: 0;
-}
-
-.comment-text {
-  font-size: 13px;
-  color: #606266;
-  flex: 1;
+  max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 400px;
 }
 
-.comment-likes {
+.divider {
+  color: #e0e0e0;
+}
+
+.stats-row {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #999;
+}
+
+.stat-item {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
-  color: #f56c6c;
-  flex-shrink: 0;
-  margin-left: auto;
+}
+
+/* Pagination */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .board-header-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .header-right {
+    width: 100%;
+  }
+  
+  .sort-select {
+    width: 100%;
+  }
+  
+  .article-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

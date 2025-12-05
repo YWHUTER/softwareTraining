@@ -393,13 +393,14 @@ watch(() => route.path, (newPath) => {
 /* 顶部横幅 */
 .banner {
   background: url('@/assets/home-bg.jpg') center center / cover no-repeat;
-  border-radius: 16px;
-  padding: 60px 40px;
-  margin-bottom: 30px;
-  color: white;
+  border-radius: 24px;
+  padding: 80px 60px;
+  margin-bottom: 40px;
+  color: #fff;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .banner::before {
@@ -409,27 +410,33 @@ watch(() => route.path, (newPath) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.25); /* 纯黑遮罩，还原图片本色 */
+  z-index: 0;
 }
 
 .banner-content {
   position: relative;
   z-index: 1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .banner-title {
-  font-size: 42px;
-  font-weight: 700;
-  margin: 0 0 15px;
-  letter-spacing: 1px;
+  font-size: 48px;
+  font-weight: 800;
+  margin: 0 0 20px;
+  letter-spacing: -1px;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   animation: slideDown 0.8s ease-out;
 }
 
 .banner-subtitle {
-  font-size: 18px;
+  font-size: 20px;
   margin: 0;
   opacity: 0.95;
-  font-weight: 300;
+  font-weight: 500;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   animation: slideDown 0.8s ease-out 0.2s both;
 }
 
@@ -456,22 +463,28 @@ watch(() => route.path, (newPath) => {
 
 /* 筛选栏 */
 .filter-section {
-  background: white;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-radius: 16px;
   padding: 24px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 
+              0 0 0 1px rgba(255, 255, 255, 0.5) inset;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 20px;
   animation: fadeInUp 0.5s ease-out;
-  transition: box-shadow 0.3s ease;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(255, 255, 255, 0.5);
 }
 
 .filter-section:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1), 
+              0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+  background: rgba(255, 255, 255, 0.45);
 }
 
 .section-title {
@@ -531,15 +544,19 @@ watch(() => route.path, (newPath) => {
 }
 
 .article-card {
-  background: white;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-radius: 16px;
   padding: 24px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid #e4e7ed;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid rgba(255, 255, 255, 0.5);
   position: relative;
   overflow: hidden;
   animation: fadeInUp 0.5s ease-out both;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
 }
 
 @keyframes fadeInUp {
@@ -554,9 +571,11 @@ watch(() => route.path, (newPath) => {
 }
 
 .article-card:hover {
-  transform: translateY(-6px) scale(1.01);
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
-  border-color: #667eea;
+  transform: translateY(-8px) scale(1.01);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12), 
+              0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+  border-color: rgba(255, 255, 255, 0.8);
 }
 
 .article-card:hover .article-title {
@@ -726,14 +745,19 @@ watch(() => route.path, (newPath) => {
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
 .sidebar-card {
-  border-radius: 12px;
-  border: none;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   animation: fadeInUp 0.5s ease-out both;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
 }
 
 .sidebar-card:nth-child(1) { animation-delay: 0.1s; }
@@ -742,7 +766,9 @@ watch(() => route.path, (newPath) => {
 
 .sidebar-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1), 
+              0 0 0 1px rgba(255, 255, 255, 0.6) inset;
 }
 
 .card-title {

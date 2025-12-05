@@ -251,9 +251,9 @@ onMounted(() => {
 }
 
 .school-logo {
-  height: 150px;
+  height: 80px;
   width: auto;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
   transition: transform 0.3s ease;
 }
 
@@ -273,33 +273,42 @@ onMounted(() => {
 }
 
 .register-card {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  border-radius: 24px;
+  padding: 0;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.2), 
+              0 0 0 1px rgba(255, 255, 255, 0.5) inset,
+              0 2px 4px rgba(255, 255, 255, 0.8) inset;
   width: 100%;
-  max-width: 600px;
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: fadeInUp 0.8s ease-out 0.2s both;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  max-width: 750px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  animation: slideUp 0.8s ease-out 0.2s both;
+  overflow: hidden;
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(40px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.register-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 24px 24px 0 0;
+  z-index: 1;
 }
 
 .register-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.35);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 12px 36px rgba(102, 126, 234, 0.5);
 }
 
 .card-header {
   text-align: center;
-  padding-bottom: 15px;
+  padding: 30px 0 20px;
+  position: relative;
 }
 
 .header-icon {
@@ -309,10 +318,13 @@ onMounted(() => {
 }
 
 .card-header h2 {
-  margin: 0 0 10px;
-  color: #2c3e50;
-  font-size: 32px;
-  font-weight: 700;
+  margin: 15px 0 10px;
+  font-size: 30px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .card-header p {
@@ -338,30 +350,85 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 
-:deep(.el-input__wrapper) {
-  padding: 12px 16px;
-  background: #f8f9fa;
-  border: 2px solid transparent;
+.register-card :deep(.el-input__wrapper) {
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 
+              0 0 0 1px rgba(255, 255, 255, 0.6) inset;
   transition: all 0.3s ease;
 }
 
-:deep(.el-input__wrapper:hover) {
-  background: #fff;
-  border-color: #e0e3e9;
+.register-card :deep(.el-input__wrapper:hover) {
+  border-color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08), 
+              0 0 0 1px rgba(255, 255, 255, 0.8) inset;
 }
 
-:deep(.el-input__wrapper.is-focus) {
-  background: #fff;
-  border-color: #2196f3;
-  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+.register-card :deep(.el-input__wrapper.is-focus) {
+  border-color: white;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3), 
+              0 8px 24px rgba(0, 0, 0, 0.1),
+              0 0 0 1px white inset;
+}
+
+.register-card :deep(.el-input__inner) {
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.register-card :deep(.el-input__inner::placeholder) {
+  color: rgba(44, 62, 80, 0.5);
+}
+
+.register-card :deep(.el-input__prefix) {
+  color: #667eea;
+}
+
+.register-card :deep(.el-form-item__label) {
+  color: #2c3e50;
+  font-weight: 600;
 }
 
 .register-button {
   width: 100%;
-  height: 48px;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-size: 17px;
+  font-weight: 700;
+  height: 52px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  border: none;
+  box-shadow: 0 8px 24px rgba(79, 172, 254, 0.4);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.register-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+
+.register-button:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 12px 36px rgba(79, 172, 254, 0.5);
+}
+
+.register-button:hover::before {
+  width: 300px;
+  height: 300px;
 }
 
 /* 底部链接 */
@@ -379,14 +446,14 @@ onMounted(() => {
 }
 
 .login-link {
-  color: #2196f3;
+  color: #667eea;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
   transition: all 0.3s ease;
 }
 
 .login-link:hover {
-  color: #1976d2;
+  color: #764ba2;
   text-decoration: underline;
 }
 
