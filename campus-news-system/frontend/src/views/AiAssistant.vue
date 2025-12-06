@@ -13,6 +13,34 @@
       </div>
       
       <div class="sidebar-content" v-show="!sidebarCollapsed">
+        <!-- 历史记录 -->
+        <div class="sidebar-section">
+          <div class="section-title">📜 历史记录</div>
+          <div v-if="historyLoading" class="history-loading">
+            <el-icon class="loading-icon"><Loading /></el-icon>
+            <span>加载中...</span>
+          </div>
+          <div v-else-if="chatSessions.length === 0" class="history-empty">
+            暂无历史对话
+          </div>
+          <div v-else class="history-list">
+            <div 
+              v-for="session in chatSessions.slice(0, 10)" 
+              :key="session.id" 
+              class="history-item"
+              :class="{ active: currentSessionId === session.id }"
+              @click="loadSession(session.id)"
+            >
+              <el-icon><ChatLineRound /></el-icon>
+              <span class="history-title">{{ session.title }}</span>
+              <el-icon 
+                class="delete-btn" 
+                @click.stop="deleteSession(session.id)"
+              ><Delete /></el-icon>
+            </div>
+          </div>
+        </div>
+
         <!-- 快捷功能 -->
         <div class="sidebar-section">
           <div class="section-title">💡 快捷功能</div>
@@ -102,12 +130,17 @@
 
     <!-- 主聊天区域 -->
     <main class="main-content">
+      <!-- 展开侧边栏按钮 (当侧边栏折叠时显示) -->
+      <button v-if="sidebarCollapsed" class="show-sidebar-btn" @click="sidebarCollapsed = false">
+        <el-icon><Expand /></el-icon>
+      </button>
+
       <!-- 顶部标题栏 -->
       <header class="main-header">
-        <el-dropdown trigger="click" @command="handleModelChange">
+        <el-dropdown trigger="click" @command="handleModelChange" popper-class="model-dropdown-popper">
           <div class="model-selector">
-            <el-icon><ChatDotRound /></el-icon>
-            <span>{{ currentModelName }}</span>
+            <img :src="whutLogo" alt="WHUT" class="whut-badge" />
+            <span class="model-selector-text">WHUTGPT <span class="model-version">{{ modelOptions.find(m => m.value === currentModel)?.label }}</span></span>
             <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
           </div>
           <template #dropdown>
@@ -119,8 +152,14 @@
                 :class="{ 'is-active': currentModel === m.value }"
               >
                 <div class="model-option">
-                  <span class="model-name">{{ m.label }}</span>
-                  <span class="model-desc">{{ m.desc }}</span>
+                  <el-icon class="model-icon">
+                    <img v-if="m.useImage" :src="m.image" class="model-logo-img" @error="handleImageError(m.value)" />
+                    <component v-else :is="m.icon" />
+                  </el-icon>
+                  <div class="model-info">
+                    <span class="model-name">{{ m.label }}</span>
+                    <span class="model-desc">{{ m.desc }}</span>
+                  </div>
                   <el-icon v-if="currentModel === m.value" class="check-icon"><Check /></el-icon>
                 </div>
               </el-dropdown-item>
@@ -233,14 +272,22 @@ import {
   QuestionFilled, Search, Edit, TrendCharts, DataAnalysis, 
   Plus, Fold, Expand, ArrowDown, Top, Loading,
   Document, Compass, EditPen, ChatLineRound, ChatDotRound, Check,
-  User, Setting, SwitchButton
+  User, Setting, SwitchButton, Delete, Moon, Lightning, Coordinate
 } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import logoUrl from '@/assets/whut-logo.png'
 import { useUserStore } from '@/stores/user'
-import { sendChatMessage, streamChat } from '@/api/ai'
+import { 
+  sendChatMessage, streamChat, 
+  getChatSessions, getChatSessionDetail, createChatSession, 
+  saveChatMessage, deleteChatSession 
+} from '@/api/ai'
 import { getArticleList } from '@/api/article'
+import kimiLogo from '@/assets/icons/kimi.png'
+import deepseekLogo from '@/assets/icons/deepseek.png'
+import doubaoLogo from '@/assets/icons/doubao.png'
+import whutLogo from '@/assets/whut-logo.png'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -254,22 +301,35 @@ const loading = ref(false)
 const sessionId = ref('')
 const sidebarCollapsed = ref(false)
 
+// 历史记录相关状态
+const chatSessions = ref([])
+const currentSessionId = ref(null)
+const historyLoading = ref(false)
+
 // 模型选择
 const currentModel = ref('kimi')
-const modelOptions = [
-  { value: 'kimi', label: 'Kimi', desc: 'Moonshot AI' },
-  { value: 'deepseek', label: 'DeepSeek', desc: 'DeepSeek AI' },
-  { value: 'doubao', label: '豆包', desc: '字节跳动 AI' }
-]
+const modelOptions = ref([
+  { value: 'kimi', label: 'Kimi', desc: 'Moonshot AI', image: kimiLogo, icon: 'Moon', useImage: true },
+  { value: 'deepseek', label: 'DeepSeek', desc: 'DeepSeek AI', image: deepseekLogo, icon: 'Lightning', useImage: true },
+  { value: 'doubao', label: '豆包', desc: '字节跳动 AI', image: doubaoLogo, icon: 'Coordinate', useImage: true }
+])
+
+const handleImageError = (modelValue) => {
+  const model = modelOptions.value.find(m => m.value === modelValue)
+  if (model) {
+    model.useImage = false
+  }
+}
+
 const currentModelName = computed(() => {
-  const model = modelOptions.find(m => m.value === currentModel.value)
-  return model ? `WHUTGPT · ${model.label}` : 'WHUTGPT'
+  const model = modelOptions.value.find(m => m.value === currentModel.value)
+  return model ? `${model.label} ${model.desc}` : 'WHUTGPT'
 })
 
 // 切换模型
 const handleModelChange = (model) => {
   currentModel.value = model
-  const modelInfo = modelOptions.find(m => m.value === model)
+  const modelInfo = modelOptions.value.find(m => m.value === model)
   ElMessage.success(`已切换到 ${modelInfo?.label || model} 模型`)
 }
 
@@ -373,12 +433,34 @@ const sendMessage = async () => {
   const question = inputMessage.value.trim()
   if (!question || loading.value) return
 
+  // 如果是新对话，先创建会话
+  let activeSessionId = currentSessionId.value
+  if (!activeSessionId) {
+    try {
+      const session = await createChatSession({
+        model: currentModel.value,
+        firstMessage: question
+      })
+      activeSessionId = session.id
+      currentSessionId.value = session.id
+      // 刷新历史列表
+      fetchChatSessions()
+    } catch (error) {
+      console.error('创建会话失败:', error)
+    }
+  }
+
   // 添加用户消息
   messages.value.push({
     role: 'user',
     content: question,
     timestamp: Date.now()
   })
+
+  // 保存用户消息到数据库
+  if (activeSessionId) {
+    saveChatMessage(activeSessionId, { role: 'user', content: question }).catch(console.error)
+  }
   
   inputMessage.value = ''
   loading.value = true
@@ -422,6 +504,14 @@ const sendMessage = async () => {
         messages.value[aiMessageIndex].streaming = false
         loading.value = false
         scrollToBottom()
+        
+        // 保存AI回复到数据库
+        if (activeSessionId && messages.value[aiMessageIndex].content) {
+          saveChatMessage(activeSessionId, { 
+            role: 'assistant', 
+            content: messages.value[aiMessageIndex].content 
+          }).catch(console.error)
+        }
       }
     )
   } catch (error) {
@@ -442,11 +532,65 @@ const sendQuickQuestion = (question) => {
   sendMessage()
 }
 
-// 清空对话
+// 清空对话（开始新对话）
 const clearChat = () => {
   messages.value = []
   sessionId.value = ''
-  ElMessage.success('对话已清空')
+  currentSessionId.value = null
+  ElMessage.success('已开始新对话')
+}
+
+// 获取历史会话列表
+const fetchChatSessions = async () => {
+  historyLoading.value = true
+  try {
+    const data = await getChatSessions()
+    chatSessions.value = data || []
+  } catch (error) {
+    console.error('获取历史记录失败:', error)
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+// 加载历史会话
+const loadSession = async (sessionId) => {
+  if (currentSessionId.value === sessionId) return
+  
+  try {
+    const session = await getChatSessionDetail(sessionId)
+    if (session && session.messages) {
+      currentSessionId.value = sessionId
+      currentModel.value = session.model || 'kimi'
+      // 转换消息格式
+      messages.value = session.messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: new Date(msg.createdAt).getTime()
+      }))
+      scrollToBottom()
+      ElMessage.success('已加载历史对话')
+    }
+  } catch (error) {
+    console.error('加载会话失败:', error)
+    ElMessage.error('加载失败')
+  }
+}
+
+// 删除会话
+const deleteSession = async (sessionId) => {
+  try {
+    await deleteChatSession(sessionId)
+    chatSessions.value = chatSessions.value.filter(s => s.id !== sessionId)
+    // 如果删除的是当前会话，清空界面
+    if (currentSessionId.value === sessionId) {
+      clearChat()
+    }
+    ElMessage.success('已删除')
+  } catch (error) {
+    console.error('删除会话失败:', error)
+    ElMessage.error('删除失败')
+  }
 }
 
 // 滚动到底部
@@ -464,31 +608,54 @@ const formatTime = (timestamp) => {
   return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
-// 格式化消息（支持简单的 Markdown 和文章链接）
+// 格式化消息（支持 Markdown 和文章链接）
 const formatMessage = (content) => {
   if (!content) return ''
   
-  return content
-    // 转义 HTML
+  let html = content
+    // 转义 HTML 特殊字符 (除 Markdown 语法外)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    // 粗体
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    // 将文章链接转换为可点击的链接
-    .replace(/\/article\/(\d+)/g, '<a href="/article/$1" class="article-link" onclick="event.stopPropagation()">🔗 查看文章</a>')
-    // 将《标题》格式的文章标题加粗
-    .replace(/《(.*?)》/g, '<strong class="article-title">《$1》</strong>')
-    // 换行
-    .replace(/\n/g, '<br>')
-    // 列表项
-    .replace(/^(\d+)\.\s/gm, '<span class="list-number">$1.</span> ')
-    // emoji 表情保持原样
+
+  // 处理代码块 (```code```)
+  html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+  
+  // 处理行内代码 (`code`)
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+  
+  // 处理标题 (### Title)
+  html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>')
+  html = html.replace(/^## (.*$)/gm, '<h3>$1</h3>') // 二级标题也转为 h3 样式
+  
+  // 处理引用 (> quote)
+  html = html.replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>')
+  
+  // 处理无序列表 (- item)
+  html = html.replace(/^\- (.*$)/gm, '<li>$1</li>')
+  // 将相邻的 li 包裹在 ul 中 (简单处理)
+  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+  
+  // 处理粗体 (**bold**)
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+  
+  // 处理文章链接 (/article/123)
+  html = html.replace(/\/article\/(\d+)/g, '<a href="/article/$1" class="article-link" onclick="event.stopPropagation()">🔗 查看文章</a>')
+  
+  // 处理文章标题 (《Title》)
+  html = html.replace(/《(.*?)》/g, '<strong class="article-title">《$1》</strong>')
+  
+  // 处理换行 (非代码块内的换行)
+  // 注意：这里简化处理，可能会影响代码块内的换行，实际应使用 markdown-it
+  html = html.replace(/\n/g, '<br>')
+  
+  return html
 }
 
 onMounted(() => {
   scrollToBottom()
   fetchTodayStats()
+  fetchChatSessions()
 })
 </script>
 
@@ -496,9 +663,13 @@ onMounted(() => {
 /* ChatGPT 风格布局 */
 .chatgpt-layout {
   display: flex;
-  height: 100vh;
+  /* 减去顶部导航栏的高度，假设为60px-64px，这里预留一些余量 */
+  height: calc(100vh - 64px);
   overflow: hidden;
   background: #ffffff;
+  font-family: "Söhne", "ui-sans-serif", "system-ui", -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", sans-serif, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  border-radius: 8px; /* 如果是在容器中，圆角会好看点 */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 /* 左侧边栏 */
@@ -507,19 +678,24 @@ onMounted(() => {
   background: #f9f9f9;
   display: flex;
   flex-direction: column;
-  transition: width 0.3s ease;
-  border-right: 1px solid #e5e5e5;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s ease;
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
+  z-index: 100;
+  flex-shrink: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .sidebar.collapsed {
-  width: 60px;
+  width: 0;
+  border-right-color: transparent;
 }
 
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
+  padding: 16px 12px;
   gap: 8px;
 }
 
@@ -527,38 +703,36 @@ onMounted(() => {
   flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 12px;
   padding: 12px 16px;
-  background: transparent;
+  background: #ffffff;
   border: 1px solid #e5e5e5;
   border-radius: 8px;
   color: #333;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  white-space: nowrap; /* 防止文字换行 */
+  overflow: hidden;
 }
 
 .new-chat-btn:hover {
-  background: #ececec;
-}
-
-.sidebar.collapsed .new-chat-btn {
-  padding: 12px;
-}
-
-.sidebar.collapsed .new-chat-btn span {
-  display: none;
+  background: #f0f0f0;
+  border-color: #d0d0d0;
 }
 
 .collapse-btn {
-  padding: 10px;
+  padding: 8px;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: #666;
   cursor: pointer;
   border-radius: 6px;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .collapse-btn:hover {
@@ -569,7 +743,7 @@ onMounted(() => {
 .sidebar-content {
   flex: 1;
   overflow-y: auto;
-  padding: 0 12px;
+  padding: 12px;
 }
 
 .sidebar-section {
@@ -578,10 +752,115 @@ onMounted(() => {
 
 .section-title {
   font-size: 12px;
-  color: #888;
+  color: #999;
   padding: 8px 12px;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+/* 历史记录样式 */
+.history-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: #888;
+  font-size: 13px;
+}
+
+.history-empty {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+  font-size: 13px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.history-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+  color: #333;
+  overflow: hidden;
+}
+
+.history-item:hover {
+  background: #ececec;
+}
+
+.history-item.active {
+  background: #e0e0e0;
+  color: #000;
+}
+
+.history-item .el-icon {
+  font-size: 16px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.history-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 渐变遮罩，让长标题看起来更柔和 */
+.history-item::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(to right, transparent, #f9f9f9);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.history-item:hover::after {
+  background: linear-gradient(to right, transparent, #ececec);
+  opacity: 1;
+}
+
+.history-item.active::after {
+  background: linear-gradient(to right, transparent, #e0e0e0);
+  opacity: 1;
+}
+
+.history-item .delete-btn {
+  position: absolute;
+  right: 8px;
+  opacity: 0;
+  color: #666;
+  transition: all 0.2s;
+  z-index: 2;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.history-item:hover .delete-btn {
+  opacity: 1;
+  background: #ececec;
+}
+
+.history-item .delete-btn:hover {
+  color: #f56c6c;
+  background: #e0e0e0;
 }
 
 .nav-item {
@@ -594,6 +873,8 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.2s;
   font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .nav-item:hover {
@@ -604,6 +885,7 @@ onMounted(() => {
 .nav-item .el-icon {
   font-size: 18px;
   opacity: 0.8;
+  flex-shrink: 0;
 }
 
 .topic-badge {
@@ -616,6 +898,7 @@ onMounted(() => {
   background: #e5e5e5;
   border-radius: 4px;
   color: #666;
+  flex-shrink: 0;
 }
 
 .topic-badge.hot {
@@ -623,18 +906,19 @@ onMounted(() => {
   color: #fff;
 }
 
-/* 今日数据 */
 .stats-section {
-  background: #fff;
+  background: #ffffff;
   border-radius: 12px;
-  padding: 12px;
+  padding: 16px;
   margin: 0 0 24px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
 }
 
 .mini-stats {
   display: flex;
   justify-content: space-around;
+  margin-top: 8px;
 }
 
 .mini-stat {
@@ -645,20 +929,21 @@ onMounted(() => {
 }
 
 .stat-num {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: #10a37f;
+  font-family: 'Inter', sans-serif;
 }
 
 .stat-text {
   font-size: 11px;
-  color: #888;
+  color: #8e8ea0;
 }
 
-/* 侧边栏底部 */
-.sidebar-footer {
-  padding: 12px;
-  border-top: 1px solid #e5e5e5;
+.input-box:focus-within {
+  border-color: #10a37f;
+  box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-top: 1px solid rgba(0,0,0,0.05);
 }
 
 .user-info {
@@ -667,41 +952,15 @@ onMounted(() => {
   gap: 12px;
   padding: 10px 12px;
   border-radius: 8px;
-  margin-top: 8px;
+  margin-top: 4px;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .user-info:hover {
   background: #ececec;
-}
-
-.user-avatar-small {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.user-name {
-  color: #333;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-}
-
-/* 用户下拉菜单 */
-:deep(.el-dropdown-menu__item) {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-}
-
-:deep(.el-dropdown-menu__item .el-icon) {
-  font-size: 16px;
 }
 
 /* 主内容区 */
@@ -711,70 +970,70 @@ onMounted(() => {
   flex-direction: column;
   background: #ffffff;
   overflow: hidden;
+  position: relative;
 }
 
 .main-header {
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 12px 20px;
-  border-bottom: 1px solid #e5e5e5;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  flex-shrink: 0;
 }
 
+/* 模型选择器优化 */
 .model-selector {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: #f5f5f5;
-  border-radius: 8px;
-  color: #333;
-  font-size: 16px;
-  font-weight: 500;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  color: #202123;
+  font-size: 18px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  user-select: none;
 }
 
 .model-selector:hover {
-  background: #ececec;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.whut-badge {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.model-selector-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.model-version {
+  font-size: 14px;
+  font-weight: 400;
+  color: #8e8ea0;
+  background: rgba(0,0,0,0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 .dropdown-icon {
-  font-size: 14px;
-  opacity: 0.6;
-}
-
-/* 模型选择下拉菜单 */
-.model-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 180px;
-  padding: 4px 0;
-}
-
-.model-name {
-  font-weight: 500;
-  color: #333;
-}
-
-.model-desc {
-  font-size: 12px;
-  color: #999;
-  flex: 1;
-}
-
-.check-icon {
-  color: #10a37f;
   font-size: 16px;
+  color: #8e8ea0;
+  margin-left: 4px;
+  transition: transform 0.2s;
 }
 
-:deep(.el-dropdown-menu__item.is-active) {
-  background-color: #f0f9f6;
-}
-
-:deep(.el-dropdown-menu__item:hover) {
-  background-color: #f5f5f5;
+.model-selector:hover .dropdown-icon {
+  color: #565869;
 }
 
 /* 聊天区域 */
@@ -989,6 +1248,64 @@ onMounted(() => {
   color: #10a37f;
 }
 
+/* Markdown 样式增强 */
+.message-content :deep(pre) {
+  background: #f6f8fa;
+  padding: 12px 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 8px 0;
+  border: 1px solid #e5e5e5;
+}
+
+.message-content :deep(code) {
+  font-family: 'Menlo', 'Monaco', 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  color: #d63384;
+}
+
+.message-content :deep(pre code) {
+  color: #333;
+  background: transparent;
+  padding: 0;
+}
+
+.message-content :deep(blockquote) {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 4px solid #e5e5e5;
+  color: #666;
+}
+
+.message-content :deep(ul), .message-content :deep(ol) {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.message-content :deep(li) {
+  margin: 4px 0;
+}
+
+.message-content :deep(h3) {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+  color: #1f1f1f;
+}
+
+/* 欢迎卡片悬停效果增强 */
+.suggestion-card {
+  /* ... existing styles ... */
+  transform: translateY(0);
+}
+
+.suggestion-card:hover {
+  background: #ffffff;
+  border-color: #10a37f; /* 绿色边框 */
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
 /* 打字动画 */
 .typing-indicator {
   display: flex;
@@ -1152,6 +1469,33 @@ onMounted(() => {
   background: #b0b0b0;
 }
 
+/* 展开侧边栏按钮 */
+.show-sidebar-btn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.show-sidebar-btn:hover {
+  background: rgba(0,0,0,0.05);
+  color: #333;
+}
+
+.show-sidebar-btn .el-icon {
+  font-size: 20px;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .sidebar {
@@ -1182,5 +1526,82 @@ onMounted(() => {
   .input-container {
     padding: 0 12px;
   }
+}
+</style>
+
+<style>
+/* 全局下拉菜单样式 */
+.model-dropdown-popper.el-popper {
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  padding: 6px;
+}
+
+.model-dropdown-popper .el-dropdown-menu {
+  padding: 0;
+}
+
+.model-dropdown-popper .el-dropdown-menu__item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 2px;
+}
+
+.model-dropdown-popper .el-dropdown-menu__item:last-child {
+  margin-bottom: 0;
+}
+
+.model-dropdown-popper .el-dropdown-menu__item:hover {
+  background-color: #f5f5f5;
+}
+
+.model-dropdown-popper .el-dropdown-menu__item.is-active {
+  background-color: rgba(16, 163, 127, 0.08);
+  color: #10a37f;
+}
+
+.model-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 220px;
+}
+
+.model-icon {
+  font-size: 20px;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.model-logo-img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.model-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.model-desc {
+  font-size: 12px;
+  color: #8e8ea0;
+}
+
+.check-icon {
+  font-size: 16px;
+  color: #10a37f;
 }
 </style>

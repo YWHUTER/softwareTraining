@@ -1,7 +1,7 @@
 -- ============================================
 -- 校园新闻发布系统 - 完整数据库脚本
 -- MySQL Version: 8.0+
--- 最后更新: 2025-12-03
+-- 最后更新: 2025-12-06
 -- ============================================
 
 -- 创建数据库
@@ -197,6 +197,31 @@ CREATE TABLE `article_tag` (
     FOREIGN KEY (`article_id`) REFERENCES `article`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`tag_id`) REFERENCES `tag`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章标签关联表';
+
+-- 13. AI聊天会话表
+CREATE TABLE `chat_session` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `title` VARCHAR(100) NOT NULL COMMENT '会话标题',
+    `model` VARCHAR(50) DEFAULT 'kimi' COMMENT '使用的模型',
+    `message_count` INT DEFAULT 0 COMMENT '消息数量',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_updated_at` (`updated_at`),
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI聊天会话表';
+
+-- 14. AI聊天消息表
+CREATE TABLE `chat_message` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `session_id` BIGINT NOT NULL COMMENT '会话ID',
+    `role` VARCHAR(20) NOT NULL COMMENT '角色: user/assistant',
+    `content` TEXT NOT NULL COMMENT '消息内容',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_session_id` (`session_id`),
+    FOREIGN KEY (`session_id`) REFERENCES `chat_session`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI聊天消息表';
 
 -- ============================================
 -- 初始化数据

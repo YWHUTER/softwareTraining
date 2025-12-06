@@ -56,6 +56,88 @@ export const checkAiHealth = () => {
  * @param {Function} onError - 发生错误时的回调 (error: Error)
  * @param {Function} onComplete - 流式传输完成的回调 (sessionId: string)
  */
+// ============ 聊天历史记录相关 API ============
+
+/**
+ * 获取用户的会话列表
+ * @returns {Promise<Array>} 会话列表
+ */
+export const getChatSessions = () => {
+  return request({
+    url: '/ai/history/sessions',
+    method: 'get'
+  })
+}
+
+/**
+ * 获取会话详情（包含消息）
+ * @param {number} sessionId - 会话ID
+ * @returns {Promise<Object>} 会话详情
+ */
+export const getChatSessionDetail = (sessionId) => {
+  return request({
+    url: `/ai/history/sessions/${sessionId}`,
+    method: 'get'
+  })
+}
+
+/**
+ * 创建新会话
+ * @param {Object} data - 请求数据
+ * @param {string} data.model - 模型类型
+ * @param {string} data.firstMessage - 第一条消息
+ * @returns {Promise<Object>} 新会话信息
+ */
+export const createChatSession = (data) => {
+  return request({
+    url: '/ai/history/sessions',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 保存消息到会话
+ * @param {number} sessionId - 会话ID
+ * @param {Object} data - 消息数据
+ * @param {string} data.role - 角色 (user/assistant)
+ * @param {string} data.content - 消息内容
+ * @returns {Promise<void>}
+ */
+export const saveChatMessage = (sessionId, data) => {
+  return request({
+    url: `/ai/history/sessions/${sessionId}/messages`,
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 删除会话
+ * @param {number} sessionId - 会话ID
+ * @returns {Promise<void>}
+ */
+export const deleteChatSession = (sessionId) => {
+  return request({
+    url: `/ai/history/sessions/${sessionId}`,
+    method: 'delete'
+  })
+}
+
+/**
+ * 更新会话标题
+ * @param {number} sessionId - 会话ID
+ * @param {string} title - 新标题
+ * @returns {Promise<void>}
+ */
+export const updateChatSessionTitle = (sessionId, title) => {
+  return request({
+    url: `/ai/history/sessions/${sessionId}/title`,
+    method: 'put',
+    data: { title }
+  })
+}
+
 export const streamChat = async (data, onMessage, onError, onComplete) => {
   let reader = null
   

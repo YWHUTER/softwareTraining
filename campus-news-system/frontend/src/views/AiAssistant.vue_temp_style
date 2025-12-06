@@ -1,0 +1,27 @@
+
+/* 展开侧边栏按钮 */
+.show-sidebar-btn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.show-sidebar-btn:hover {
+  background: rgba(0,0,0,0.05);
+  color: #333;
+}
+
+.show-sidebar-btn .el-icon {
+  font-size: 20px;
+}
