@@ -212,62 +212,83 @@ const copyText = (text) => {
 .ai-help {
   max-width: 900px;
   margin: 0 auto;
+  padding: 20px;
 }
 
-/* 页面标题 */
 .page-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-  padding: 30px;
-  margin-bottom: 24px;
-  color: white;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+  margin-bottom: 30px;
+  border-radius: 20px;
+  background: rgba(102, 126, 234, 0.08);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  padding: 40px;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.12),
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+  position: relative;
+  overflow: hidden;
 }
 
 .header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: relative;
+  z-index: 1;
 }
 
 .title-section {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .help-icon {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 12px;
-  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 15px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .title-text h1 {
-  margin: 0 0 4px;
-  font-size: 24px;
+  margin: 0 0 8px;
+  font-size: 28px;
   font-weight: 700;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .title-text p {
   margin: 0;
-  opacity: 0.9;
-  font-size: 14px;
+  color: #606266;
+  font-size: 16px;
+  font-weight: 500;
 }
 
-/* 内容区域 */
 .help-content {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  gap: 24px;
 }
 
 .help-card {
-  border-radius: 12px;
-  transition: all 0.3s ease;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05),
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .help-card:hover {
   transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08),
+              0 0 0 1px rgba(255, 255, 255, 0.6) inset;
 }
 
 .card-header {
@@ -276,131 +297,138 @@ const copyText = (text) => {
   gap: 10px;
   font-size: 18px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #303133;
 }
 
 .intro-text {
+  margin: 0 0 20px;
+  font-size: 15px;
   color: #606266;
-  margin-bottom: 16px;
   line-height: 1.6;
 }
 
 .section-desc {
+  margin: 0 0 16px;
   color: #606266;
-  margin-bottom: 16px;
+  font-size: 15px;
 }
 
-/* 功能列表 */
 .feature-list {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
 }
 
 .feature-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: #f5f7fa;
-  border-radius: 8px;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
   transition: all 0.3s ease;
 }
 
 .feature-item:hover {
-  background: #ecf5ff;
+  background: rgba(255, 255, 255, 0.8);
+  transform: translateX(5px);
 }
 
-/* 示例列表 */
+.feature-item span {
+  font-size: 14px;
+  color: #606266;
+}
+
 .example-list {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
 .example-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: #fafafa;
-  border-radius: 8px;
+  gap: 8px;
   cursor: pointer;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
   transition: all 0.3s ease;
-  border: 1px solid transparent;
 }
 
 .example-item:hover {
-  background: #f0f2f5;
+  background: white;
   border-color: #667eea;
-  transform: translateX(4px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
 }
 
 .example-item code {
-  flex: 1;
-  font-family: 'Microsoft YaHei', sans-serif;
-  font-size: 15px;
-  color: #2c3e50;
-  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  color: #303133;
 }
 
 .tip-alert {
-  margin-top: 8px;
-}
-
-/* 注意事项 */
-.notice-card {
-  background: linear-gradient(135deg, #fafafa 0%, #f5f7fa 100%);
+  margin-top: 16px;
 }
 
 .notice-list {
   margin: 0;
   padding-left: 20px;
   color: #606266;
-  line-height: 2;
+  line-height: 1.8;
 }
 
-.notice-list strong {
-  color: #409eff;
+.notice-list li {
+  margin-bottom: 8px;
 }
 
-/* 开始按钮 */
 .start-button {
-  display: flex;
-  justify-content: center;
-  padding: 20px 0;
+  text-align: center;
+  margin-top: 20px;
 }
 
 .start-button .el-button {
-  padding: 16px 40px;
+  padding: 12px 30px;
   font-size: 16px;
-  font-weight: 600;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border: none;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.start-button .el-button:hover {
+  transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
-/* 响应式 */
+/* 响应式调整 */
 @media (max-width: 768px) {
   .page-header {
-    padding: 20px;
+    padding: 24px;
   }
   
   .header-content {
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
     text-align: center;
   }
   
   .title-section {
     flex-direction: column;
+    gap: 15px;
+  }
+  
+  .help-card {
+    padding: 15px;
   }
   
   .feature-list {
     grid-template-columns: 1fr;
-  }
-  
-  .title-text h1 {
-    font-size: 20px;
   }
 }
 </style>

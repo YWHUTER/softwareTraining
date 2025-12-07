@@ -45,10 +45,28 @@
               <el-icon><Search /></el-icon>
               <span>搜索</span>
             </el-menu-item>
-            <el-menu-item index="/ai-assistant" class="menu-item ai-menu-item">
-              <el-icon><ChatDotRound /></el-icon>
-              <span>武理小助手</span>
-            </el-menu-item>
+            <el-sub-menu index="ai" class="menu-item ai-menu-item">
+              <template #title>
+                <el-icon><Cpu /></el-icon>
+                <span>AI功能</span>
+              </template>
+              <el-menu-item index="/ai-assistant">
+                <el-icon><ChatDotRound /></el-icon>
+                <span>智能对话</span>
+              </el-menu-item>
+              <el-menu-item index="/ai-summary">
+                <el-icon><Document /></el-icon>
+                <span>智能摘要</span>
+              </el-menu-item>
+              <el-menu-item index="/ai-sentiment">
+                <el-icon><Histogram /></el-icon>
+                <span>情感分析</span>
+              </el-menu-item>
+              <el-menu-item index="/ai-help">
+                <el-icon><QuestionFilled /></el-icon>
+                <span>使用帮助</span>
+              </el-menu-item>
+            </el-sub-menu>
           </el-menu>
 
           <!-- 用户操作区 -->
@@ -181,7 +199,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElNotification } from 'element-plus'
-import { Search, Bell } from '@element-plus/icons-vue'
+import { Search, Bell, Cpu, Histogram, QuestionFilled } from '@element-plus/icons-vue'
 import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '@/api/notification'
 import bgImage from '@/assets/main-bg.jpg'
 import notificationWS from '@/utils/websocket'
@@ -371,6 +389,85 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 全局下拉菜单样式优化 */
+:deep(.el-popper.is-light) {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+  border-radius: 12px !important;
+  padding: 8px !important;
+}
+
+:deep(.el-popper.is-light .el-popper__arrow::before) {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+}
+
+:deep(.el-menu--popup) {
+  background: transparent !important;
+  padding: 0 !important;
+  min-width: 160px;
+}
+
+:deep(.el-menu--popup .el-menu-item) {
+  height: 48px;
+  line-height: 48px;
+  margin: 4px 0;
+  border-radius: 8px;
+  color: #606266;
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+:deep(.el-menu--popup .el-menu-item:hover) {
+  background: rgba(102, 126, 234, 0.1) !important;
+  color: #667eea !important;
+  transform: translateX(4px);
+}
+
+:deep(.el-menu--popup .el-menu-item .el-icon) {
+  margin-right: 10px;
+  font-size: 18px;
+  vertical-align: middle;
+  color: #909399;
+  transition: color 0.3s ease;
+}
+
+:deep(.el-menu--popup .el-menu-item:hover .el-icon) {
+  color: #667eea;
+}
+
+:deep(.el-dropdown-menu) {
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+:deep(.el-dropdown-menu__item) {
+  padding: 10px 20px;
+  margin: 4px 0;
+  border-radius: 8px;
+  color: #606266;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+:deep(.el-dropdown-menu__item:hover) {
+  background: rgba(102, 126, 234, 0.1) !important;
+  color: #667eea !important;
+}
+
+:deep(.el-dropdown-menu__item .el-icon) {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+:deep(.el-dropdown-menu__item--divided) {
+  border-top-color: rgba(0, 0, 0, 0.06);
+  margin-top: 8px;
+}
 /* 整体布局 */
 .main-layout {
   min-height: 100vh;

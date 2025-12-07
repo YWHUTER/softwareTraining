@@ -378,66 +378,54 @@ onMounted(() => {
 .follow-page {
   max-width: 1400px;
   margin: 0 auto;
+  padding: 20px;
 }
 
 .page-header {
   text-align: center;
   margin-bottom: 40px;
   padding: 60px 40px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
-  backdrop-filter: blur(10px);
+  background: rgba(102, 126, 234, 0.08);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 2px solid rgba(102, 126, 234, 0.2);
   border-radius: 24px;
-  color: white;
-  box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.12),
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
   position: relative;
   overflow: hidden;
   animation: fadeInDown 0.6s ease-out;
-}
-
-.page-header::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -20%;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
-  border-radius: 50%;
-}
-
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .page-header h1 {
   margin: 0 0 12px;
   font-size: 36px;
   font-weight: 800;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
   position: relative;
   z-index: 1;
 }
 
 .page-header p {
   margin: 0;
-  opacity: 0.95;
+  color: #606266;
   font-size: 16px;
+  font-weight: 500;
   position: relative;
   z-index: 1;
 }
 
 .content-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05),
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
   animation: fadeInUp 0.6s ease-out 0.1s both;
 }
 
@@ -465,13 +453,15 @@ onMounted(() => {
 
 .feed-item {
   padding: 20px;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.4);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 16px;
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03),
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
   animation: fadeInUp 0.4s ease-out both;
 }
 
@@ -482,10 +472,11 @@ onMounted(() => {
 .feed-item:nth-child(5) { animation-delay: 0.25s; }
 
 .feed-item:hover {
-  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.15);
-  transform: translateY(-6px);
-  background: rgba(255, 255, 255, 0.9);
-  border-color: #a18cd1;
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.12),
+              0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(102, 126, 234, 0.3);
 }
 
 .feed-item:hover .feed-title {
@@ -570,19 +561,21 @@ onMounted(() => {
   align-items: center;
   gap: 16px;
   padding: 20px;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.4);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 16px;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03),
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
 }
 
 .user-item:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-  background: rgba(255, 255, 255, 0.85);
-  border-color: #a18cd1;
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.1);
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(102, 126, 234, 0.3);
 }
 
 .user-info {
@@ -612,11 +605,13 @@ onMounted(() => {
 
 /* 推荐卡片 */
 .recommend-card {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.4);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05),
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
   margin-bottom: 24px;
   animation: fadeInUp 0.6s ease-out 0.2s both;
 }
@@ -657,11 +652,13 @@ onMounted(() => {
 
 /* 统计卡片 */
 .stats-card {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05),
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
   display: flex;
   align-items: center;
   justify-content: center;

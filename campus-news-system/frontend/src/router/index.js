@@ -68,6 +68,18 @@ const routes = [
         path: '/ai-help',
         name: 'AiHelp',
         component: () => import('@/views/AiHelp.vue')
+      },
+      {
+        path: '/ai-summary',
+        name: 'AiSummary',
+        component: () => import('@/views/AiSummary.vue'),
+        meta: { requireAuth: true }
+      },
+      {
+        path: '/ai-sentiment',
+        name: 'AiSentiment',
+        component: () => import('@/views/AiSentiment.vue'),
+        meta: { requireAuth: true }
       }
     ]
   },

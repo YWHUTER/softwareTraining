@@ -1,7 +1,12 @@
 <template>
   <div class="board-page">
     <!-- 顶部功能栏 -->
-    <div class="board-header-bar">
+    <div 
+      class="board-header-bar"
+      v-motion
+      :initial="{ opacity: 0, y: -20 }"
+      :enter="{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 250, damping: 25 } }"
+    >
       <div class="header-left">
         <div class="board-icon" :class="boardType">
           <el-icon v-if="boardType === 'OFFICIAL'"><Document /></el-icon>
@@ -77,13 +82,63 @@
         <el-empty v-if="articles.length === 0" description="暂无文章" />
         
         <div v-else class="article-container" :class="`mode-${viewMode}`" :key="viewMode">
+          <!-- 网格模式下的头条大图 -->
+          <div 
+            v-if="viewMode === 'grid' && currentPage === 1 && articles.length > 0" 
+            class="hero-section"
+            v-motion
+            :initial="{ opacity: 0, y: 20 }"
+            :enter="{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 200, damping: 20 } }"
+          >
+            <div class="hero-card" @click="goToDetail(articles[0].id)">
+              <div class="hero-cover">
+                <el-image :src="articles[0].coverImage" fit="cover" loading="lazy" class="hero-image">
+                  <template #placeholder>
+                    <div class="image-placeholder hero-placeholder">
+                      <el-icon><Picture /></el-icon>
+                    </div>
+                  </template>
+                </el-image>
+                <div class="hero-overlay"></div>
+                <div class="pinned-badge" v-if="articles[0].isPinned">
+                  <el-icon><Top /></el-icon> 置顶推荐
+                </div>
+              </div>
+              <div class="hero-content">
+                <div class="hero-meta">
+                  <el-tag effect="dark" :type="getBoardTypeTag(articles[0].boardType)" round size="small">
+                    {{ boardTitle }}
+                  </el-tag>
+                  <span class="publish-time">{{ getRelativeTime(articles[0].createdAt) }}</span>
+                </div>
+                <h2 class="hero-title">{{ articles[0].title }}</h2>
+                <p class="hero-summary">{{ articles[0].summary || articles[0].content?.replace(/<[^>]+>/g, '').substring(0, 120) + '...' }}</p>
+                <div class="hero-footer">
+                  <div class="author-info">
+                    <el-avatar :size="32" :src="getValidAvatar(articles[0].author?.avatar)" class="author-avatar">
+                      {{ articles[0].author?.realName?.[0] }}
+                    </el-avatar>
+                    <span class="author-name">{{ articles[0].author?.realName }}</span>
+                  </div>
+                  <div class="hero-stats">
+                    <span class="stat-item"><el-icon><View /></el-icon> {{ formatCount(articles[0].viewCount) }}</span>
+                    <span class="stat-item"><el-icon><ChatDotRound /></el-icon> {{ articles[0].commentCount }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 文章列表（排除第一篇如果是Grid模式且在第一页） -->
           <div
-            v-for="(article, index) in articles"
+            v-for="(article, index) in displayArticles"
             :key="article.id"
             class="news-card"
             :class="{ 'is-pinned': article.isPinned }"
             @click="goToDetail(article.id)"
-            :style="{ animationDelay: `${index * 0.05}s` }"
+            v-motion
+            :initial="{ opacity: 0, y: 50 }"
+            :enter="{ opacity: 1, y: 0, transition: { delay: index * 50, type: 'spring', stiffness: 250, damping: 25 } }"
           >
             <!-- 封面图区域 -->
             <div class="card-cover" v-if="article.coverImage">
@@ -139,7 +194,7 @@
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
             :total="total"
-            :page-sizes="[12, 24, 36]"
+            :page-sizes="[13, 25, 37]"
             layout="total, prev, pager, next, jumper"
             @current-change="fetchArticles"
             @size-change="fetchArticles"
@@ -166,7 +221,7 @@ const router = useRouter()
 const loading = ref(false)
 const articles = ref([])
 const currentPage = ref(1)
-const pageSize = ref(12) // Grid layout fits better with multiples of 3/4
+const pageSize = ref(13) // Grid layout: 1 hero + 12 cards = 13
 const total = ref(0)
 const sortBy = ref('date_desc')
 const viewMode = ref('grid') // grid, list, card, masonry
@@ -180,6 +235,14 @@ const boardTitle = computed(() => {
     COLLEGE: '学院新闻'
   }
   return titles[boardType.value] || '文章列表'
+})
+
+// 计算显示的普通卡片文章（如果第一篇是Hero，则排除第一篇）
+const displayArticles = computed(() => {
+  if (viewMode.value === 'grid' && currentPage.value === 1 && articles.value.length > 0) {
+    return articles.value.slice(1)
+  }
+  return articles.value
 })
 
 const fetchArticles = async () => {
@@ -236,6 +299,15 @@ const getValidAvatar = (avatar) => {
   return undefined
 }
 
+const getBoardTypeTag = (type) => {
+  const tags = {
+    OFFICIAL: 'danger',
+    CAMPUS: 'primary',
+    COLLEGE: 'success'
+  }
+  return tags[type] || ''
+}
+
 watch(boardType, () => {
   currentPage.value = 1
   fetchArticles()
@@ -250,28 +322,31 @@ onMounted(() => {
 .board-page {
   max-width: 1400px;
   margin: 0 auto;
-  animation: fadeIn 0.5s ease-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 /* Header Bar */
 .board-header-bar {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.4);
   backdrop-filter: blur(20px) saturate(150%);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
-  border-radius: 16px;
-  padding: 20px 30px;
+  border-radius: 20px;
+  padding: 24px 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 
-              0 0 0 1px rgba(255, 255, 255, 0.5) inset;
-  border: 2px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.05), 
+              0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  position: relative;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.board-header-bar:hover {
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08), 
+              0 0 0 1px rgba(255, 255, 255, 0.8) inset;
 }
 
 .header-left {
@@ -281,15 +356,21 @@ onMounted(() => {
 }
 
 .board-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 32px;
   color: white;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  transform: rotate(-5deg);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.board-header-bar:hover .board-icon {
+  transform: rotate(0deg) scale(1.05);
 }
 
 .board-icon.OFFICIAL { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); }
@@ -299,63 +380,288 @@ onMounted(() => {
 .header-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .board-title {
   margin: 0;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 800;
   color: #2c3e50;
   letter-spacing: -0.5px;
+  background: linear-gradient(90deg, #2c3e50, #4a5568);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .board-desc {
   font-size: 14px;
   color: #606266;
+  font-weight: 500;
+}
+
+/* View Controls */
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.view-controls {
+  display: flex;
+  background: rgba(235, 240, 245, 0.5);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  gap: 4px;
+}
+
+.view-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #606266;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.view-btn:hover {
+  background: rgba(255, 255, 255, 0.8);
+  color: #409eff;
+}
+
+.view-btn.active {
+  background: #fff;
+  color: #409eff;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.15);
+}
+
+.header-divider {
+  height: 24px;
+  margin: 0 24px;
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 .sort-select {
   width: 160px;
 }
 
-/* Grid Layout */
-.article-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
-  padding-bottom: 40px;
+/* ================= Layout Modes ================= */
+
+.article-container {
+  width: 100%;
+  padding-bottom: 60px;
 }
 
-/* News Card */
+/* 1. Grid Mode (Default) */
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  grid-auto-rows: min-content; /* 关键：防止行高被拉伸 */
+}
+
+/* Hero Section */
+.hero-section {
+  grid-column: 1 / -1; /* 跨越所有列 */
+  margin-bottom: 12px;
+}
+
+.hero-card {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 360px;
+}
+
+.hero-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.12);
+}
+
+.hero-cover {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+.hero-image {
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hero-card:hover .hero-image {
+  transform: scale(1.05);
+}
+
+.hero-content {
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+}
+
+.hero-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 100%);
+  pointer-events: none;
+}
+
+.hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.hero-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #1a202c;
+  line-height: 1.3;
+  margin: 0 0 16px;
+  position: relative;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hero-summary {
+  font-size: 16px;
+  color: #4a5568;
+  line-height: 1.6;
+  margin: 0 0 24px;
+  flex: 1;
+  position: relative;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hero-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  padding-top: 20px;
+  border-top: 1px solid rgba(0,0,0,0.05);
+}
+
+.author-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hero-stats {
+  display: flex;
+  gap: 16px;
+  color: #718096;
+}
+
+/* 2. List Mode */
+.mode-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mode-list .news-card {
+  flex-direction: row;
+  height: 180px;
+  align-items: stretch;
+}
+
+.mode-list .card-cover {
+  width: 280px;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.mode-list .card-body {
+  padding: 16px 24px;
+}
+
+.mode-list .news-summary {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  margin-bottom: 12px;
+}
+
+/* 3. Card Mode (Large) */
+.mode-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+  gap: 30px;
+}
+
+.mode-card .card-cover {
+  height: 280px;
+}
+
+.mode-card .news-title {
+  font-size: 22px;
+}
+
+/* 4. Masonry Mode */
+.mode-masonry {
+  column-count: 4;
+  column-gap: 24px;
+}
+
+.mode-masonry .news-card {
+  break-inside: avoid;
+  margin-bottom: 24px;
+  display: inline-block;
+  width: 100%;
+}
+
+/* News Card Base Styles */
 .news-card {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(20px) saturate(150%);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   border-radius: 16px;
   overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   position: relative;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 
-              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
-  animation: fadeInUp 0.6s ease-out both;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  transform-origin: center center;
 }
 
 .news-card:hover {
-  transform: translateY(-8px);
-  background: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12), 
-              0 0 0 1px rgba(255, 255, 255, 0.6) inset;
-  border-color: rgba(255, 255, 255, 0.8);
+  transform: translateY(-8px) scale(1.01);
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+  z-index: 2;
+  border-color: rgba(255, 255, 255, 0.9);
 }
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
+.news-card:active {
+  transform: scale(0.98);
 }
 
 /* Cover Image */
@@ -390,7 +696,7 @@ onMounted(() => {
   position: absolute;
   top: 12px;
   right: 12px;
-  background: rgba(255, 87, 34, 0.9);
+  background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
   color: white;
   padding: 4px 10px;
   border-radius: 20px;
@@ -400,7 +706,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   backdrop-filter: blur(4px);
-  box-shadow: 0 2px 8px rgba(255, 87, 34, 0.4);
+  box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
   z-index: 2;
 }
 
@@ -510,202 +816,38 @@ onMounted(() => {
 .pagination-container {
   display: flex;
   justify-content: center;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(20px);
   border-radius: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 
-              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
   width: fit-content;
   margin: 0 auto;
 }
 
-.header-right {
-  display: flex;
-  align-items: center;
-}
-
-.view-controls {
-  display: flex;
-  background: rgba(255, 255, 255, 0.4);
-  padding: 4px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  gap: 2px;
-}
-
-.view-btn {
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  cursor: pointer;
-  color: #606266;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.view-btn:hover {
-  background: rgba(255, 255, 255, 0.6);
-  color: #409eff;
-  transform: translateY(-1px);
-}
-
-.view-btn:active {
-  transform: scale(0.92);
-}
-
-.view-btn.active {
-  background: #fff;
-  color: #409eff;
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
-  transform: scale(1.05);
-}
-
-.view-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  background: #409eff;
-  border-radius: 50%;
-}
-
-.header-divider {
-  height: 24px;
-  margin: 0 20px;
-  border-color: rgba(0, 0, 0, 0.1);
-}
-
-.sort-select {
-  width: 150px;
-}
-
-/* ================= Layout Modes ================= */
-
-.article-container {
-  width: 100%;
-  padding-bottom: 40px;
-}
-
-/* 1. Grid Mode (Default) */
-.mode-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
-}
-
-/* 2. List Mode */
-.mode-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.mode-list .news-card {
-  flex-direction: row;
-  height: 180px;
-  align-items: stretch;
-}
-
-.mode-list .card-cover {
-  width: 280px;
-  height: 100%;
-  flex-shrink: 0;
-}
-
-.mode-list .card-body {
-  padding: 16px 24px;
-}
-
-.mode-list .news-summary {
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  margin-bottom: 12px;
-}
-
-/* 3. Card Mode (Large) */
-.mode-card {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
-  gap: 30px;
-}
-
-.mode-card .card-cover {
-  height: 280px;
-}
-
-.mode-card .news-title {
-  font-size: 22px;
-}
-
-/* 4. Masonry Mode */
-.mode-masonry {
-  column-count: 4;
-  column-gap: 24px;
-}
-
-.mode-masonry .news-card {
-  break-inside: avoid;
-  margin-bottom: 24px;
-  display: inline-block;
-  width: 100%;
-}
-
-/* News Card Base Styles */
-.news-card {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
-  animation: fadeInUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  transform-origin: center center;
-}
-
-.news-card:hover {
-  transform: translateY(-8px) scale(1.01);
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
-  z-index: 2;
-}
-
-.news-card:active {
-  transform: scale(0.98);
-}
-
-@keyframes fadeInUp {
-  from { 
-    opacity: 0; 
-    transform: translateY(40px) scale(0.95); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0) scale(1); 
-  }
-}
-
 /* Responsive Design */
+@media (max-width: 1024px) {
+  .hero-card {
+    height: auto;
+    grid-template-columns: 1fr;
+  }
+  
+  .hero-cover {
+    height: 240px;
+  }
+  
+  .hero-content {
+    padding: 24px;
+  }
+}
+
 @media (max-width: 768px) {
   .board-header-bar {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
+    padding: 20px;
   }
   
   .header-right {
@@ -737,6 +879,10 @@ onMounted(() => {
   
   .mode-masonry {
     column-count: 1;
+  }
+  
+  .hero-title {
+    font-size: 24px;
   }
 }
 </style>

@@ -1,7 +1,12 @@
 <template>
   <div class="home">
     <!-- 顶部横幅 -->
-    <div class="banner">
+    <div 
+      class="banner"
+      v-motion
+      :initial="{ opacity: 0, y: -50 }"
+      :enter="{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 250, damping: 25 } }"
+    >
       <div class="banner-content">
         <h1 class="banner-title">校园新闻中心</h1>
         <p class="banner-subtitle">第一时间了解校园动态，掌握最新资讯</p>
@@ -14,7 +19,12 @@
       <el-col :xs="24" :sm="24" :md="24" :lg="17" :xl="18">
         <div class="articles-section">
           <!-- 分类筛选栏 -->
-          <div class="filter-section">
+          <div 
+            class="filter-section"
+            v-motion
+            :initial="{ opacity: 0, y: 20 }"
+            :enter="{ opacity: 1, y: 0, transition: { delay: 200 } }"
+          >
             <div class="section-title">
               <el-icon :size="20"><Tickets /></el-icon>
               <h2>最新资讯</h2>
@@ -102,7 +112,9 @@
                   class="article-card hover-lift"
                   :class="{ 'pinned': article.isPinned }"
                   @click="goToDetail(article.id)"
-                  :style="{ animationDelay: `${index * 0.05}s` }"
+                  v-motion
+                  :initial="{ opacity: 0, y: 50 }"
+                  :enter="{ opacity: 1, y: 0, transition: { delay: index * 100 } }"
                 >
                   <!-- 置顶标识 -->
                   <div class="pinned-badge" v-if="article.isPinned">
@@ -221,7 +233,13 @@
       <el-col :xs="24" :sm="24" :md="24" :lg="7" :xl="6">
         <div class="sidebar">
           <!-- 热门文章 -->
-          <el-card class="sidebar-card hot-articles-card" shadow="hover">
+          <el-card 
+            class="sidebar-card hot-articles-card" 
+            shadow="hover"
+            v-motion
+            :initial="{ opacity: 0, x: 50 }"
+            :enter="{ opacity: 1, x: 0, transition: { delay: 300, type: 'spring' } }"
+          >
             <template #header>
               <div class="card-title">
                 <el-icon :size="18" color="#f56c6c"><TrendCharts /></el-icon>
@@ -252,7 +270,13 @@
           </el-card>
 
           <!-- 快捷入口 -->
-          <el-card class="sidebar-card quick-links-card" shadow="hover">
+          <el-card 
+            class="sidebar-card quick-links-card" 
+            shadow="hover"
+            v-motion
+            :initial="{ opacity: 0, x: 50 }"
+            :enter="{ opacity: 1, x: 0, transition: { delay: 400, type: 'spring' } }"
+          >
             <template #header>
               <div class="card-title">
                 <el-icon :size="18" color="#409eff"><Pointer /></el-icon>
@@ -276,7 +300,13 @@
           </el-card>
           
           <!-- 标签云 -->
-          <TagCloud class="sidebar-card" />
+          <div
+            v-motion
+            :initial="{ opacity: 0, x: 50 }"
+            :enter="{ opacity: 1, x: 0, transition: { delay: 500, type: 'spring' } }"
+          >
+            <TagCloud class="sidebar-card" />
+          </div>
         </div>
       </el-col>
     </el-row>
@@ -462,7 +492,6 @@ watch(() => route.path, (newPath) => {
   letter-spacing: -1px;
   color: #fff;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-  animation: slideDown 0.8s ease-out;
 }
 
 .banner-subtitle {
@@ -472,18 +501,6 @@ watch(() => route.path, (newPath) => {
   font-weight: 500;
   color: #fff;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-  animation: slideDown 0.8s ease-out 0.2s both;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 /* 内容区域 */
@@ -511,7 +528,6 @@ watch(() => route.path, (newPath) => {
   align-items: center;
   flex-wrap: wrap;
   gap: 20px;
-  animation: fadeInUp 0.5s ease-out;
   transition: all 0.3s ease;
   border: 2px solid rgba(255, 255, 255, 0.5);
 }
@@ -589,20 +605,8 @@ watch(() => route.path, (newPath) => {
   border: 2px solid rgba(255, 255, 255, 0.5);
   position: relative;
   overflow: hidden;
-  animation: fadeInUp 0.5s ease-out both;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 
               0 0 0 1px rgba(255, 255, 255, 0.4) inset;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .article-card:hover {
@@ -793,14 +797,9 @@ watch(() => route.path, (newPath) => {
   border-radius: 16px;
   border: 2px solid rgba(255, 255, 255, 0.5);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: fadeInUp 0.5s ease-out both;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 
               0 0 0 1px rgba(255, 255, 255, 0.4) inset;
 }
-
-.sidebar-card:nth-child(1) { animation-delay: 0.1s; }
-.sidebar-card:nth-child(2) { animation-delay: 0.2s; }
-.sidebar-card:nth-child(3) { animation-delay: 0.3s; }
 
 .sidebar-card:hover {
   transform: translateY(-4px);

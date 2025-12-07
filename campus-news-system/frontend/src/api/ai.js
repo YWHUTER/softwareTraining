@@ -223,3 +223,84 @@ export const streamChat = async (data, onMessage, onError, onComplete) => {
     }
   }
 }
+
+// ============ 增强AI功能相关 API ============
+
+/**
+ * 生成文章摘要
+ * @param {Object} data - 请求数据
+ * @param {string} data.content - 文章内容
+ * @param {number} [data.length] - 摘要长度
+ * @param {string} [data.style] - 摘要风格
+ * @returns {Promise<Object>} 摘要结果
+ */
+export const generateSummary = (data) => {
+  return request({
+    url: '/ai/enhanced/summary',
+    method: 'post',
+    data,
+    timeout: 30000
+  })
+}
+
+/**
+ * 文本情感分析
+ * @param {Object} data - 请求数据
+ * @param {string} data.text - 待分析文本
+ * @returns {Promise<Object>} 情感分析结果
+ */
+export const analyzeSentiment = (data) => {
+  return request({
+    url: '/ai/enhanced/sentiment',
+    method: 'post',
+    data,
+    timeout: 30000
+  })
+}
+
+/**
+ * 批量生成摘要
+ * @param {Object} data - 请求数据
+ * @param {Array<string>} data.articles - 文章列表
+ * @param {number} [data.length] - 摘要长度
+ * @returns {Promise<Array>} 批量摘要结果
+ */
+export const batchGenerateSummaries = (data) => {
+  return request({
+    url: '/ai/enhanced/summary/batch',
+    method: 'post',
+    data,
+    timeout: 60000
+  })
+}
+
+/**
+ * 生成标题建议
+ * @param {Object} data - 请求数据
+ * @param {string} data.content - 文章内容
+ * @param {number} [data.count] - 生成数量
+ * @returns {Promise<Array<string>>} 标题建议列表
+ */
+export const generateTitles = (data) => {
+  return request({
+    url: '/ai/enhanced/titles',
+    method: 'post',
+    data,
+    timeout: 30000
+  })
+}
+
+/**
+ * 文章质量评估
+ * @param {Object} data - 请求数据
+ * @param {string} data.content - 文章内容
+ * @returns {Promise<Object>} 质量评估结果
+ */
+export const evaluateArticleQuality = (data) => {
+  return request({
+    url: '/ai/enhanced/quality',
+    method: 'post',
+    data,
+    timeout: 30000
+  })
+}

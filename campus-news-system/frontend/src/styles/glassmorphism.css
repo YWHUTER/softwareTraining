@@ -1,0 +1,334 @@
+/**
+ * 玻璃特效全局样式
+ * Glass Morphism Global Styles
+ */
+
+/* 基础玻璃特效类 */
+.glass-card {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06),
+              0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08),
+              0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+}
+
+/* 彩色玻璃特效 */
+.glass-card-primary {
+  background: rgba(102, 126, 234, 0.08);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.12),
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+}
+
+.glass-card-primary:hover {
+  background: rgba(102, 126, 234, 0.12);
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.16),
+              0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+}
+
+/* 渐变文字效果 */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 700;
+}
+
+/* 主按钮样式 */
+.gradient-button {
+  background: linear-gradient(135deg, #667eea, #764ba2) !important;
+  border: none !important;
+  color: white !important;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gradient-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* 优化后的颜色对比 */
+.glass-text-primary {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.glass-text-secondary {
+  color: #606266;
+  font-weight: 500;
+}
+
+.glass-text-regular {
+  color: #606266;
+}
+
+/* 修复Element Plus组件在玻璃特效下的可读性 */
+.glass-card .el-input__inner,
+.glass-card .el-textarea__inner {
+  background-color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(220, 223, 230, 0.6);
+}
+
+.glass-card .el-input__inner:focus,
+.glass-card .el-textarea__inner:focus {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-color: #667eea;
+}
+
+.glass-card .el-radio-button__inner {
+  background-color: rgba(255, 255, 255, 0.5);
+  border-color: rgba(220, 223, 230, 0.6);
+  color: #606266;
+  font-weight: 500;
+}
+
+.glass-card .el-radio-button__inner:hover {
+  background-color: rgba(255, 255, 255, 0.7);
+  color: #667eea;
+}
+
+.glass-card .el-radio-button__original:checked + .el-radio-button__inner {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-color: #667eea;
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.glass-card .el-checkbox__inner {
+  background-color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(220, 223, 230, 0.6);
+}
+
+.glass-card .el-checkbox__input.is-checked .el-checkbox__inner {
+  background-color: #667eea;
+  border-color: #667eea;
+}
+
+/* 标签优化 */
+.glass-card .el-tag {
+  background-color: rgba(255, 255, 255, 0.6);
+  border-color: rgba(220, 223, 230, 0.5);
+  font-weight: 500;
+}
+
+.glass-card .el-tag--success {
+  background-color: rgba(103, 194, 58, 0.1);
+  border-color: rgba(103, 194, 58, 0.2);
+  color: #67c23a;
+}
+
+.glass-card .el-tag--warning {
+  background-color: rgba(230, 162, 60, 0.1);
+  border-color: rgba(230, 162, 60, 0.2);
+  color: #e6a23c;
+}
+
+.glass-card .el-tag--danger {
+  background-color: rgba(245, 108, 108, 0.1);
+  border-color: rgba(245, 108, 108, 0.2);
+  color: #f56c6c;
+}
+
+.glass-card .el-tag--info {
+  background-color: rgba(144, 147, 153, 0.1);
+  border-color: rgba(144, 147, 153, 0.2);
+  color: #909399;
+}
+
+/* 卡片标题优化 */
+.glass-card .el-card__header {
+  background-color: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+/* 表格优化 */
+.glass-card .el-table {
+  background-color: transparent;
+}
+
+.glass-card .el-table__header-wrapper {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.glass-card .el-table__row {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #606266;
+}
+
+.glass-card .el-table__row:hover > td {
+  background-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* 分页器优化 */
+.glass-card .el-pagination {
+  color: #606266;
+  font-weight: 500;
+}
+
+.glass-card .el-pagination button:disabled {
+  background-color: rgba(255, 255, 255, 0.3);
+  color: #c0c4cc;
+}
+
+.glass-card .el-pager li {
+  background-color: rgba(255, 255, 255, 0.5);
+  color: #606266;
+  font-weight: 500;
+}
+
+.glass-card .el-pager li:hover {
+  background-color: rgba(255, 255, 255, 0.7);
+  color: #667eea;
+}
+
+.glass-card .el-pager li.is-active {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+/* 滚动条美化 */
+.glass-card ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.glass-card ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+.glass-card ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 4px;
+}
+
+.glass-card ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #764ba2, #667eea);
+}
+
+/* 动画效果 */
+@keyframes glass-shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.glass-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  background-size: 1000px 100%;
+  animation: glass-shimmer 3s infinite;
+}
+
+/* 全局下拉菜单样式优化 - 强制覆盖 */
+.el-popper.is-light {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+  border-radius: 12px !important;
+  padding: 8px !important;
+}
+
+.el-popper.is-light .el-popper__arrow::before {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 下拉菜单项样式 */
+.el-dropdown-menu {
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+.el-dropdown-menu__item {
+  padding: 10px 20px !important;
+  margin: 4px 0 !important;
+  border-radius: 8px !important;
+  color: #606266 !important;
+  font-size: 14px !important;
+  transition: all 0.3s ease !important;
+}
+
+.el-dropdown-menu__item:not(.is-disabled):hover,
+.el-dropdown-menu__item:not(.is-disabled):focus {
+  background: rgba(102, 126, 234, 0.1) !important;
+  color: #667eea !important;
+  transform: translateX(4px);
+}
+
+.el-dropdown-menu__item .el-icon {
+  margin-right: 8px !important;
+  font-size: 16px !important;
+  transition: color 0.3s ease !important;
+}
+
+.el-dropdown-menu__item:hover .el-icon {
+  color: #667eea !important;
+}
+
+.el-dropdown-menu__item--divided {
+  border-top-color: rgba(0, 0, 0, 0.06) !important;
+  margin-top: 8px !important;
+}
+
+/* 导航栏子菜单样式 */
+.el-menu--popup {
+  background: transparent !important;
+  padding: 0 !important;
+  min-width: 160px !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.el-menu--popup .el-menu-item {
+  height: 48px !important;
+  line-height: 48px !important;
+  margin: 4px 0 !important;
+  border-radius: 8px !important;
+  color: #606266 !important;
+  background: transparent !important;
+  transition: all 0.3s ease !important;
+}
+
+.el-menu--popup .el-menu-item:hover {
+  background: rgba(102, 126, 234, 0.1) !important;
+  color: #667eea !important;
+  transform: translateX(4px);
+}
+
+.el-menu--popup .el-menu-item .el-icon {
+  margin-right: 10px !important;
+  font-size: 18px !important;
+  vertical-align: middle !important;
+  color: #909399 !important;
+  transition: color 0.3s ease !important;
+}
+
+.el-menu--popup .el-menu-item:hover .el-icon {
+  color: #667eea !important;
+}

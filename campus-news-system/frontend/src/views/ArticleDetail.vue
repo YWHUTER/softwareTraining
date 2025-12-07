@@ -141,6 +141,29 @@
           <el-icon><Download /></el-icon>
           <span>导出 PDF</span>
         </el-button>
+        
+        <!-- AI分析按钮 -->
+        <el-divider direction="vertical" style="margin: 0 10px;" />
+        
+        <el-button
+          size="large"
+          class="action-btn ai-btn"
+          round
+          @click="goToSentimentAnalysis"
+        >
+          <el-icon><Histogram /></el-icon>
+          <span>情感分析</span>
+        </el-button>
+        
+        <el-button
+          size="large"
+          class="action-btn ai-btn"
+          round
+          @click="goToSummary"
+        >
+          <el-icon><Document /></el-icon>
+          <span>文章摘要</span>
+        </el-button>
       </div>
     </el-card>
     
@@ -513,7 +536,8 @@ import { getCommentList, createComment, deleteComment } from '@/api/comment'
 import { toggleFollow, checkFollow, getFollowStats } from '@/api/follow'
 import { searchUsers } from '@/api/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Download, Link } from '@element-plus/icons-vue'
+import { Download, Link, Histogram, Document } from '@element-plus/icons-vue'
+import { htmlToText } from '@/utils/htmlParser'
 import QRCode from 'qrcode'
 
 const route = useRoute()
@@ -684,6 +708,41 @@ const handleFavorite = async () => {
   } catch (error) {
     console.error(error)
   }
+}
+
+// AI分析功能
+const goToSentimentAnalysis = () => {
+  if (!article.value) return
+  
+  // 提取纯文本内容
+  const content = htmlToText(article.value.content || '', true)
+  
+  // 存储到sessionStorage
+  sessionStorage.setItem('aiAnalysisContent', JSON.stringify({
+    title: article.value.title,
+    content: content,
+    articleId: article.value.id
+  }))
+  
+  // 跳转到情感分析页面
+  router.push('/ai-sentiment')
+}
+
+const goToSummary = () => {
+  if (!article.value) return
+  
+  // 提取纯文本内容
+  const content = htmlToText(article.value.content || '', true)
+  
+  // 存储到sessionStorage
+  sessionStorage.setItem('aiAnalysisContent', JSON.stringify({
+    title: article.value.title,
+    content: content,
+    articleId: article.value.id
+  }))
+  
+  // 跳转到文章摘要页面
+  router.push('/ai-summary')
 }
 
 // 分享功能
@@ -1374,21 +1433,48 @@ onMounted(() => {
   overflow-x: auto;
   margin: 1.5em 0;
 }
-
-/* 文章操作 */
 .article-actions {
   display: flex;
   gap: 12px;
-  padding: 30px 40px;
+  justify-content: center;
+  margin-top: 32px;
+  padding: 24px 20px;
   border-top: 1px solid #e4e7ed;
-  background: #fafafa;
+  flex-wrap: wrap;
+  background: rgba(250, 250, 250, 0.5);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
 }
 
 .action-btn {
-  font-weight: 600;
+  font-weight: 500;
+}
+
+/* AI分析按钮样式 */
+.ai-btn {
+  background: rgba(102, 126, 234, 0.1) !important;
+  backdrop-filter: blur(10px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(150%) !important;
+  border: 2px solid rgba(102, 126, 234, 0.2) !important;
+  color: #667eea !important;
+  font-weight: 600 !important;
   padding: 12px 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1),
+              0 0 0 1px rgba(255, 255, 255, 0.5) inset !important;
+}
+
+.ai-btn:hover {
+  background: rgba(102, 126, 234, 0.15) !important;
+  border-color: rgba(102, 126, 234, 0.3) !important;
+  color: #667eea !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2),
+              0 0 0 1px rgba(255, 255, 255, 0.6) inset !important;
+}
+
+.ai-btn .el-icon {
+  font-size: 18px !important;
 }
 
 .action-btn:hover {
