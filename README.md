@@ -1,218 +1,255 @@
-# 软件工程实训项目：校园新闻发布系统
+# 🎓 WHUT Campus News System - 智能校园新闻管理系统
+## 📋 项目概述
 
-## 项目简介
+WHUT Campus News System 是一个基于 Spring Boot + Vue 3 开发的智能化校园新闻管理平台。系统不仅提供传统的新闻发布、浏览、互动功能，更集成了最前沿的 AI 技术，包括智能对话助手、Agent 自动化执行、智能摘要生成、情感分析等功能，为用户带来全新的智能化体验。
 
-校园新闻发布系统是一个基于前后端分离架构的全栈 Web 应用，旨在为高校提供一个功能完善的新闻与信息发布平台。系统支持多角色管理、多板块发布、文章审核、评论互动等核心功能。
+## ✨ 核心特性
 
-**项目版本**：v1.0.0  
-**完成日期**：2024年12月
+### 🤖 AI Agent 智能助手（基于 LangChain4j）
+- **智能任务执行** - Agent 可自动理解意图并执行复杂任务
+- **模糊搜索评论** - 只需提供关键词即可搜索文章并评论
+- **批量操作** - 批量点赞、收藏、关注等自动化操作
+- **数据分析** - 自动分析今日热点、趋势预测
+- **社交互动** - 智能关注用户、查看关注列表
+- **内容创作** - 自动生成新闻稿并发布
 
----
+### 💬 AI 对话助手
+- **多模型支持** - Kimi、DeepSeek、豆包等多种 LLM
+- **流式对话** - 打字机效果，实时响应
+- **上下文记忆** - 保持对话连贯性
+- **历史记录** - 对话和 Agent 任务分开管理
 
-## 技术栈
+### 📰 新闻管理系统
+- **文章发布** - 富文本编辑器，支持图片、视频
+- **分类管理** - 官方、校园、学院多级分类
+- **互动功能** - 点赞、评论、收藏、分享
+- **热门排行** - 浏览量、点赞数多维度排序
+- **搜索过滤** - 关键词搜索、标签筛选
 
-### 后端技术
-| 技术 | 版本 | 说明 |
-|------|------|------|
-| Spring Boot | 3.2.0 | 核心框架 |
-| Spring Security + JWT | - | 安全认证 |
-| MyBatis-Plus | 3.5.5 | ORM框架 |
-| MySQL | 8.0+ | 数据库 |
-| Redis | 6.0+ | 缓存中间件 |
-| Swagger 3 (SpringDoc) | - | API文档 |
+### 👥 用户系统
+- **用户注册登录** - JWT Token 认证
+- **个人中心** - 资料编辑、头像上传
+- **社交功能** - 关注/粉丝系统
+- **权限管理** - 管理员、编辑、普通用户多角色
+- **消息通知** - 实时推送系统通知
 
-### 前端技术
-| 技术 | 版本 | 说明 |
-|------|------|------|
-| Vue | 3.4 | 前端框架 |
-| Vite | 5.0 | 构建工具 |
-| Element Plus | 2.4 | UI组件库 |
-| Vue Router | 4.2 | 路由管理 |
-| Pinia | 2.1 | 状态管理 |
-| Axios | 1.6 | HTTP客户端 |
-| TailwindCSS | 3.x | CSS框架 |
-| Quill Editor | - | 富文本编辑器 |
+### 📊 数据统计
+- **实时数据** - 今日文章、评论、浏览量
+- **趋势分析** - 热门话题、用户活跃度
+- **可视化图表** - ECharts 数据展示
 
----
+## 🛠️ 技术架构
 
-## 系统功能
-
-### 1. 用户系统
-- 用户注册与登录（JWT认证）
-- 三种角色：管理员 / 教师 / 学生
-- 用户资料管理
-- 学院绑定
-
-### 2. 文章系统
-- 三类板块：官方新闻 / 全校新闻 / 学院新闻
-- 发布、编辑、删除文章
-- 富文本内容编辑
-- 文章置顶与审核
-- 浏览量统计（Redis缓存）
-- 点赞与收藏
-
-### 3. 评论系统
-- 发布评论
-- 回复评论（支持一层嵌套）
-- 删除评论
-
-### 4. 管理后台
-- 数据统计概览
-- 用户管理（启用/禁用）
-- 文章管理（审核/置顶/删除）
-- 学院管理（增删改查）
-
-### 5. AI模块（预留）
-- 文章智能推荐
-- 内容审核辅助
-- 自动摘要生成
-- 智能问答
-
----
-
-## 项目结构
-
+### 前端技术栈
 ```
-campus-news-system/
-├── backend/                          # 后端项目
-│   ├── src/main/java/com/campus/news/
-│   │   ├── ai/                       # AI模块（预留）
-│   │   ├── common/                   # 通用响应类
-│   │   ├── config/                   # 配置类
-│   │   ├── controller/               # 控制器层（5个）
-│   │   ├── dto/                      # 数据传输对象（5个）
-│   │   ├── entity/                   # 实体类（8个）
-│   │   ├── exception/                # 异常处理
-│   │   ├── mapper/                   # Mapper接口（8个）
-│   │   ├── security/                 # 安全配置
-│   │   ├── service/                  # 服务层（8个）
-│   │   └── util/                     # 工具类
-│   └── src/main/resources/
-│       └── application*.yml          # 配置文件
-│
-├── frontend/                         # 前端项目
-│   └── src/
-│       ├── api/                      # API封装（5个）
-│       ├── layouts/                  # 布局组件（2个）
-│       ├── router/                   # 路由配置
-│       ├── stores/                   # 状态管理
-│       ├── utils/                    # 工具函数
-│       └── views/                    # 页面组件（11个）
-│           └── admin/                # 管理后台（4个）
-│
-└── database/
-    └── campus_news_system.sql        # 数据库脚本
+├── Vue 3 - 渐进式 JavaScript 框架
+├── Element Plus - 企业级 UI 组件库
+├── Vue Router - 路由管理
+├── Pinia - 状态管理
+├── Axios - HTTP 请求库
+├── ECharts - 数据可视化
+└── Markdown-it - Markdown 渲染
 ```
 
----
+### 后端技术栈
+```
+├── Spring Boot 2.7+ - 微服务框架
+├── MyBatis Plus - ORM 框架
+├── MySQL 8.0 - 关系型数据库
+├── Redis - 缓存中间件
+├── JWT - 身份认证
+├── LangChain4j - AI Agent 框架
+├── OpenAI API - LLM 接口
+└── SSE - 服务器推送事件
+```
 
-## 数据库设计
+### AI 技术集成
+```
+├── LangChain4j 0.34.0 - Agent 框架
+├── OpenAI Compatible API - LLM 接口
+├── NLP - 自然语言处理
+├── 文本摘要算法 - 智能压缩
+├── 情感分析引擎 - 情绪识别
+└── 智能推荐算法 - 个性化推荐
+```
 
-系统包含 8 个核心数据表：
-
-| 表名 | 字段数 | 说明 |
-|------|--------|------|
-| `user` | 12 | 用户表 |
-| `role` | 4 | 角色表 |
-| `user_role` | 3 | 用户角色关联表 |
-| `college` | 5 | 学院表 |
-| `article` | 15 | 文章表 |
-| `comment` | 8 | 评论表 |
-| `article_like` | 3 | 文章点赞表 |
-| `article_favorite` | 3 | 文章收藏表 |
-
----
-
-## 快速启动
+## 🚀 快速开始
 
 ### 环境要求
-- **JDK**: 17+
-- **Maven**: 3.6+
-- **Node.js**: 16+
-- **MySQL**: 8.0+
-- **Redis**: 6.0+（可选）
+- Node.js 16+
+- Java 11+
+- MySQL 8.0+
+- Maven 3.6+
 
-### 1. 数据库初始化
+### 前端部署
+
 ```bash
-mysql -u root -p < campus-news-system/database/campus_news_system.sql
+# 克隆项目
+git clone https://github.com/YWHUTER/softwareTraining.git
+
+# 进入前端目录
+cd campus-news-system/frontend
+
+# 安装依赖
+npm install
+
+# 开发环境运行
+npm run dev
+
+# 生产环境构建
+npm run build
 ```
 
-**默认管理员账号**：
-- 用户名：`admin`
-- 密码：`admin123`
+### 后端部署
 
-### 2. 后端启动
 ```bash
+# 进入后端目录
 cd campus-news-system/backend
+
+# 安装依赖
+mvn clean install
+
+# 修改配置文件
+# 编辑 src/main/resources/application.yml
+# 配置数据库、Redis、AI API等
+
+# 运行项目
 mvn spring-boot:run
 ```
-后端服务运行在 `http://localhost:8080/api`
 
-### 3. 前端启动
-```bash
-cd campus-news-system/frontend
-npm install
-npm run dev
+### 数据库初始化
+
+```sql
+# 创建数据库
+CREATE DATABASE campus_news CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+# 导入数据库脚本
+mysql -u root -p campus_news < database/campus_news.sql
 ```
-前端服务运行在 `http://localhost:3000`
+
+## 📡 Agent 工具 API
+
+### 搜索并评论
+```java
+@Tool("根据关键词模糊搜索文章并发表评论")
+public String searchAndComment(String keywords, String comment)
+```
+
+### 批量点赞
+```java
+@Tool("批量给包含关键词的文章点赞")
+public String batchLikeArticles(String keyword, int count)
+```
+
+### 智能搜索
+```java
+@Tool("根据模糊描述智能搜索文章")
+public String smartSearchArticles(String vague, int limit)
+```
+
+### 数据分析
+```java
+@Tool("分析今日热点新闻和趋势")
+public String analyzeTodayTrends()
+```
+
+## 🎯 Agent 使用示例
+
+### 1. 模糊搜索评论
+```
+用户: 给那个AI的文章评论666
+Agent: 找到文章《AI造福计算机学生》，已成功评论
+```
+
+### 2. 批量操作
+```
+用户: 给所有计算机相关的文章点赞
+Agent: 找到5篇相关文章，成功点赞3篇（2篇已点赞过）
+```
+
+### 3. 智能分析
+```
+用户: 分析今日热点
+Agent: 今日发布文章15篇，新增评论89条，总浏览量3520次...
+```
+
+## 📸 系统截图
+
+### AI 对话界面
+- 支持普通对话和 Agent 模式切换
+- 左侧显示历史记录和快捷功能
+- Agent 模式显示执行步骤
+
+### 新闻浏览页面
+- 卡片式布局
+- 支持图片预览
+- 显示互动数据
+
+### 个人中心
+- 用户资料管理
+- 我的文章/收藏/关注
+- 数据统计展示
+
+## 📊 项目亮点
+
+1. **技术创新** 
+   - 集成 LangChain4j 框架，实现智能 Agent
+   - 多模型 LLM 支持，提供多样化选择
+   - SSE 流式输出，优化用户体验
+
+2. **功能完整**
+   - 覆盖新闻管理全流程
+   - 社交功能丰富
+   - 数据分析全面
+
+3. **用户体验**
+   - 响应式设计，支持移动端
+   - 界面美观现代
+   - 操作简单直观
+
+4. **可扩展性**
+   - 模块化设计
+   - 插件式 AI 功能
+   - 标准 RESTful API
+
+## 📝 开发文档
+
+- [AI 功能使用指南](./AI_FEATURES_GUIDE.md)
+- [API 接口文档](./docs/API.md)
+- [部署指南](./docs/DEPLOYMENT.md)
+- [开发规范](./docs/DEVELOPMENT.md)
+
+## 🤝 贡献指南
+
+欢迎提交 Issue 和 Pull Request！
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+## 📄 开源协议
+
+本项目采用 [MIT](LICENSE) 协议开源
+
+## 👥 开发团队
+
+- **项目负责人**: WHUT Software Engineering Team
+- **技术栈**: Full Stack Development
+- **联系方式**: whut-campus-news@example.com
+
+## 🙏 致谢
+
+- 感谢 [LangChain4j](https://github.com/langchain4j/langchain4j) 提供优秀的 Agent 框架
+- 感谢 [Element Plus](https://element-plus.org/) 提供美观的 UI 组件
+- 感谢 [Spring Boot](https://spring.io/projects/spring-boot) 提供强大的后端框架
 
 ---
 
-## API接口概览
-
-| 模块 | 接口数 | 主要功能 |
-|------|--------|----------|
-| 认证接口 | 2 | 登录、注册 |
-| 用户接口 | 3 | 用户信息、列表、状态管理 |
-| 文章接口 | 9 | CRUD、点赞、收藏、置顶、审核 |
-| 评论接口 | 3 | 列表、创建、删除 |
-| 学院接口 | 4 | CRUD |
-
-**Swagger文档地址**: `http://localhost:8080/api/swagger-ui.html`
-
----
-
-## 权限说明
-
-| 角色 | 权限范围 |
-|------|----------|
-| 管理员 (ADMIN) | 所有权限 |
-| 教师 (TEACHER) | 发布官方新闻、全校新闻、学院新闻 |
-| 学生 (STUDENT) | 发布全校新闻、学院新闻 |
-
-| 板块类型 | 可发布角色 |
-|----------|-----------|
-| 官方新闻 (OFFICIAL) | 管理员、教师 |
-| 全校新闻 (CAMPUS) | 所有用户 |
-| 学院新闻 (COLLEGE) | 所属学院的师生 |
-
----
-
-## 代码统计
-
-| 模块 | 文件数 | 代码行数(约) |
-|------|--------|--------------|
-| 后端Java代码 | 40+ | 3,000+ |
-| 前端Vue代码 | 15+ | 2,500+ |
-| 配置文件 | 10+ | 500+ |
-| 数据库脚本 | 1 | 300+ |
-| **总计** | **70+** | **8,000+** |
-
----
-
-## 项目亮点
-
-1. **完整的业务闭环** - 从用户注册到内容发布的完整流程
-2. **规范的架构设计** - 清晰的分层结构和统一的代码规范
-3. **现代化技术栈** - Spring Boot 3 + Vue 3 最新技术
-4. **企业级安全标准** - JWT无状态认证 + 细粒度权限控制
-5. **性能优化** - Redis缓存 + 分页查询
-6. **开箱即用** - 一键启动脚本 + 详细文档
-7. **可扩展设计** - AI模块预留 + 微服务友好
-8. **UI现代化** - TailwindCSS + 响应式设计 + 动画效果
-
----
-
-## 许可证
-
-MIT License
+<p align="center">
+  Made with ❤️ by WHUT Software Engineering Team
+</p>
+<p align="center">
+  © 2024 WHUT Campus News System. All rights reserved.
+</p>
