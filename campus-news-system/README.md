@@ -1,7 +1,4 @@
 # 🎓 WHUT Campus News System - 智能校园新闻管理系统
-
-
-
 ## 📋 项目概述
 
 WHUT Campus News System 是一个基于 Spring Boot + Vue 3 开发的智能化校园新闻管理平台。系统不仅提供传统的新闻发布、浏览、互动功能，更集成了最前沿的 AI 技术，包括智能对话助手、Agent 自动化执行、智能摘要生成、情感分析等功能，为用户带来全新的智能化体验。
