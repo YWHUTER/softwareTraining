@@ -692,4 +692,46 @@ onUnmounted(() => {
   width: 100%;
   height: 280px;
 }
+
+/* 表格透明背景 */
+:deep(.el-table),
+:deep(.el-table__expanded-cell) {
+  background-color: transparent !important;
+  --el-table-tr-bg-color: transparent !important;
+}
+
+:deep(.el-table th.el-table__cell),
+:deep(.el-table tr) {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+:deep(.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell) {
+  background-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* 表格文字颜色加深 */
+:deep(.el-table) {
+  color: #1a1a1a !important;
+}
+
+:deep(.el-table th.el-table__cell) {
+  color: #000 !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+:deep(.el-table td.el-table__cell) {
+  color: #1a1a1a !important;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+:deep(.el-table .el-table__empty-text) {
+  color: #333 !important;
+}
 </style>
