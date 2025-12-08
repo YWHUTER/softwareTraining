@@ -170,4 +170,45 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
 }
+
+/* 玻璃拟态卡片样式 */
+.el-card {
+  background: rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset !important;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.el-card:hover {
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12), 
+              0 0 0 1px rgba(255, 255, 255, 0.6) inset !important;
+  border-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* 表格透明背景 */
+:deep(.el-table),
+:deep(.el-table__expanded-cell) {
+  background-color: transparent !important;
+  --el-table-tr-bg-color: transparent !important;
+}
+
+:deep(.el-table th.el-table__cell),
+:deep(.el-table tr) {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+:deep(.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell) {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+}
 </style>

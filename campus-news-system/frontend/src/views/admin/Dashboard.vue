@@ -570,11 +570,12 @@ onUnmounted(() => {
 
 /* 统计卡片样式 */
 .el-card {
-  background: rgba(255, 255, 255, 0.75) !important;
+  background: rgba(255, 255, 255, 0.35) !important;
   backdrop-filter: blur(20px) saturate(150%);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   border: 1px solid rgba(255, 255, 255, 0.5) !important;
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 
+              0 0 0 1px rgba(255, 255, 255, 0.4) inset !important;
 }
 
 .dashboard-header h2 {
@@ -588,7 +589,7 @@ onUnmounted(() => {
   border-radius: 12px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   animation: scaleIn 0.4s ease-out both;
-  background: rgba(255, 255, 255, 0.85) !important;
+  background: rgba(255, 255, 255, 0.35) !important;
 }
 
 .stat-card:nth-child(1) .stat-card { animation-delay: 0.05s; }
@@ -609,8 +610,10 @@ onUnmounted(() => {
 
 .stat-card:hover {
   transform: translateY(-6px) scale(1.02);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
-  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12), 
+              0 0 0 1px rgba(255, 255, 255, 0.6) inset !important;
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.8) !important;
 }
 
 .stat-card :deep(.el-statistic__head) {
