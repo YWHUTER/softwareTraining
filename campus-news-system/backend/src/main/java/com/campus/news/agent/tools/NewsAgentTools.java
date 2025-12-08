@@ -15,7 +15,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Agent工具类 - 提供给AI Agent使用的各种工具方法
+ * Agent工具类 - 提供给AI Agent使用的各种工具方法1
  * 使用@Tool注解标记的方法会被LangChain4j自动识别为可调用工具
  */
 @Slf4j

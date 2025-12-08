@@ -524,6 +524,9 @@
         </div>
       </el-col>
     </el-row>
+    
+    <!-- 返回顶部按钮 -->
+    <BackToTop />
   </div>
 </template>
 
@@ -539,6 +542,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download, Link, Histogram, Document } from '@element-plus/icons-vue'
 import { htmlToText } from '@/utils/htmlParser'
 import QRCode from 'qrcode'
+import BackToTop from '@/components/BackToTop.vue'
 
 const route = useRoute()
 const router = useRouter()

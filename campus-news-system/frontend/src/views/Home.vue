@@ -176,17 +176,13 @@
                     
                     <!-- 右侧封面图 -->
                     <div v-if="article.coverImage" class="article-cover">
-                      <el-image 
-                        :src="article.coverImage" 
+                      <ImageWithFallback
+                        :src="article.coverImage"
                         fit="cover"
-                        lazy
-                      >
-                        <template #error>
-                          <div class="image-error">
-                            <el-icon><Picture /></el-icon>
-                          </div>
-                        </template>
-                      </el-image>
+                        :lazy="true"
+                        :show-retry="true"
+                        :max-retries="3"
+                      />
                     </div>
                   </div>
                   
@@ -310,6 +306,9 @@
         </div>
       </el-col>
     </el-row>
+    
+    <!-- 返回顶部按钮 -->
+    <BackToTop />
   </div>
 </template>
 
@@ -318,6 +317,8 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getArticleList } from '@/api/article'
 import TagCloud from '@/components/TagCloud.vue'
+import BackToTop from '@/components/BackToTop.vue'
+import ImageWithFallback from '@/components/ImageWithFallback.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -756,21 +757,9 @@ watch(() => route.path, (newPath) => {
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.article-cover .el-image {
+.article-cover :deep(.image-container) {
   width: 100%;
   height: 100%;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.image-error {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f5f7fa;
-  color: #c0c4cc;
-  font-size: 32px;
 }
 
 /* 分页 */
