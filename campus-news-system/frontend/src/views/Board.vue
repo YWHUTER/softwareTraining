@@ -90,13 +90,26 @@
             :initial="{ opacity: 0, y: 20 }"
             :enter="{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 200, damping: 20 } }"
           >
-            <div class="hero-card" @click="goToDetail(articles[0].id)">
-              <div class="hero-cover">
-                <el-image :src="articles[0].coverImage" fit="cover" loading="lazy" class="hero-image">
+            <div 
+              class="hero-card" 
+              :class="{ 'no-cover': !isValidCover(articles[0]) }"
+              @click="goToDetail(articles[0].id)"
+            >
+              <div class="hero-cover" v-if="isValidCover(articles[0])">
+                <el-image 
+                  :src="articles[0].coverImage" 
+                  fit="cover" 
+                  loading="lazy" 
+                  class="hero-image"
+                  @error="handleImageError(articles[0])"
+                >
                   <template #placeholder>
                     <div class="image-placeholder hero-placeholder">
-                      <el-icon><Picture /></el-icon>
+                      <el-icon class="is-loading"><Loading /></el-icon>
                     </div>
+                  </template>
+                  <template #error>
+                    <div class="image-error" v-show="false"></div>
                   </template>
                 </el-image>
                 <div class="hero-overlay"></div>
@@ -110,6 +123,10 @@
                     {{ boardTitle }}
                   </el-tag>
                   <span class="publish-time">{{ getRelativeTime(articles[0].createdAt) }}</span>
+                  <!-- 无封面图时的置顶标记 -->
+                  <div class="pinned-mark-inline" v-if="!isValidCover(articles[0]) && articles[0].isPinned">
+                    <el-icon><Top /></el-icon> 置顶
+                  </div>
                 </div>
                 <h2 class="hero-title">{{ articles[0].title }}</h2>
                 <p class="hero-summary">{{ articles[0].summary || articles[0].content?.replace(/<[^>]+>/g, '').substring(0, 120) + '...' }}</p>
@@ -141,12 +158,20 @@
             :enter="{ opacity: 1, y: 0, transition: { delay: index * 50, type: 'spring', stiffness: 250, damping: 25 } }"
           >
             <!-- 封面图区域 -->
-            <div class="card-cover" v-if="article.coverImage">
-              <el-image :src="article.coverImage" fit="cover" loading="lazy">
+            <div class="card-cover" v-if="isValidCover(article)">
+              <el-image 
+                :src="article.coverImage" 
+                fit="cover" 
+                loading="lazy"
+                @error="handleImageError(article)"
+              >
                 <template #placeholder>
                   <div class="image-placeholder">
-                    <el-icon><Picture /></el-icon>
+                    <el-icon class="is-loading"><Loading /></el-icon>
                   </div>
+                </template>
+                <template #error>
+                  <div class="image-error" v-show="false"></div>
                 </template>
               </el-image>
               <div class="card-overlay"></div>
@@ -258,7 +283,10 @@ const fetchArticles = async () => {
       sortOrder: sortOrder,
       _t: Date.now() // Add timestamp to prevent caching
     })
-    articles.value = data.records
+    articles.value = (data.records || []).map(item => ({
+      ...item,
+      imageLoadError: false // 初始化图片加载状态
+    }))
     total.value = data.total
   } catch (error) {
     console.error(error)
@@ -274,6 +302,18 @@ const handleSortChange = () => {
 
 const goToDetail = (id) => {
   router.push(`/article/${id}`)
+}
+
+// 图片处理相关
+const isValidCover = (article) => {
+  if (!article.coverImage) return false
+  if (article.imageLoadError) return false
+  if (article.coverImage === 'null' || article.coverImage === 'undefined') return false
+  return true
+}
+
+const handleImageError = (article) => {
+  article.imageLoadError = true
 }
 
 const getRelativeTime = (time) => {
@@ -486,6 +526,22 @@ onMounted(() => {
 .hero-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.12);
+}
+
+.hero-card.no-cover {
+  grid-template-columns: 1fr;
+  background: rgba(255, 255, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px) saturate(150%);
+}
+
+.hero-card.no-cover .hero-content {
+  padding: 40px 60px;
+  background: transparent;
+}
+
+.hero-card.no-cover .hero-content::before {
+  display: none;
 }
 
 .hero-cover {
@@ -725,6 +781,19 @@ onMounted(() => {
   border-radius: 6px;
 }
 
+.pinned-mark-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ff5722;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255, 87, 34, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-left: 8px;
+}
+
 /* Card Body */
 .card-body {
   padding: 20px;
@@ -884,5 +953,19 @@ onMounted(() => {
   .hero-title {
     font-size: 24px;
   }
+}
+
+.image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+  color: #c0c4cc;
+}
+
+.image-placeholder .el-icon {
+  font-size: 24px;
 }
 </style>

@@ -138,6 +138,105 @@ export const updateChatSessionTitle = (sessionId, title) => {
   })
 }
 
+// ============ Agent相关 API ============
+
+/**
+ * 执行Agent任务
+ * @param {Object} data - 请求数据
+ * @param {string} data.message - 任务描述
+ * @param {string} [data.sessionId] - 会话ID
+ * @returns {Promise<Object>} Agent执行结果
+ */
+export const executeAgentTask = (data) => {
+  return request({
+    url: '/ai/agent/execute',
+    method: 'post',
+    data,
+    timeout: 120000  // Agent任务可能需要更长时间
+  })
+}
+
+/**
+ * 流式执行Agent任务
+ * @param {Object} data - 请求数据
+ * @param {Function} onEvent - 事件回调函数
+ * @returns {EventSource} 事件源对象
+ */
+export const executeAgentTaskStream = (data, onEvent) => {
+  const token = localStorage.getItem('token')
+  const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
+  
+  // 创建EventSource连接
+  const eventSource = new EventSource(
+    `${baseURL}/ai/agent/execute/stream?token=${token}`,
+    { withCredentials: true }
+  )
+  
+  // 监听各种事件
+  eventSource.addEventListener('start', (event) => {
+    const data = JSON.parse(event.data)
+    onEvent('start', data)
+  })
+  
+  eventSource.addEventListener('step', (event) => {
+    const data = JSON.parse(event.data)
+    onEvent('step', data)
+  })
+  
+  eventSource.addEventListener('result', (event) => {
+    const data = JSON.parse(event.data)
+    onEvent('result', data)
+  })
+  
+  eventSource.addEventListener('error', (event) => {
+    const data = JSON.parse(event.data)
+    onEvent('error', data)
+    eventSource.close()
+  })
+  
+  eventSource.addEventListener('complete', (event) => {
+    const data = JSON.parse(event.data)
+    onEvent('complete', data)
+    eventSource.close()
+  })
+  
+  return eventSource
+}
+
+/**
+ * 获取Agent可用工具列表
+ * @returns {Promise<Array>} 工具列表
+ */
+export const getAgentTools = () => {
+  return request({
+    url: '/ai/agent/tools',
+    method: 'get'
+  })
+}
+
+/**
+ * 获取Agent能力介绍
+ * @returns {Promise<Object>} 能力说明
+ */
+export const getAgentCapabilities = () => {
+  return request({
+    url: '/ai/agent/capabilities',
+    method: 'get'
+  })
+}
+
+/**
+ * 清除Agent会话
+ * @param {string} sessionId - 会话ID
+ * @returns {Promise<void>}
+ */
+export const clearAgentSession = (sessionId) => {
+  return request({
+    url: `/ai/agent/session/${sessionId}`,
+    method: 'delete'
+  })
+}
+
 export const streamChat = async (data, onMessage, onError, onComplete) => {
   let reader = null
   

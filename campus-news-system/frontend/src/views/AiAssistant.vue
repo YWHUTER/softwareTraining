@@ -15,23 +15,26 @@
       <div class="sidebar-content" v-show="!sidebarCollapsed">
         <!-- 历史记录 -->
         <div class="sidebar-section">
-          <div class="section-title">📜 历史记录</div>
+          <div class="section-title">{{ agentMode ? '🤖 Agent历史' : '💬 对话历史' }}</div>
           <div v-if="historyLoading" class="history-loading">
             <el-icon class="loading-icon"><Loading /></el-icon>
             <span>加载中...</span>
           </div>
-          <div v-else-if="chatSessions.length === 0" class="history-empty">
-            暂无历史对话
+          <div v-else-if="filteredSessions.length === 0" class="history-empty">
+            {{ agentMode ? '暂无Agent任务记录' : '暂无对话记录' }}
           </div>
           <div v-else class="history-list">
             <div 
-              v-for="session in chatSessions.slice(0, 10)" 
+              v-for="session in filteredSessions" 
               :key="session.id" 
               class="history-item"
               :class="{ active: currentSessionId === session.id }"
               @click="loadSession(session.id)"
             >
-              <el-icon><ChatLineRound /></el-icon>
+              <el-icon>
+                <Lightning v-if="agentMode" />
+                <ChatLineRound v-else />
+              </el-icon>
               <span class="history-title">{{ session.title }}</span>
               <el-icon 
                 class="delete-btn" 
@@ -43,36 +46,70 @@
 
         <!-- 快捷功能 -->
         <div class="sidebar-section">
-          <div class="section-title">💡 快捷功能</div>
-          <div class="nav-item" @click="sendQuickQuestion('帮我搜索关于讲座的新闻')">
-            <el-icon><Search /></el-icon>
-            <span>智能搜索</span>
+          <div class="section-title">{{ agentMode ? '⚡ Agent能力' : '💡 快捷功能' }}</div>
+          
+          <!-- 普通模式快捷功能 -->
+          <div v-if="!agentMode">
+            <div class="nav-item" @click="sendQuickQuestion('帮我搜索关于讲座的新闻')">
+              <el-icon><Search /></el-icon>
+              <span>智能搜索</span>
+            </div>
+            <div class="nav-item" @click="sendQuickQuestion('请帮我写一篇校园活动的新闻稿，包含标题、摘要和正文框架')">
+              <el-icon><Edit /></el-icon>
+              <span>写作辅助</span>
+            </div>
+            <div class="nav-item" @click="sendQuickQuestion('帮我看看浏览量最高的热门文章有哪些')">
+              <el-icon><TrendCharts /></el-icon>
+              <span>热门排行</span>
+            </div>
+            <div class="nav-item" @click="sendQuickQuestion('统计一下系统目前有多少文章、用户和总浏览量')">
+              <el-icon><DataAnalysis /></el-icon>
+              <span>数据统计</span>
+            </div>
           </div>
-          <div class="nav-item" @click="sendQuickQuestion('请帮我写一篇校园活动的新闻稿，包含标题、摘要和正文框架')">
-            <el-icon><Edit /></el-icon>
-            <span>写作辅助</span>
-          </div>
-          <div class="nav-item" @click="sendQuickQuestion('帮我看看浏览量最高的热门文章有哪些')">
-            <el-icon><TrendCharts /></el-icon>
-            <span>热门排行</span>
-          </div>
-          <div class="nav-item" @click="sendQuickQuestion('统计一下系统目前有多少文章、用户和总浏览量')">
-            <el-icon><DataAnalysis /></el-icon>
-            <span>数据统计</span>
+          
+          <!-- Agent模式快捷功能 -->
+          <div v-else>
+            <div 
+              v-for="(item, index) in agentShortcuts" 
+              :key="index"
+              class="nav-item" 
+              @click="sendQuickQuestion(item.prompt)"
+            >
+              <el-icon><component :is="item.icon" /></el-icon>
+              <span>{{ item.text }}</span>
+            </div>
           </div>
         </div>
 
-        <!-- 热门话题 -->
+        <!-- 热门话题/指令 -->
         <div class="sidebar-section">
-          <div class="section-title">热门话题</div>
-          <div 
-            v-for="(topic, index) in hotTopics" 
-            :key="index" 
-            class="nav-item"
-            @click="sendQuickQuestion(`搜索关于${topic}的新闻`)"
-          >
-            <span class="topic-badge" :class="{ hot: index < 3 }">{{ index + 1 }}</span>
-            <span>{{ topic }}</span>
+          <div class="section-title">{{ agentMode ? '🔥 热门指令' : '🔥 热门话题' }}</div>
+          
+          <!-- 普通模式热门话题 -->
+          <div v-if="!agentMode">
+            <div 
+              v-for="(topic, index) in hotTopics" 
+              :key="index" 
+              class="nav-item"
+              @click="sendQuickQuestion(`搜索关于${topic}的新闻`)"
+            >
+              <span class="topic-badge" :class="{ hot: index < 3 }">{{ index + 1 }}</span>
+              <span>{{ topic }}</span>
+            </div>
+          </div>
+          
+          <!-- Agent模式热门指令 -->
+          <div v-else>
+             <div 
+              v-for="(cmd, index) in agentHotCommands" 
+              :key="index" 
+              class="nav-item"
+              @click="sendQuickQuestion(cmd)"
+            >
+              <span class="topic-badge agent-badge">{{ index + 1 }}</span>
+              <span>{{ cmd }}</span>
+            </div>
           </div>
         </div>
 
@@ -130,42 +167,62 @@
 
     <!-- 主聊天区域 -->
     <main class="main-content">
-      <!-- 展开侧边栏按钮 (当侧边栏折叠时显示) -->
-      <button v-if="sidebarCollapsed" class="show-sidebar-btn" @click="sidebarCollapsed = false">
-        <el-icon><Expand /></el-icon>
-      </button>
-
       <!-- 顶部标题栏 -->
       <header class="main-header">
-        <el-dropdown trigger="click" @command="handleModelChange" popper-class="model-dropdown-popper">
-          <div class="model-selector">
-            <img :src="whutLogo" alt="WHUT" class="whut-badge" />
-            <span class="model-selector-text">WHUTGPT <span class="model-version">{{ modelOptions.find(m => m.value === currentModel)?.label }}</span></span>
-            <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
+        <div class="header-left">
+          <!-- 展开侧边栏按钮 (当侧边栏折叠时显示) -->
+          <button v-if="sidebarCollapsed" class="show-sidebar-btn" @click="sidebarCollapsed = false">
+            <el-icon><Expand /></el-icon>
+          </button>
+
+          <!-- Agent模式切换 -->
+          <div class="mode-switcher-minimal">
+            <el-switch
+              v-model="agentMode"
+              inline-prompt
+              active-text="Agent"
+              inactive-text="对话"
+              :active-icon="Lightning"
+              :inactive-icon="ChatLineRound"
+              @change="handleModeChange"
+              style="--el-switch-on-color: #10a37f; --el-switch-off-color: #e5e7eb;"
+            />
           </div>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item 
-                v-for="m in modelOptions" 
-                :key="m.value" 
-                :command="m.value"
-                :class="{ 'is-active': currentModel === m.value }"
-              >
-                <div class="model-option">
-                  <el-icon class="model-icon">
-                    <img v-if="m.useImage" :src="m.image" class="model-logo-img" @error="handleImageError(m.value)" />
-                    <component v-else :is="m.icon" />
-                  </el-icon>
-                  <div class="model-info">
-                    <span class="model-name">{{ m.label }}</span>
-                    <span class="model-desc">{{ m.desc }}</span>
+        </div>
+        
+        <div class="header-center">
+          <el-dropdown trigger="click" @command="handleModelChange" popper-class="model-dropdown-popper">
+            <div class="model-selector">
+              <img :src="whutLogo" alt="WHUT" class="whut-badge" />
+              <span class="model-selector-text">WHUTGPT <span class="model-version">{{ modelOptions.find(m => m.value === currentModel)?.label }}</span></span>
+              <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item 
+                  v-for="m in modelOptions" 
+                  :key="m.value" 
+                  :command="m.value"
+                  :class="{ 'is-active': currentModel === m.value }"
+                >
+                  <div class="model-option">
+                    <el-icon class="model-icon">
+                      <img v-if="m.useImage" :src="m.image" class="model-logo-img" @error="handleImageError(m.value)" />
+                      <component v-else :is="m.icon" />
+                    </el-icon>
+                    <div class="model-info">
+                      <span class="model-name">{{ m.label }}</span>
+                      <span class="model-desc">{{ m.desc }}</span>
+                    </div>
+                    <el-icon v-if="currentModel === m.value" class="check-icon"><Check /></el-icon>
                   </div>
-                  <el-icon v-if="currentModel === m.value" class="check-icon"><Check /></el-icon>
-                </div>
-              </el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+        
+        <div class="header-right"></div>
       </header>
 
       <!-- 聊天消息区域 -->
@@ -203,17 +260,39 @@
                 <el-avatar v-else :size="36" :src="logoUrl" class="avatar assistant" />
               </div>
               <div class="message-body">
-                <div class="message-sender">{{ msg.role === 'user' ? '你' : 'WHUTGPT' }}</div>
+                <div class="message-sender">
+                  {{ msg.role === 'user' ? '你' : msg.isAgent ? 'WHUTGPT Agent' : 'WHUTGPT' }}
+                  <el-tag v-if="msg.isAgent" type="warning" size="small" style="margin-left: 8px;">
+                    <el-icon><Lightning /></el-icon> Agent
+                  </el-tag>
+                </div>
+                
+                <!-- Agent执行步骤显示 -->
+                <div v-if="msg.isAgent && msg.steps && msg.steps.length > 0" class="agent-steps">
+                  <div class="agent-step" v-for="(step, idx) in msg.steps" :key="idx">
+                    <el-icon :color="step.completed ? '#67c23a' : '#409eff'">
+                      <Check v-if="step.completed" />
+                      <Loading v-else />
+                    </el-icon>
+                    <span class="step-name">{{ step.name }}</span>
+                    <span class="step-desc">{{ step.description }}</span>
+                  </div>
+                </div>
+                
                 <div class="message-content">
                   <span v-html="formatMessage(msg.content)"></span>
                   <span v-if="msg.streaming" class="typing-cursor">|</span>
+                </div>
+                
+                <div v-if="msg.executionTime" class="execution-time">
+                  <el-icon><Clock /></el-icon> {{ msg.executionTime }}
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- 加载状态 - 仅在流式输出开始前显示 -->
-          <div v-if="loading && !messages.some(m => m.streaming)" class="message-row assistant">
+          <!-- 加载状态 - 仅在流式输出开始前显示（Agent模式下不显示） -->
+          <div v-if="loading && !agentMode && !messages.some(m => m.streaming)" class="message-row assistant">
             <div class="message-container">
               <div class="avatar-wrapper">
                 <el-avatar :size="36" :src="logoUrl" class="avatar assistant" />
@@ -272,7 +351,7 @@ import {
   QuestionFilled, Search, Edit, TrendCharts, DataAnalysis, 
   Plus, Fold, Expand, ArrowDown, Top, Loading,
   Document, Compass, EditPen, ChatLineRound, ChatDotRound, Check,
-  User, Setting, SwitchButton, Delete, Moon, Lightning, Coordinate
+  User, Setting, SwitchButton, Delete, Moon, Lightning, Coordinate, Clock
 } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -281,7 +360,8 @@ import { useUserStore } from '@/stores/user'
 import { 
   sendChatMessage, streamChat, 
   getChatSessions, getChatSessionDetail, createChatSession, 
-  saveChatMessage, deleteChatSession 
+  saveChatMessage, deleteChatSession,
+  executeAgentTask, getAgentTools, getAgentCapabilities
 } from '@/api/ai'
 import { getArticleList } from '@/api/article'
 import kimiLogo from '@/assets/icons/kimi.png'
@@ -305,6 +385,11 @@ const sidebarCollapsed = ref(false)
 const chatSessions = ref([])
 const currentSessionId = ref(null)
 const historyLoading = ref(false)
+
+// Agent模式相关状态
+const agentMode = ref(false)
+const agentSteps = ref([])
+const agentTools = ref([])
 
 // 模型选择
 const currentModel = ref('kimi')
@@ -367,6 +452,37 @@ const hotTopics = ref([
   '社团纳新'
 ])
 
+// Agent模式专属快捷功能
+const agentShortcuts = [
+  { icon: 'Search', text: '智能搜评', prompt: '帮我搜索关于AI的文章并评论"写得真好"' },
+  { icon: 'Pointer', text: '批量点赞', prompt: '给所有关于计算机的文章点赞' },
+  { icon: 'Edit', text: '写作发布', prompt: '帮我写一篇关于校园歌手大赛的新闻稿' },
+  { icon: 'User', text: '社交互动', prompt: '关注用户admin并查看他的文章' }
+]
+
+// Agent模式热门指令
+const agentHotCommands = [
+  '分析今日热点趋势',
+  '评论关于宿舍的文章',
+  '收藏计算机相关文章',
+  '搜索用户张三',
+  '批量点赞最新新闻'
+]
+
+// 根据模式过滤会话列表
+const filteredSessions = computed(() => {
+  if (!chatSessions.value) return []
+  
+  // 根据当前模式过滤会话
+  const filtered = chatSessions.value.filter(session => {
+    const isAgentSession = session.model && session.model.includes('_agent')
+    return agentMode.value ? isAgentSession : !isAgentSession
+  })
+  
+  // 只返回最近5条
+  return filtered.slice(0, 5)
+})
+
 // 建议卡片 - 覆盖AI的主要能力场景
 const suggestionCards = [
   { text: '🔥 热门文章排行', prompt: '帮我看看浏览量最高的热门文章有哪些？', icon: 'Document' },
@@ -428,11 +544,32 @@ const fetchTodayStats = async () => {
   }
 }
 
-// 发送消息 - 使用流式输出实现打字机效果
+// Agent模式切换处理
+const handleModeChange = (value) => {
+  if (value) {
+    ElMessage.success('已切换到Agent模式 - AI将自动执行任务')
+  } else {
+    ElMessage.success('已切换到对话模式 - 正常聊天交流')
+  }
+  // 清空当前对话和会话ID
+  messages.value = []
+  agentSteps.value = []
+  currentSessionId.value = null
+  sessionId.value = ''
+}
+
+// 发送消息 - 支持普通对话和Agent模式
 const sendMessage = async () => {
   const question = inputMessage.value.trim()
   if (!question || loading.value) return
 
+  // 根据模式选择不同的处理方式
+  if (agentMode.value) {
+    await executeAgent(question)
+    return
+  }
+
+  // 普通对话模式（原有逻辑）
   // 如果是新对话，先创建会话
   let activeSessionId = currentSessionId.value
   if (!activeSessionId) {
@@ -535,9 +672,10 @@ const sendQuickQuestion = (question) => {
 // 清空对话（开始新对话）
 const clearChat = () => {
   messages.value = []
-  sessionId.value = ''
   currentSessionId.value = null
-  ElMessage.success('已开始新对话')
+  sessionId.value = ''
+  agentSteps.value = []
+  ElMessage.success(agentMode.value ? 'Agent任务已清空' : '对话已清空')
 }
 
 // 获取历史会话列表
@@ -606,6 +744,122 @@ const scrollToBottom = () => {
 const formatTime = (timestamp) => {
   const date = new Date(timestamp)
   return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+}
+
+// Agent执行函数
+const executeAgent = async (question) => {
+  // 如果是新对话，先创建Agent会话
+  let activeSessionId = currentSessionId.value
+  if (!activeSessionId) {
+    try {
+      const session = await createChatSession({
+        model: `${currentModel.value}_agent`, // 添加_agent后缀标识这是Agent会话
+        firstMessage: question
+      })
+      activeSessionId = session.id
+      currentSessionId.value = session.id
+      // 刷新历史列表
+      fetchChatSessions()
+    } catch (error) {
+      console.error('创建Agent会话失败:', error)
+    }
+  }
+  
+  // 添加用户消息
+  messages.value.push({
+    role: 'user',
+    content: question,
+    timestamp: Date.now()
+  })
+  
+  // 保存用户消息到数据库
+  if (activeSessionId) {
+    saveChatMessage(activeSessionId, { role: 'user', content: question }).catch(console.error)
+  }
+  
+  inputMessage.value = ''
+  loading.value = true
+  agentSteps.value = []
+  
+  // 添加Agent响应占位，初始显示处理中的步骤
+  const agentMessageIndex = messages.value.length
+  messages.value.push({
+    role: 'assistant',
+    content: '',
+    timestamp: Date.now(),
+    isAgent: true,
+    steps: [
+      { name: '理解意图', description: '正在分析您的需求...', completed: false },
+      { name: '执行任务', description: '准备调用相关工具...', completed: false },
+      { name: '生成结果', description: '等待执行完成...', completed: false }
+    ]
+  })
+  
+  scrollToBottom()
+  
+  try {
+    // 创建任务执行请求
+    const request = {
+      message: question,
+      sessionId: activeSessionId || undefined
+    }
+    
+    // 调用Agent执行任务
+    const response = await executeAgentTask(request)
+    
+    if (response.success) {
+      // 更新消息内容
+      messages.value[agentMessageIndex].content = response.result
+      
+      // 更新步骤状态为完成
+      if (messages.value[agentMessageIndex].steps) {
+        messages.value[agentMessageIndex].steps = messages.value[agentMessageIndex].steps.map(step => ({
+          ...step,
+          completed: true,
+          description: step.description.replace('正在', '已').replace('准备', '已').replace('等待', '已')
+        }))
+      }
+      
+      // 如果返回了具体的步骤，使用返回的步骤
+      if (response.steps && response.steps.length > 0) {
+        messages.value[agentMessageIndex].steps = response.steps
+      }
+      
+      // 如果返回了新的sessionId，更新它
+      if (response.sessionId) {
+        sessionId.value = response.sessionId
+      }
+      
+      // 显示执行时间
+      if (response.executionTime) {
+        const seconds = (response.executionTime / 1000).toFixed(1)
+        messages.value[agentMessageIndex].executionTime = `执行耗时: ${seconds}秒`
+      }
+      
+      // 保存Agent回复到数据库
+      if (activeSessionId && messages.value[agentMessageIndex].content) {
+        saveChatMessage(activeSessionId, { 
+          role: 'assistant', 
+          content: messages.value[agentMessageIndex].content 
+        }).catch(console.error)
+      }
+    } else {
+      messages.value[agentMessageIndex].content = `❌ 任务执行失败: ${response.error || '未知错误'}`
+      // 标记步骤为失败状态
+      if (messages.value[agentMessageIndex].steps) {
+        messages.value[agentMessageIndex].steps = messages.value[agentMessageIndex].steps.map(step => ({
+          ...step,
+          completed: false
+        }))
+      }
+    }
+  } catch (error) {
+    console.error('Agent执行失败:', error)
+    messages.value[agentMessageIndex].content = '❌ Agent服务暂时不可用，请稍后重试。'
+  } finally {
+    loading.value = false
+    scrollToBottom()
+  }
 }
 
 // 格式化消息（支持 Markdown 和文章链接）
@@ -913,6 +1167,11 @@ onMounted(() => {
   margin: 0 0 24px;
   border: 1px solid rgba(0,0,0,0.05);
   box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.topic-badge.agent-badge {
+  background: linear-gradient(135deg, #722ed1 0%, #b37feb 100%);
+  color: white;
 }
 
 .mini-stats {
@@ -1471,10 +1730,6 @@ onMounted(() => {
 
 /* 展开侧边栏按钮 */
 .show-sidebar-btn {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1485,6 +1740,7 @@ onMounted(() => {
   cursor: pointer;
   color: #666;
   transition: all 0.2s;
+  margin-right: 16px;
 }
 
 .show-sidebar-btn:hover {
@@ -1494,6 +1750,93 @@ onMounted(() => {
 
 .show-sidebar-btn .el-icon {
   font-size: 20px;
+}
+
+/* Agent模式相关样式 */
+.mode-switcher-minimal {
+  display: flex;
+  align-items: center;
+}
+
+/* 覆盖 Element Plus Switch 样式 */
+.mode-switcher-minimal :deep(.el-switch__core) {
+  border: 1px solid #e5e7eb;
+}
+
+.agent-steps {
+  margin: 12px 0;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 3px solid #10a37f;
+}
+
+.agent-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: white;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: all 0.3s ease;
+}
+
+.agent-step:last-child {
+  margin-bottom: 0;
+}
+
+.agent-step:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translateX(4px);
+}
+
+.agent-step .el-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.step-name {
+  font-weight: 600;
+  color: #333;
+  min-width: 80px;
+}
+
+.step-desc {
+  color: #666;
+  flex: 1;
+}
+
+.execution-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 4px 8px;
+  background: #f0f2f5;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.execution-time .el-icon {
+  font-size: 14px;
+}
+
+/* 主标题栏调整 */
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  background: linear-gradient(180deg, #fff 0%, #fafafa 100%);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
 }
 
 /* 响应式设计 */
