@@ -1,0 +1,15 @@
+{
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-22",
+      "path": "E:\\BaiduNetdiskDownload\\jdk",
+      "default": true
+    },
+    {
+      "name": "JavaSE-17",
+      "path": "E:\\jdk17"
+    }
+  ],
+  "java.jdt.ls.java.home": "E:\\BaiduNetdiskDownload\\jdk",
+  "java.compile.nullAnalysis.mode": "automatic"
+}
