@@ -1,16 +1,31 @@
 <template>
   <div class="home">
-    <!-- 顶部横幅 -->
+    <!-- 顶部轮播图 -->
     <div 
-      class="banner"
+      class="banner-carousel-wrapper"
       v-motion
       :initial="{ opacity: 0, y: -50 }"
       :enter="{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 250, damping: 25 } }"
     >
-      <div class="banner-content">
-        <h1 class="banner-title">校园新闻中心</h1>
-        <p class="banner-subtitle">第一时间了解校园动态，掌握最新资讯</p>
-      </div>
+      <el-carousel 
+        :interval="5000" 
+        arrow="hover" 
+        :height="carouselHeight"
+        indicator-position="bottom"
+        class="banner-carousel"
+      >
+        <el-carousel-item v-for="item in carouselItems" :key="item.id">
+          <div class="banner" :style="{ 
+            backgroundImage: `url(${item.image})`,
+            backgroundPosition: item.position || 'center center'
+          }">
+            <div class="banner-content">
+              <h1 class="banner-title">{{ item.title }}</h1>
+              <p class="banner-subtitle">{{ item.subtitle }}</p>
+            </div>
+          </div>
+        </el-carousel-item>
+      </el-carousel>
     </div>
 
     <!-- 统计数据栏 -->
@@ -257,7 +272,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getArticleList, getPublicStats } from '@/api/article'
 import TagCloud from '@/components/TagCloud.vue'
@@ -278,6 +293,51 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const sortBy = ref('date_desc') // 默认按日期降序
+
+// 轮播图数据
+const carouselItems = ref([
+  {
+    id: 1,
+    title: '校园新闻中心',
+    subtitle: '第一时间了解校园动态，掌握最新资讯',
+    image: '/src/assets/carousel-1.jpg',
+    position: 'center 45%'  // 白色建筑与黄叶，稍微向上调整展示建筑主体
+  },
+  {
+    id: 2,
+    title: '学术前沿',
+    subtitle: '探索知识边界，引领学术潮流',
+    image: '/src/assets/carousel-2.jpg',
+    position: 'center 45%'  // 向上调整，优先显示马雕像
+  },
+  {
+    id: 3,
+    title: '校园生活',
+    subtitle: '精彩活动不断，青春岁月绽放',
+    image: '/src/assets/carousel-3.jpg',
+    position: 'center 80%'  // 弧形建筑仰拍，显示建筑主体
+  },
+  {
+    id: 4,
+    title: '通知公告',
+    subtitle: '重要信息及时发布，服务师生便捷高效',
+    image: '/src/assets/carousel-4.jpg',
+    position: 'center center'  // 居中显示，突出中间的大楼
+  }
+])
+
+// 响应式轮播图高度
+const windowWidth = ref(window.innerWidth)
+const carouselHeight = computed(() => {
+  if (windowWidth.value < 768) return '160px'
+  if (windowWidth.value < 992) return '200px'
+  return '240px'
+})
+
+// 监听窗口大小变化
+const handleResize = () => {
+  windowWidth.value = window.innerWidth
+}
 
 // 统计数据
 const stats = ref({
@@ -407,6 +467,11 @@ onMounted(() => {
   fetchStats()
   fetchArticles()
   fetchHotArticles()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 
 // 监听路由变化，当返回首页时刷新数据
@@ -423,17 +488,68 @@ watch(() => route.path, (newPath) => {
   width: 100%;
 }
 
-/* 顶部横幅 */
-.banner {
-  background: url('@/assets/home-bg.jpg') center center / cover no-repeat;
-  border-radius: 24px;
-  padding: 80px 60px;
+/* 轮播图容器 */
+.banner-carousel-wrapper {
   margin-bottom: 40px;
+}
+
+.banner-carousel {
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* 轮播图指示器样式 */
+.banner-carousel :deep(.el-carousel__indicators) {
+  bottom: 20px;
+}
+
+.banner-carousel :deep(.el-carousel__indicator) {
+  margin: 0 8px;
+}
+
+.banner-carousel :deep(.el-carousel__button) {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.5);
+  transition: all 0.3s;
+}
+
+.banner-carousel :deep(.is-active .el-carousel__button) {
+  background-color: #fff;
+  width: 60px;
+}
+
+/* 轮播图切换箭头样式 */
+.banner-carousel :deep(.el-carousel__arrow) {
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-size: 20px;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s;
+}
+
+.banner-carousel :deep(.el-carousel__arrow:hover) {
+  background-color: rgba(0, 0, 0, 0.5);
+  transform: scale(1.1);
+}
+
+/* 横幅样式 */
+.banner {
+  /* background-position 通过内联样式动态设置 */
+  background-size: cover;
+  background-repeat: no-repeat;
+  height: 100%;
+  padding: 80px 60px;
   color: #fff;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
 }
 
 .banner::before {
@@ -918,6 +1034,14 @@ watch(() => route.path, (newPath) => {
     padding: 40px 30px;
   }
 
+  .banner-carousel {
+    border-radius: 16px;
+  }
+
+  .banner-carousel :deep(.el-carousel) {
+    height: 200px !important;
+  }
+
   .banner-title {
     font-size: 32px;
   }
@@ -934,7 +1058,20 @@ watch(() => route.path, (newPath) => {
 @media (max-width: 768px) {
   .banner {
     padding: 30px 20px;
+  }
+
+  .banner-carousel {
     border-radius: 12px;
+  }
+
+  .banner-carousel :deep(.el-carousel) {
+    height: 160px !important;
+  }
+
+  .banner-carousel :deep(.el-carousel__arrow) {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
   }
 
   .banner-title {
