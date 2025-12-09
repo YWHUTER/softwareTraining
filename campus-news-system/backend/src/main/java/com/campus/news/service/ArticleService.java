@@ -257,4 +257,29 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
         article.setIsApproved(isApproved);
         return articleMapper.updateById(article) > 0;
     }
+
+    public java.util.Map<String, Object> getPublicStats() {
+        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+        
+        // 1. 文章总数 (已审核通过)
+        long articleCount = count(new QueryWrapper<Article>().eq("is_approved", 1));
+        stats.put("articleCount", articleCount);
+        
+        // 2. 总浏览量
+        QueryWrapper<Article> viewWrapper = new QueryWrapper<>();
+        viewWrapper.select("IFNULL(SUM(view_count), 0) as total_views").eq("is_approved", 1);
+        java.util.Map<String, Object> viewResult = articleMapper.selectMaps(viewWrapper)
+                .stream().findFirst().orElse(new java.util.HashMap<>());
+        stats.put("viewCount", viewResult.getOrDefault("total_views", 0));
+        
+        // 3. 互动评论数
+        long commentCount = commentMapper.selectCount(new QueryWrapper<>());
+        stats.put("commentCount", commentCount);
+        
+        // 4. 用户总数
+        long userCount = userService.count();
+        stats.put("userCount", userCount);
+        
+        return stats;
+    }
 }

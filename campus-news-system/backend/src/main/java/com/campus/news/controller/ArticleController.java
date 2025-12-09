@@ -94,6 +94,12 @@ public class ArticleController {
     public Result<Boolean> approveArticle(@PathVariable Long id, @RequestParam Integer isApproved) {
         return Result.success(articleService.approveArticle(id, isApproved));
     }
+
+    @Operation(summary = "获取公开统计数据")
+    @GetMapping("/public/stats")
+    public Result<java.util.Map<String, Object>> getPublicStats() {
+        return Result.success(articleService.getPublicStats());
+    }
     
     private Long getCurrentUserId(Authentication authentication) {
         String username = authentication.getName();

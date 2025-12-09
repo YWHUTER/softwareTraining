@@ -45,7 +45,7 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                .requestMatchers("/article/list", "/article/detail/**").permitAll()
+                .requestMatchers("/article/list", "/article/detail/**", "/article/public/stats").permitAll()
                 .requestMatchers("/comment/list").permitAll()
                 .requestMatchers("/college/list").permitAll()
                 .requestMatchers("/ai/health").permitAll()  // AI健康检查公开

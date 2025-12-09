@@ -67,3 +67,10 @@ export const approveArticle = (id, isApproved) => {
     params: { isApproved }
   })
 }
+
+export const getPublicStats = () => {
+  return request({
+    url: '/article/public/stats',
+    method: 'get'
+  })
+}

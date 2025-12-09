@@ -13,6 +13,54 @@
       </div>
     </div>
 
+    <!-- 统计数据栏 -->
+    <div class="stats-row mb-8 grid grid-cols-2 md:grid-cols-4 gap-4" v-motion :initial="{ opacity: 0, y: 20 }" :enter="{ opacity: 1, y: 0, transition: { delay: 100 } }">
+      <div class="glass-card p-4 rounded-xl flex items-center gap-4">
+        <div class="p-3 rounded-lg bg-blue-50/80 text-blue-600">
+          <el-icon :size="24"><Document /></el-icon>
+        </div>
+        <div>
+          <div class="text-sm text-gray-600 font-medium">已发布文章</div>
+          <div class="text-xl font-bold text-gray-800">
+            <CountTo :startVal="0" :endVal="stats.articleCount" />
+          </div>
+        </div>
+      </div>
+      <div class="glass-card p-4 rounded-xl flex items-center gap-4">
+        <div class="p-3 rounded-lg bg-green-50/80 text-green-600">
+          <el-icon :size="24"><User /></el-icon>
+        </div>
+        <div>
+          <div class="text-sm text-gray-600 font-medium">活跃用户</div>
+          <div class="text-xl font-bold text-gray-800">
+            <CountTo :startVal="0" :endVal="stats.userCount" />
+          </div>
+        </div>
+      </div>
+      <div class="glass-card p-4 rounded-xl flex items-center gap-4">
+        <div class="p-3 rounded-lg bg-orange-50/80 text-orange-600">
+          <el-icon :size="24"><View /></el-icon>
+        </div>
+        <div>
+          <div class="text-sm text-gray-600 font-medium">总浏览量</div>
+          <div class="text-xl font-bold text-gray-800">
+            <CountTo :startVal="0" :endVal="stats.viewCount" />
+          </div>
+        </div>
+      </div>
+      <div class="glass-card p-4 rounded-xl flex items-center gap-4">
+        <div class="p-3 rounded-lg bg-purple-50/80 text-purple-600">
+          <el-icon :size="24"><ChatDotRound /></el-icon>
+        </div>
+        <div>
+          <div class="text-sm text-gray-600 font-medium">互动评论</div>
+          <div class="text-xl font-bold text-gray-800">
+            <CountTo :startVal="0" :endVal="stats.commentCount" />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 内容区域 -->
     <el-row :gutter="24" class="content-row">
       <!-- 左侧文章列表 -->
@@ -70,143 +118,39 @@
           </div>
           
           <!-- 文章列表 -->
-          <div class="article-list">
-            <el-skeleton :loading="loading" animated :count="5">
-              <template #template>
-                <div class="article-card skeleton-card">
-                  <div class="article-content">
-                    <div class="article-main">
-                      <!-- 头部骨架 -->
-                      <div class="article-header" style="display: flex; align-items: center; margin-bottom: 12px;">
-                        <el-skeleton-item variant="text" style="width: 60px; height: 24px; border-radius: 6px; margin-right: 12px;" />
-                        <el-skeleton-item variant="h3" style="width: 50%; height: 24px;" />
-                      </div>
-                      
-                      <!-- 摘要骨架 -->
-                      <div class="article-summary" style="margin: 12px 0;">
-                        <el-skeleton-item variant="p" style="width: 100%; height: 16px; margin-bottom: 8px;" />
-                        <el-skeleton-item variant="p" style="width: 80%; height: 16px;" />
-                      </div>
-                      
-                      <!-- 元信息骨架 -->
-                      <div class="article-meta" style="display: flex; align-items: center; margin-top: 16px;">
-                        <el-skeleton-item variant="circle" style="width: 24px; height: 24px; margin-right: 8px;" />
-                        <el-skeleton-item variant="text" style="width: 60px; margin-right: 16px;" />
-                        <el-skeleton-item variant="text" style="width: 100px;" />
-                        <el-skeleton-item variant="text" style="width: 80px; margin-left: auto;" />
-                      </div>
-                    </div>
-                    
-                    <!-- 封面图骨架 -->
-                    <el-skeleton-item variant="image" class="article-cover" style="width: 200px; height: 150px;" />
-                  </div>
-                </div>
-              </template>
-              
-              <template #default>
-                <el-empty v-if="articles.length === 0" description="暂无文章" />
-                
-                <div
-                  v-for="(article, index) in articles"
-                  :key="article.id"
-                  class="article-card hover-lift"
-                  :class="{ 'pinned': article.isPinned }"
+          <div class="article-list-container">
+            <!-- 加载骨架屏 -->
+            <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <LoadingSkeleton v-for="i in 6" :key="i" type="card" />
+            </div>
+            
+            <!-- 空状态 -->
+            <el-empty v-else-if="articles.length === 0" description="暂无文章" />
+            
+            <!-- 文章卡片网格 -->
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div
+                v-for="(article, index) in articles"
+                :key="article.id"
+                v-motion
+                :initial="{ opacity: 0, y: 50 }"
+                :enter="{ opacity: 1, y: 0, transition: { delay: index * 50 } }"
+              >
+                <ModernNewsCard
+                  :title="article.title"
+                  :summary="article.summary || article.content?.substring(0, 80) + '...'"
+                  :image="article.coverImage"
+                  :category="getBoardTypeName(article.boardType)"
+                  :date="article.createdAt"
+                  :views="article.viewCount"
+                  :likes="article.likeCount || 0"
+                  :comments="article.commentCount"
+                  :author="article.author?.realName || article.author?.username"
+                  :author-avatar="getValidAvatar(article.author?.avatar)"
                   @click="goToDetail(article.id)"
-                  v-motion
-                  :initial="{ opacity: 0, y: 50 }"
-                  :enter="{ opacity: 1, y: 0, transition: { delay: index * 100 } }"
-                >
-                  <!-- 置顶标识 -->
-                  <div class="pinned-badge" v-if="article.isPinned">
-                    <el-icon><Star /></el-icon>
-                    <span>置顶</span>
-                  </div>
-    
-                  <div class="article-content">
-                    <!-- 左侧主要内容 -->
-                    <div class="article-main">
-                      <!-- 文章头部信息 -->
-                      <div class="article-header">
-                        <el-tag 
-                          :type="getBoardTypeTag(article.boardType)" 
-                          size="small"
-                          effect="plain"
-                          class="board-tag"
-                        >
-                          {{ getBoardTypeName(article.boardType) }}
-                        </el-tag>
-                        <h3 class="article-title">{{ article.title }}</h3>
-                      </div>
-                      
-                      <!-- 文章摘要 -->
-                      <p class="article-summary">
-                        {{ article.summary || article.content?.substring(0, 120) + '...' }}
-                      </p>
-                      
-                      <!-- 文章元信息 -->
-                      <div class="article-meta">
-                        <div class="meta-item">
-                          <el-avatar :size="24" class="author-avatar" :src="getValidAvatar(article.author?.avatar)" fit="cover">
-                            {{ article.author?.realName?.[0] }}
-                          </el-avatar>
-                          <span class="author-name">{{ article.author?.realName }}</span>
-                        </div>
-                        <span class="meta-divider">·</span>
-                        <div class="meta-item" v-if="article.college">
-                          <el-icon><School /></el-icon>
-                          <span>{{ article.college?.name }}</span>
-                        </div>
-                        <span class="meta-divider" v-if="article.college">·</span>
-                        <div class="meta-item">
-                          <el-icon><Clock /></el-icon>
-                          <span>{{ formatTime(article.createdAt) }}</span>
-                        </div>
-                        <div class="meta-stats">
-                          <span class="stat-item">
-                            <el-icon><View /></el-icon>
-                            {{ article.viewCount }}
-                          </span>
-                          <span class="stat-item">
-                            <el-icon><ChatDotRound /></el-icon>
-                            {{ article.commentCount }}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- 右侧封面图 -->
-                    <div v-if="article.coverImage" class="article-cover">
-                      <ImageWithFallback
-                        :src="article.coverImage"
-                        fit="cover"
-                        :lazy="true"
-                        :show-retry="true"
-                        :max-retries="3"
-                      />
-                    </div>
-                  </div>
-                  
-                  <!-- 热门评论 -->
-                  <div v-if="article.hotComment" class="hot-comment" @click.stop>
-                    <div class="hot-comment-header">
-                      <el-icon color="#f56c6c"><ChatLineSquare /></el-icon>
-                      <span class="hot-comment-label">热评</span>
-                    </div>
-                    <div class="hot-comment-content">
-                      <el-avatar :size="20" class="comment-avatar" :src="getValidAvatar(article.hotComment.user?.avatar)" fit="cover">
-                        {{ article.hotComment.user?.realName?.[0] }}
-                      </el-avatar>
-                      <span class="comment-author">{{ article.hotComment.user?.realName }}：</span>
-                      <span class="comment-text">{{ article.hotComment.content }}</span>
-                      <span class="comment-likes">
-                        <el-icon><Star /></el-icon>
-                        {{ article.hotComment.likeCount || 0 }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </el-skeleton>
+                />
+              </div>
+            </div>
           </div>
           
           <!-- 分页 -->
@@ -315,10 +259,13 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getArticleList } from '@/api/article'
+import { getArticleList, getPublicStats } from '@/api/article'
 import TagCloud from '@/components/TagCloud.vue'
 import BackToTop from '@/components/BackToTop.vue'
 import ImageWithFallback from '@/components/ImageWithFallback.vue'
+import ModernNewsCard from '@/components/ModernNewsCard.vue'
+import LoadingSkeleton from '@/components/LoadingSkeleton.vue'
+import CountTo from '@/components/CountTo.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -331,6 +278,25 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const sortBy = ref('date_desc') // 默认按日期降序
+
+// 统计数据
+const stats = ref({
+  articleCount: 0,
+  userCount: 0,
+  viewCount: 0,
+  commentCount: 0
+})
+
+const fetchStats = async () => {
+  try {
+    const data = await getPublicStats()
+    if (data) {
+      stats.value = data
+    }
+  } catch (error) {
+    console.error('获取统计数据失败:', error)
+  }
+}
 
 const fetchArticles = async () => {
   loading.value = true
@@ -438,6 +404,7 @@ const formatTime = (time) => {
 }
 
 onMounted(() => {
+  fetchStats()
   fetchArticles()
   fetchHotArticles()
 })
@@ -1104,4 +1071,19 @@ watch(() => route.path, (newPath) => {
   background: #f2f3f5;
 }
 
+/* 玻璃态卡片通用样式 */
+.glass-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(31, 38, 135, 0.1);
+}
 </style>
