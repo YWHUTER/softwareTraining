@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -96,14 +98,29 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
             wrapper.eq("author_id", request.getAuthorId());
         }
         if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
-            wrapper.like("title", request.getKeyword())
-                    .or().like("content", request.getKeyword());
+            // 关键词条件加括号，避免 OR 影响后续条件
+            wrapper.and(w -> w.like("title", request.getKeyword())
+                    .or().like("content", request.getKeyword()));
         }
         if (request.getIsApproved() != null) {
             wrapper.eq("is_approved", request.getIsApproved());
         }
         if (request.getIsPinned() != null) {
             wrapper.eq("is_pinned", request.getIsPinned());
+        }
+        // 日期过滤：闭区间 [startDate, endDate]，若仅传入单个日期则按当天过滤
+        LocalDate startDate = request.getStartDate();
+        LocalDate endDate = request.getEndDate();
+        if (startDate != null && endDate == null) {
+            endDate = startDate;
+        } else if (startDate == null && endDate != null) {
+            startDate = endDate;
+        }
+        if (startDate != null) {
+            LocalDateTime startDateTime = startDate.atStartOfDay();
+            LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay(); // 小于次日零点，确保包含当日
+            wrapper.ge("created_at", startDateTime);
+            wrapper.lt("created_at", endDateTime);
         }
         
         // 首先按置顶排序

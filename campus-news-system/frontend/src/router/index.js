@@ -80,6 +80,12 @@ const routes = [
         name: 'AiSentiment',
         component: () => import('@/views/AiSentiment.vue'),
         meta: { requireAuth: true }
+      },
+      {
+        path: '/comments',
+        name: 'Comments',
+        component: () => import('@/views/Comments.vue'),
+        meta: { requireAuth: true }
       }
     ]
   },

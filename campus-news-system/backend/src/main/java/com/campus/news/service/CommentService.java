@@ -1,8 +1,11 @@
 package com.campus.news.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.campus.news.common.PageResult;
 import com.campus.news.dto.CommentCreateRequest;
+import com.campus.news.dto.CommentQueryRequest;
 import com.campus.news.entity.Article;
 import com.campus.news.entity.Comment;
 import com.campus.news.entity.User;
@@ -13,9 +16,9 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -136,5 +139,54 @@ public class CommentService extends ServiceImpl<CommentMapper, Comment> {
             article.setCommentCount(article.getCommentCount() + delta);
             articleService.updateById(article);
         }
+    }
+    
+    public PageResult<Comment> getCommentHistory(CommentQueryRequest request, Long userId) {
+        Page<Comment> page = new Page<>(request.getCurrent(), request.getSize());
+        QueryWrapper<Comment> wrapper = new QueryWrapper<>();
+        wrapper.eq("status", 1);
+        
+        String type = request.getType();
+        boolean isSent = "sent".equalsIgnoreCase(type);
+        if (isSent) {
+            wrapper.eq("user_id", userId);
+        } else {
+            // 收到的评论：别人对我文章的评论
+            wrapper.inSql("article_id", "select id from article where author_id = " + userId);
+            wrapper.ne("user_id", userId); // 排除自己对自己文章的评论
+        }
+        
+        LocalDate start = request.getStartDate();
+        LocalDate end = request.getEndDate();
+        if (start != null && end == null) {
+            end = start;
+        } else if (start == null && end != null) {
+            start = end;
+        }
+        if (start != null) {
+            LocalDateTime startTime = start.atStartOfDay();
+            LocalDateTime endTime = end.plusDays(1).atStartOfDay();
+            wrapper.ge("created_at", startTime);
+            wrapper.lt("created_at", endTime);
+        }
+        
+        wrapper.orderByDesc("created_at");
+        
+        Page<Comment> resultPage = commentMapper.selectPage(page, wrapper);
+        resultPage.getRecords().forEach(comment -> enrichComment(comment));
+        
+        return new PageResult<>(resultPage.getTotal(), resultPage.getRecords(),
+                resultPage.getCurrent(), resultPage.getSize());
+    }
+    
+    private void enrichComment(Comment comment) {
+        // 填充评论用户
+        comment.setUser(userService.getUserInfo(comment.getUserId()));
+        if (comment.getReplyToUserId() != null) {
+            comment.setReplyToUser(userService.getUserInfo(comment.getReplyToUserId()));
+        }
+        // 填充文章
+        Article article = articleService.getById(comment.getArticleId());
+        comment.setArticle(article);
     }
 }

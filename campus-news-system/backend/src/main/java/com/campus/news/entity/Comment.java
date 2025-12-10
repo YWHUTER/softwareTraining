@@ -45,4 +45,7 @@ public class Comment {
     
     @TableField(exist = false)
     private List<Comment> replies;
+    
+    @TableField(exist = false)
+    private Article article;
 }

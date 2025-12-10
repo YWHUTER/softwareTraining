@@ -1,7 +1,9 @@
 package com.campus.news.controller;
 
+import com.campus.news.common.PageResult;
 import com.campus.news.common.Result;
 import com.campus.news.dto.CommentCreateRequest;
+import com.campus.news.dto.CommentQueryRequest;
 import com.campus.news.entity.Comment;
 import com.campus.news.service.CommentService;
 import com.campus.news.service.UserService;
@@ -42,6 +44,14 @@ public class CommentController {
     public Result<Boolean> deleteComment(@PathVariable Long id, Authentication authentication) {
         Long userId = getCurrentUserId(authentication);
         return Result.success(commentService.deleteComment(id, userId));
+    }
+    
+    @Operation(summary = "评论历史（收到/发出）")
+    @GetMapping("/history")
+    public Result<PageResult<Comment>> getCommentHistory(CommentQueryRequest request,
+                                                         Authentication authentication) {
+        Long userId = getCurrentUserId(authentication);
+        return Result.success(commentService.getCommentHistory(request, userId));
     }
     
     private Long getCurrentUserId(Authentication authentication) {

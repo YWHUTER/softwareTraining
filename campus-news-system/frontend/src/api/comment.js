@@ -22,3 +22,11 @@ export const deleteComment = (id) => {
     method: 'delete'
   })
 }
+
+export const getCommentHistory = (params) => {
+  return request({
+    url: '/comment/history',
+    method: 'get',
+    params
+  })
+}

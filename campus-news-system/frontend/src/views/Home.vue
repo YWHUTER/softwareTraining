@@ -63,7 +63,7 @@
           </div>
         </div>
       </div>
-      <div class="glass-card p-4 rounded-xl flex items-center gap-4">
+      <div class="glass-card p-4 rounded-xl flex items-center gap-4 hoverable" @click="goToComments">
         <div class="p-3 rounded-lg bg-purple-50/80 text-purple-600">
           <el-icon :size="24"><ChatDotRound /></el-icon>
         </div>
@@ -93,42 +93,55 @@
               <h2>最新资讯</h2>
             </div>
             <div class="filter-controls">
-              <el-radio-group v-model="currentBoard" @change="handleBoardChange" class="board-filters">
-                <el-radio-button label="">
-                  <el-icon><Grid /></el-icon>
-                  <span>全部</span>
-                </el-radio-button>
-                <el-radio-button label="OFFICIAL">
-                  <el-icon><Document /></el-icon>
-                  <span>官方新闻</span>
-                </el-radio-button>
-                <el-radio-button label="CAMPUS">
-                  <el-icon><School /></el-icon>
-                  <span>全校新闻</span>
-                </el-radio-button>
-                <el-radio-button label="COLLEGE">
-                  <el-icon><OfficeBuilding /></el-icon>
-                  <span>学院新闻</span>
-                </el-radio-button>
-              </el-radio-group>
-              <el-select v-model="sortBy" @change="handleSortChange" class="sort-select" placeholder="排序方式">
-                <el-option label="按日期排序（最新）" value="date_desc">
-                  <el-icon><Clock /></el-icon>
-                  <span>按日期排序（最新）</span>
-                </el-option>
-                <el-option label="按日期排序（最早）" value="date_asc">
-                  <el-icon><Clock /></el-icon>
-                  <span>按日期排序（最早）</span>
-                </el-option>
-                <el-option label="按热度排序（最高）" value="views_desc">
-                  <el-icon><TrendCharts /></el-icon>
-                  <span>按热度排序（最高）</span>
-                </el-option>
-                <el-option label="按热度排序（最低）" value="views_asc">
-                  <el-icon><TrendCharts /></el-icon>
-                  <span>按热度排序（最低）</span>
-                </el-option>
-              </el-select>
+              <div class="filters-left">
+                <el-radio-group v-model="currentBoard" @change="handleBoardChange" class="board-filters">
+                  <el-radio-button label="">
+                    <el-icon><Grid /></el-icon>
+                    <span>全部</span>
+                  </el-radio-button>
+                  <el-radio-button label="OFFICIAL">
+                    <el-icon><Document /></el-icon>
+                    <span>官方新闻</span>
+                  </el-radio-button>
+                  <el-radio-button label="CAMPUS">
+                    <el-icon><School /></el-icon>
+                    <span>全校新闻</span>
+                  </el-radio-button>
+                  <el-radio-button label="COLLEGE">
+                    <el-icon><OfficeBuilding /></el-icon>
+                    <span>学院新闻</span>
+                  </el-radio-button>
+                </el-radio-group>
+              </div>
+              <div class="filters-right">
+                <el-date-picker
+                  v-model="selectedDate"
+                  type="date"
+                  placeholder="按日期筛选"
+                  clearable
+                  value-format="YYYY-MM-DD"
+                  @change="handleDateChange"
+                  class="date-picker"
+                />
+                <el-select v-model="sortBy" @change="handleSortChange" class="sort-select" placeholder="排序方式">
+                  <el-option label="按日期排序（最新）" value="date_desc">
+                    <el-icon><Clock /></el-icon>
+                    <span>按日期排序（最新）</span>
+                  </el-option>
+                  <el-option label="按日期排序（最早）" value="date_asc">
+                    <el-icon><Clock /></el-icon>
+                    <span>按日期排序（最早）</span>
+                  </el-option>
+                  <el-option label="按热度排序（最高）" value="views_desc">
+                    <el-icon><TrendCharts /></el-icon>
+                    <span>按热度排序（最高）</span>
+                  </el-option>
+                  <el-option label="按热度排序（最低）" value="views_asc">
+                    <el-icon><TrendCharts /></el-icon>
+                    <span>按热度排序（最低）</span>
+                  </el-option>
+                </el-select>
+              </div>
             </div>
           </div>
           
@@ -293,6 +306,7 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const sortBy = ref('date_desc') // 默认按日期降序
+const selectedDate = ref(null) // 按日期筛选
 
 // 轮播图数据
 const carouselItems = ref([
@@ -363,6 +377,7 @@ const fetchArticles = async () => {
   try {
     // 解析排序参数
     const [sortField, sortOrder] = sortBy.value.split('_')
+    const selectedDateStr = selectedDate.value || undefined
     const data = await getArticleList({
       current: currentPage.value,
       size: pageSize.value,
@@ -370,6 +385,8 @@ const fetchArticles = async () => {
       isApproved: 1,
       sortBy: sortField === 'views' ? 'views' : 'date',
       sortOrder: sortOrder,
+      startDate: selectedDateStr,
+      endDate: selectedDateStr,
       _t: Date.now() // 防止缓存
     })
     articles.value = data.records
@@ -379,6 +396,11 @@ const fetchArticles = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleDateChange = () => {
+  currentPage.value = 1
+  fetchArticles()
 }
 
 const fetchHotArticles = async () => {
@@ -410,6 +432,10 @@ const handleSortChange = () => {
 
 const goToDetail = (id) => {
   router.push(`/article/${id}`)
+}
+
+const goToComments = () => {
+  router.push('/comments')
 }
 
 const getBoardTypeName = (type) => {
@@ -638,13 +664,29 @@ watch(() => route.path, (newPath) => {
 .filter-controls {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filters-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filters-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .board-filters {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .sort-select {
@@ -1222,6 +1264,10 @@ watch(() => route.path, (newPath) => {
   background: rgba(255, 255, 255, 0.8);
   transform: translateY(-2px);
   box-shadow: 0 12px 40px rgba(31, 38, 135, 0.1);
+}
+
+.hoverable {
+  cursor: pointer;
 }
 
 /* ========== 暗黑模式适配 ========== */
