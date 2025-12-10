@@ -1,10 +1,8 @@
 package com.campus.news.agent.tools;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.campus.news.entity.*;
 import com.campus.news.mapper.*;
-import com.campus.news.service.*;
 import dev.langchain4j.agent.tool.Tool;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,12 +32,6 @@ public class NewsAgentTools {
     private final NotificationMapper notificationMapper;
     private final RoleMapper roleMapper;
     private final UserRoleMapper userRoleMapper;
-    private final ArticleService articleService;
-    private final UserService userService;
-    private final CommentService commentService;
-    private final ArticleFavoriteService articleFavoriteService;
-    private final FollowService followService;
-    private final TagService tagService;
 
     /**
      * 搜索文章
@@ -1900,12 +1892,12 @@ public class NewsAgentTools {
                 return "❌ 用户不存在，ID：" + userId;
             }
             
-            // 获取用户最近点赞的文章，分析兴趣
-            LambdaQueryWrapper<ArticleLike> likeWrapper = new LambdaQueryWrapper<>();
-            likeWrapper.eq(ArticleLike::getUserId, userId)
-                      .orderByDesc(ArticleLike::getCreatedAt)
-                      .last("LIMIT 10");
-            List<ArticleLike> recentLikes = articleLikeMapper.selectList(likeWrapper);
+            // 获取用户最近点赞的文章，分析兴趣（暂时注释，后续可扩展个性化推荐）
+            // LambdaQueryWrapper<ArticleLike> likeWrapper = new LambdaQueryWrapper<>();
+            // likeWrapper.eq(ArticleLike::getUserId, userId)
+            //           .orderByDesc(ArticleLike::getCreatedAt)
+            //           .last("LIMIT 10");
+            // List<ArticleLike> recentLikes = articleLikeMapper.selectList(likeWrapper);
             
             // 获取用户关注的人发布的文章
             LambdaQueryWrapper<UserFollow> followWrapper = new LambdaQueryWrapper<>();
@@ -2585,12 +2577,37 @@ public class NewsAgentTools {
         log.info("Agent工具：检测敏感内容 - 严格模式: {}", strict);
         
         try {
-            // 定义敏感词库
-            List<String> politicalWords = Arrays.asList("政治", "选举", "革命");
-            List<String> violenceWords = Arrays.asList("暴力", "打架", "血腥");
-            List<String> adultWords = Arrays.asList("色情", "黄色", "成人");
-            List<String> spamWords = Arrays.asList("加微信", "点击链接", "扫码", "推广", "广告");
-            List<String> insultWords = Arrays.asList("傻", "蠢", "垃圾", "辣鸡");
+            // 定义敏感词库（增强版）
+            List<String> politicalWords = Arrays.asList(
+                "政治", "选举", "革命", "反动", "颠覆", "煽动", "分裂", "独立", 
+                "恐怖", "极端", "邪教", "法轮", "台独", "港独", "藏独"
+            );
+            List<String> violenceWords = Arrays.asList(
+                "暴力", "打架", "血腥", "杀人", "杀死", "砍死", "打死", "自杀",
+                "枪支", "爆炸", "恐怖袭击", "绑架", "暴恐", "斗殴", "械斗"
+            );
+            List<String> adultWords = Arrays.asList(
+                "色情", "黄色", "成人", "裸体", "性交", "做爱", "AV", "毛片",
+                "约炮", "一夜情", "援交", "包养", "小姐", "嫖娼", "卖淫"
+            );
+            List<String> spamWords = Arrays.asList(
+                "加微信", "点击链接", "扫码", "推广", "广告", "刷单", "兼职",
+                "赚钱", "月入", "日赚", "代理", "招商", "加盟", "优惠券", "返利"
+            );
+            // 脏话和侮辱性词汇（增强版）
+            List<String> insultWords = Arrays.asList(
+                "傻逼", "傻B", "傻叉", "煞笔", "蠢货", "白痴", "脑残", "智障",
+                "垃圾", "废物", "辣鸡", "渣男", "绿茶", "婊子", "贱人", "贱货",
+                "滚", "去死", "妈的", "他妈的", "操", "艹", "草", "卧槽", "我操",
+                "尼玛", "你妈", "CNM", "NMSL", "SB", "TMD", "WTF", "混蛋",
+                "王八蛋", "狗日的", "狗屎", "放屁", "屁话", "鬼话", "废话"
+            );
+            // 非法内容
+            List<String> illegalWords = Arrays.asList(
+                "毒品", "吸毒", "贩毒", "冰毒", "海洛因", "大麻", "摇头丸",
+                "赌博", "赌场", "博彩", "六合彩", "开盘", "下注", "赔率",
+                "假证", "假发票", "代开", "办证", "黑客", "破解", "外挂"
+            );
             
             // 检测结果
             Map<String, List<String>> detectedWords = new HashMap<>();
@@ -2629,6 +2646,13 @@ public class NewsAgentTools {
                 if (content.contains(word)) {
                     detectedWords.computeIfAbsent("侮辱谩骂", k -> new ArrayList<>()).add(word);
                     sensitivityScore += strict ? 6 : 3;
+                }
+            }
+            
+            for (String word : illegalWords) {
+                if (content.contains(word)) {
+                    detectedWords.computeIfAbsent("非法内容", k -> new ArrayList<>()).add(word);
+                    sensitivityScore += strict ? 10 : 5;
                 }
             }
             
@@ -2678,21 +2702,295 @@ public class NewsAgentTools {
                     result.append("• 可以通过，但建议持续监控\n");
                     result.append("• 提醒作者注意内容规范\n");
                 }
-            }
-            
-            // 内容优化建议
-            result.append("\n📝 内容优化建议：\n");
-            if (detectedWords.containsKey("营销推广")) {
-                result.append("• 减少商业推广内容，增加有价值的信息\n");
-            }
-            if (detectedWords.containsKey("侮辱谩骂")) {
-                result.append("• 使用文明用语，保持友好的讨论氛围\n");
+                
+                // 内容优化建议
+                result.append("\n📝 内容优化建议：\n");
+                if (detectedWords.containsKey("营销推广")) {
+                    result.append("• 减少商业推广内容，增加有价值的信息\n");
+                }
+                if (detectedWords.containsKey("侮辱谩骂")) {
+                    result.append("• 使用文明用语，保持友好的讨论氛围\n");
+                }
             }
             
             return result.toString();
         } catch (Exception e) {
             log.error("检测敏感内容失败", e);
             return "❌ 检测失败：" + e.getMessage();
+        }
+    }
+    
+    /**
+     * 自动审核文章
+     * @param articleId 文章ID
+     * @param autoApprove 是否自动通过无敏感内容的文章
+     * @return 审核结果
+     */
+    @Tool("自动审核文章内容，检测脏话和非法言论")
+    public String autoApproveArticle(Long articleId, boolean autoApprove) {
+        log.info("Agent工具：自动审核文章 - 文章ID: {}, 自动通过: {}", articleId, autoApprove);
+        
+        try {
+            Article article = articleMapper.selectById(articleId);
+            if (article == null) {
+                return "❌ 文章不存在，ID：" + articleId;
+            }
+            
+            // 检查文章是否已审核
+            if (article.getIsApproved() == 1) {
+                return "ℹ️ 文章已经通过审核：《" + article.getTitle() + "》";
+            }
+            
+            StringBuilder result = new StringBuilder();
+            result.append("🤖 自动审核报告\n");
+            result.append("═".repeat(30)).append("\n\n");
+            
+            result.append("📄 文章信息：\n");
+            result.append("• 标题：《").append(article.getTitle()).append("》\n");
+            result.append("• 作者：").append(getUserName(article.getAuthorId())).append("\n");
+            result.append("• 板块：").append(getBoardTypeName(article.getBoardType())).append("\n");
+            result.append("• 发布时间：").append(article.getCreatedAt()).append("\n\n");
+            
+            // 检测标题敏感词
+            String titleCheck = detectSensitiveContent(article.getTitle(), true);
+            boolean titleSafe = titleCheck.contains("未检测到敏感内容");
+            
+            // 检测内容敏感词
+            String contentCheck = detectSensitiveContent(article.getContent(), true);
+            boolean contentSafe = contentCheck.contains("未检测到敏感内容");
+            
+            result.append("🔍 审核结果：\n");
+            result.append("━".repeat(20)).append("\n\n");
+            
+            if (!titleSafe) {
+                result.append("⚠️ 标题检测结果：\n").append(titleCheck).append("\n");
+            } else {
+                result.append("✅ 标题检测：通过\n");
+            }
+            
+            if (!contentSafe) {
+                result.append("⚠️ 内容检测结果：\n").append(contentCheck).append("\n");
+            } else {
+                result.append("✅ 内容检测：通过\n");
+            }
+            
+            // 判断审核结果
+            boolean canApprove = titleSafe && contentSafe;
+            
+            result.append("\n📋 审核决定：\n");
+            if (canApprove) {
+                result.append("✅ 文章内容安全，");
+                if (autoApprove) {
+                    // 自动通过审核
+                    article.setIsApproved(1);
+                    articleMapper.updateById(article);
+                    result.append("已自动通过审核\n");
+                    log.info("文章自动审核通过：{}", articleId);
+                    
+                    // 发送通知给文章作者
+                    try {
+                        Notification notification = new Notification();
+                        notification.setUserId(article.getAuthorId());
+                        notification.setFromUserId(1L); // 系统用户
+                        notification.setType("SYSTEM");
+                        notification.setArticleId(articleId);
+                        notification.setContent("您的文章《" + article.getTitle() + "》已通过审核并发布。");
+                        notification.setIsRead(0);
+                        notification.setCreatedAt(LocalDateTime.now());
+                        notificationMapper.insert(notification);
+                        log.info("已发送审核通过通知给用户：{}", article.getAuthorId());
+                    } catch (Exception e) {
+                        log.error("发送审核通过通知失败", e);
+                    }
+                } else {
+                    result.append("建议通过审核\n");
+                }
+            } else {
+                result.append("❌ 文章包含敏感内容，");
+                if (autoApprove) {
+                    // 自动拒绝
+                    article.setIsApproved(2);
+                    articleMapper.updateById(article);
+                    result.append("已自动拒绝发布\n");
+                    log.info("文章自动审核拒绝：{}", articleId);
+                    
+                    // 发送通知给文章作者
+                    try {
+                        Notification notification = new Notification();
+                        notification.setUserId(article.getAuthorId());
+                        notification.setFromUserId(1L); // 系统用户
+                        notification.setType("SYSTEM");
+                        notification.setArticleId(articleId);
+                        notification.setContent("您的文章《" + article.getTitle() + "》未通过审核，原因：内容包含敏感或违规信息。");
+                        notification.setIsRead(0);
+                        notification.setCreatedAt(LocalDateTime.now());
+                        notificationMapper.insert(notification);
+                        log.info("已发送审核拒绝通知给用户：{}", article.getAuthorId());
+                    } catch (Exception e) {
+                        log.error("发送审核拒绝通知失败", e);
+                    }
+                } else {
+                    result.append("建议拒绝或要求修改\n");
+                }
+                
+                result.append("\n🚫 违规原因：\n");
+                if (!titleSafe) {
+                    result.append("• 标题包含敏感词汇\n");
+                }
+                if (!contentSafe) {
+                    result.append("• 内容包含违规信息\n");
+                }
+            }
+            
+            return result.toString();
+        } catch (Exception e) {
+            log.error("自动审核文章失败", e);
+            return "❌ 审核失败：" + e.getMessage();
+        }
+    }
+    
+    /**
+     * 查看所有待审核文章
+     * @return 待审核文章列表
+     */
+    @Tool("查看所有待审核的文章列表")
+    public String listPendingArticles() {
+        log.info("Agent工具：查看待审核文章列表");
+        
+        try {
+            // 查询所有待审核的文章（不加任何其他限制）
+            List<Article> pendingArticles = articleMapper.selectList(
+                new LambdaQueryWrapper<Article>()
+                    .eq(Article::getIsApproved, 0)
+            );
+            
+            if (pendingArticles.isEmpty()) {
+                return "✅ 没有待审核的文章";
+            }
+            
+            StringBuilder result = new StringBuilder();
+            result.append("📋 待审核文章列表\n");
+            result.append("═".repeat(30)).append("\n\n");
+            result.append("共有 ").append(pendingArticles.size()).append(" 篇待审核文章：\n\n");
+            
+            for (int i = 0; i < pendingArticles.size(); i++) {
+                Article article = pendingArticles.get(i);
+                result.append(i + 1).append(". 《").append(article.getTitle()).append("》\n");
+                result.append("   - ID: ").append(article.getId()).append("\n");
+                result.append("   - 作者: ").append(getUserName(article.getAuthorId())).append("\n");
+                result.append("   - 板块: ").append(getBoardTypeName(article.getBoardType())).append("\n");
+                result.append("   - 创建时间: ").append(article.getCreatedAt()).append("\n");
+                result.append("   - Status字段: ").append(article.getStatus()).append("\n");
+                result.append("   - IsApproved字段: ").append(article.getIsApproved()).append("\n");
+                result.append("\n");
+            }
+            
+            return result.toString();
+        } catch (Exception e) {
+            log.error("查看待审核文章失败", e);
+            return "❌ 查询失败：" + e.getMessage();
+        }
+    }
+    
+    /**
+     * 批量自动审核未审核文章
+     * @param limit 审核数量限制
+     * @return 批量审核结果
+     */
+    @Tool("批量自动审核未审核的文章")
+    public String batchAutoApprove(int limit) {
+        log.info("Agent工具：批量自动审核 - 限制: {}", limit);
+        
+        try {
+            // 查询未审核的文章（移除status限制，因为status是逻辑删除字段）
+            List<Article> pendingArticles = articleMapper.selectList(
+                new LambdaQueryWrapper<Article>()
+                    .eq(Article::getIsApproved, 0)
+                    .orderByAsc(Article::getCreatedAt)
+                    .last("LIMIT " + Math.min(limit, 50))
+            );
+            
+            if (pendingArticles.isEmpty()) {
+                return "✅ 没有待审核的文章";
+            }
+            
+            StringBuilder result = new StringBuilder();
+            result.append("🤖 批量自动审核报告\n");
+            result.append("═".repeat(30)).append("\n\n");
+            result.append("📊 待审核文章数：").append(pendingArticles.size()).append(" 篇\n\n");
+            
+            int approved = 0;
+            int rejected = 0;
+            int failed = 0;
+            
+            for (Article article : pendingArticles) {
+                try {
+                    // 检测内容
+                    String fullContent = article.getTitle() + " " + article.getContent();
+                    String checkResult = detectSensitiveContent(fullContent, true);
+                    boolean isSafe = checkResult.contains("未检测到敏感内容");
+                    
+                    if (isSafe) {
+                        article.setIsApproved(1);
+                        articleMapper.updateById(article);
+                        approved++;
+                        result.append("✅ 通过：《").append(article.getTitle()).append("》\n");
+                        
+                        // 发送审核通过通知
+                        try {
+                            Notification notification = new Notification();
+                            notification.setUserId(article.getAuthorId());
+                            notification.setFromUserId(1L); // 系统用户
+                            notification.setType("SYSTEM");
+                            notification.setArticleId(article.getId());
+                            notification.setContent("[文章审核通过] 您的文章《" + article.getTitle() + "》已通过审核并发布。");
+                            notification.setIsRead(0);
+                            notification.setCreatedAt(LocalDateTime.now());
+                            notificationMapper.insert(notification);
+                        } catch (Exception notifyEx) {
+                            log.error("发送审核通过通知失败：文章ID={}", article.getId(), notifyEx);
+                        }
+                    } else {
+                        article.setIsApproved(2);
+                        articleMapper.updateById(article);
+                        rejected++;
+                        result.append("❌ 拒绝：《").append(article.getTitle()).append("》 - 包含敏感内容\n");
+                        
+                        // 发送审核拒绝通知
+                        try {
+                            Notification notification = new Notification();
+                            notification.setUserId(article.getAuthorId());
+                            notification.setFromUserId(1L); // 系统用户
+                            notification.setType("SYSTEM");
+                            notification.setArticleId(article.getId());
+                            notification.setContent("[文章审核未通过] 您的文章《" + article.getTitle() + "》未通过审核，原因：内容包含敏感或违规信息。请修改后重新提交。");
+                            notification.setIsRead(0);
+                            notification.setCreatedAt(LocalDateTime.now());
+                            notificationMapper.insert(notification);
+                        } catch (Exception notifyEx) {
+                            log.error("发送审核拒绝通知失败：文章ID={}", article.getId(), notifyEx);
+                        }
+                    }
+                } catch (Exception e) {
+                    failed++;
+                    result.append("⚠️ 失败：《").append(article.getTitle()).append("》 - ").append(e.getMessage()).append("\n");
+                }
+            }
+            
+            result.append("\n📈 审核统计：\n");
+            result.append("• ✅ 通过：").append(approved).append(" 篇\n");
+            result.append("• ❌ 拒绝：").append(rejected).append(" 篇\n");
+            if (failed > 0) {
+                result.append("• ⚠️ 失败：").append(failed).append(" 篇\n");
+            }
+            
+            double passRate = approved * 100.0 / pendingArticles.size();
+            result.append("• 通过率：").append(String.format("%.1f%%", passRate)).append("\n");
+            
+            return result.toString();
+        } catch (Exception e) {
+            log.error("批量自动审核失败", e);
+            return "❌ 批量审核失败：" + e.getMessage();
         }
     }
     

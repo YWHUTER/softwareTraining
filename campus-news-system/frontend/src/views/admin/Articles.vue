@@ -32,7 +32,18 @@
       
       <el-table :data="articles" v-loading="loading" stripe>
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="title" label="标题" show-overflow-tooltip />
+        <el-table-column label="标题" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-link 
+              type="primary" 
+              @click="handleViewDetail(row.id)"
+              :underline="false"
+              class="article-title-link"
+            >
+              {{ row.title }}
+            </el-link>
+          </template>
+        </el-table-column>
         <el-table-column label="板块" width="100">
           <template #default="{ row }">
             <el-tag :type="getBoardTypeTag(row.boardType)" size="small">
@@ -57,8 +68,12 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
+            <el-button size="small" @click="handleViewDetail(row.id)" class="view-btn">
+              <el-icon><View /></el-icon>
+              查看
+            </el-button>
             <el-button text size="small" @click="handleTogglePin(row)">
               {{ row.isPinned ? '取消置顶' : '置顶' }}
             </el-button>
@@ -153,6 +168,13 @@ const handleDelete = async (id) => {
       console.error(error)
     }
   }
+}
+
+const handleViewDetail = (id) => {
+  // 在新标签页中打开文章详情
+  const routeUrl = `/article/${id}`
+  const fullUrl = window.location.origin + routeUrl
+  window.open(fullUrl, '_blank')
 }
 
 const getBoardTypeName = (type) => {
@@ -250,5 +272,33 @@ onMounted(() => {
 
 :deep(.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell) {
   background-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* 文章标题链接样式 */
+.article-title-link {
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+.article-title-link:hover {
+  color: #409eff !important;
+  transform: translateX(2px);
+}
+
+/* 查看按钮样式 */
+.view-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border: none !important;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+}
+
+.view-btn:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.6);
 }
 </style>

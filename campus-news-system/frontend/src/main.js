@@ -10,7 +10,7 @@ import './style.css'
 import './styles/glassmorphism.css'
 import { MotionPlugin } from '@vueuse/motion'
 import Particles from '@tsparticles/vue3'
-import { loadSlim } from 'tsparticles-slim'
+import { loadFull } from 'tsparticles'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -26,7 +26,11 @@ app.use(ElementPlus, { locale: zhCn })
 app.use(MotionPlugin)
 app.use(Particles, {
   init: async engine => {
-    await loadSlim(engine)
+    try {
+      await loadFull(engine)
+    } catch (error) {
+      console.warn('Failed to load particles:', error)
+    }
   }
 })
 
