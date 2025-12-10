@@ -1,5 +1,8 @@
 <template>
-  <div class="main-layout" :style="{ backgroundImage: `url(${bgImage})` }">
+  <div class="main-layout" :class="{ 'dark-mode': isDark }" :style="{ backgroundImage: `url(${bgImage})` }">
+    <!-- 粒子背景 -->
+    <ParticleBackground />
+    
     <el-container class="main-container" style="position: relative; z-index: 1;">
       <!-- 顶部导航栏 -->
       <el-header class="header">
@@ -71,6 +74,25 @@
 
           <!-- 用户操作区 -->
           <div class="user-actions">
+            <!-- 主题切换按钮 -->
+            <el-tooltip 
+              :content="themeTooltip" 
+              placement="bottom"
+              :show-after="500"
+            >
+              <el-button 
+                circle 
+                class="theme-toggle-btn"
+                @click="toggleTheme"
+              >
+                <el-icon :size="18">
+                  <Sunny v-if="isDark" />
+                  <Moon v-else-if="themeMode === 'light'" />
+                  <Monitor v-else />
+                </el-icon>
+              </el-button>
+            </el-tooltip>
+            
             <template v-if="userStore.isLogin">
               <!-- 发布按钮 -->
               <el-button 
@@ -198,15 +220,32 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useThemeStore } from '@/stores/theme'
+import { storeToRefs } from 'pinia'
 import { ElMessage, ElNotification } from 'element-plus'
-import { Search, Bell, Cpu, Histogram, QuestionFilled } from '@element-plus/icons-vue'
+import { Search, Bell, Cpu, Histogram, QuestionFilled, Sunny, Moon, Monitor } from '@element-plus/icons-vue'
 import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '@/api/notification'
 import bgImage from '@/assets/main-bg.jpg'
 import notificationWS from '@/utils/websocket'
+import ParticleBackground from '@/components/ParticleBackground.vue'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+
+// 主题相关
+const themeStore = useThemeStore()
+const { isDark, mode: themeMode } = storeToRefs(themeStore)
+
+const themeTooltip = computed(() => {
+  if (themeMode.value === 'light') return '当前：浅色模式（点击切换到深色）'
+  if (themeMode.value === 'dark') return '当前：深色模式（点击切换到跟随系统）'
+  return '当前：跟随系统（点击切换到浅色）'
+})
+
+const toggleTheme = () => {
+  themeStore.toggleTheme()
+}
 
 const activeMenu = computed(() => route.path)
 
@@ -975,5 +1014,181 @@ onUnmounted(() => {
   .footer-info {
     text-align: center;
   }
+}
+
+/* ========== 主题切换按钮样式 ========== */
+.theme-toggle-btn {
+  border: none;
+  background: var(--bg-glass);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text-secondary);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--bg-glass-hover);
+  transform: rotate(15deg) scale(1.1);
+  color: var(--primary-color);
+}
+
+.theme-toggle-btn:active {
+  transform: rotate(0deg) scale(0.95);
+}
+
+/* ========== 暗黑模式适配 ========== */
+.main-layout.dark-mode::before {
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.dark-mode .header {
+  background: var(--bg-glass);
+  border-bottom-color: var(--border-color);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .logo-title {
+  color: var(--text-primary);
+}
+
+.dark-mode .logo-subtitle {
+  color: var(--text-tertiary);
+}
+
+.dark-mode .main-menu .menu-item {
+  color: var(--text-secondary);
+}
+
+.dark-mode .main-menu .menu-item:hover {
+  background: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.dark-mode .main-menu .is-active {
+  color: var(--primary-color);
+  background: var(--primary-light);
+  border-bottom-color: var(--primary-color);
+}
+
+.dark-mode .main-menu .ai-menu-item {
+  background: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.dark-mode .main-menu .follow-menu-item {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.dark-mode .main-menu .search-menu-item {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+.dark-mode .notification-btn {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.dark-mode .notification-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.dark-mode .user-info:hover {
+  background: var(--bg-tertiary);
+}
+
+.dark-mode .user-name {
+  color: var(--text-primary);
+}
+
+.dark-mode .footer {
+  background: var(--bg-glass);
+  border-top-color: var(--border-color);
+}
+
+.dark-mode .copyright {
+  color: var(--text-primary);
+  text-shadow: none;
+}
+
+.dark-mode .beian {
+  color: var(--text-secondary);
+}
+
+.dark-mode .footer-links a {
+  color: var(--text-secondary);
+}
+
+.dark-mode .footer-links a:hover {
+  color: var(--primary-color);
+}
+
+.dark-mode .footer-links .divider {
+  color: var(--border-color);
+}
+
+/* 暗黑模式通知面板 */
+.dark-mode .notification-panel {
+  background: var(--bg-secondary);
+}
+
+.dark-mode .notification-header {
+  background: var(--bg-tertiary);
+  border-bottom-color: var(--border-color);
+}
+
+.dark-mode .notification-title {
+  color: var(--text-primary);
+}
+
+.dark-mode .notification-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.dark-mode .notification-item.is-unread {
+  background: var(--primary-light);
+}
+
+.dark-mode .notification-text {
+  color: var(--text-primary);
+}
+
+.dark-mode .notification-time {
+  color: var(--text-tertiary);
+}
+
+/* 暗黑模式下拉菜单 */
+.dark-mode :deep(.el-popper.is-light) {
+  background: var(--bg-glass) !important;
+  border-color: var(--border-color) !important;
+}
+
+.dark-mode :deep(.el-popper.is-light .el-popper__arrow::before) {
+  background: var(--bg-glass) !important;
+  border-color: var(--border-color) !important;
+}
+
+.dark-mode :deep(.el-menu--popup .el-menu-item) {
+  color: var(--text-secondary);
+}
+
+.dark-mode :deep(.el-menu--popup .el-menu-item:hover) {
+  background: var(--primary-light) !important;
+  color: var(--primary-color) !important;
+}
+
+.dark-mode :deep(.el-menu--popup .el-menu-item .el-icon) {
+  color: var(--text-tertiary);
+}
+
+.dark-mode :deep(.el-dropdown-menu__item) {
+  color: var(--text-secondary);
+}
+
+.dark-mode :deep(.el-dropdown-menu__item:hover) {
+  background: var(--primary-light) !important;
+  color: var(--primary-color) !important;
 }
 </style>

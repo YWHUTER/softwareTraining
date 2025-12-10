@@ -214,4 +214,31 @@ onMounted(() => {
   25% { transform: translateY(-3px) rotate(-2deg); }
   75% { transform: translateY(-3px) rotate(2deg); }
 }
+
+/* ========== 暗黑模式适配 ========== */
+:global(.dark) .tag-cloud-container,
+:global([data-theme="dark"]) .tag-cloud-container {
+  background: var(--bg-card);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+:global(.dark) .tag-cloud-title,
+:global([data-theme="dark"]) .tag-cloud-title {
+  color: var(--text-primary);
+}
+
+:global(.dark) .tag-cloud-title .el-icon,
+:global([data-theme="dark"]) .tag-cloud-title .el-icon {
+  color: var(--primary-color);
+}
+
+:global(.dark) .tag-item:hover,
+:global([data-theme="dark"]) .tag-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+:global(.dark) .tag-count,
+:global([data-theme="dark"]) .tag-count {
+  background: rgba(255, 255, 255, 0.1);
+}
 </style>

@@ -1223,4 +1223,88 @@ watch(() => route.path, (newPath) => {
   transform: translateY(-2px);
   box-shadow: 0 12px 40px rgba(31, 38, 135, 0.1);
 }
+
+/* ========== 暗黑模式适配 ========== */
+:global(.dark) .glass-card,
+:global([data-theme="dark"]) .glass-card {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+:global(.dark) .glass-card:hover,
+:global([data-theme="dark"]) .glass-card:hover {
+  background: var(--bg-glass-hover);
+}
+
+:global(.dark) .section-title h2,
+:global([data-theme="dark"]) .section-title h2 {
+  color: var(--text-primary);
+}
+
+:global(.dark) .filter-section,
+:global([data-theme="dark"]) .filter-section {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+:global(.dark) .sidebar-card,
+:global([data-theme="dark"]) .sidebar-card {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+:global(.dark) .card-title span,
+:global([data-theme="dark"]) .card-title span {
+  color: var(--text-primary);
+}
+
+:global(.dark) .hot-item,
+:global([data-theme="dark"]) .hot-item {
+  background: transparent;
+}
+
+:global(.dark) .hot-item:hover,
+:global([data-theme="dark"]) .hot-item:hover {
+  background: var(--bg-tertiary);
+}
+
+:global(.dark) .hot-title,
+:global([data-theme="dark"]) .hot-title {
+  color: var(--text-primary);
+}
+
+:global(.dark) .hot-meta,
+:global(.dark) .hot-stat,
+:global([data-theme="dark"]) .hot-meta,
+:global([data-theme="dark"]) .hot-stat {
+  color: var(--text-tertiary);
+}
+
+:global(.dark) .quick-link span,
+:global([data-theme="dark"]) .quick-link span {
+  color: var(--text-secondary);
+}
+
+:global(.dark) .quick-link:hover span,
+:global([data-theme="dark"]) .quick-link:hover span {
+  color: var(--primary-color);
+}
+
+:global(.dark) .comment-author,
+:global(.dark) .comment-text,
+:global([data-theme="dark"]) .comment-author,
+:global([data-theme="dark"]) .comment-text {
+  color: var(--text-secondary);
+}
+
+:global(.dark) .skeleton-card .article-cover,
+:global([data-theme="dark"]) .skeleton-card .article-cover {
+  background: var(--bg-tertiary);
+}
+
+:global(.dark) .pagination-wrapper,
+:global([data-theme="dark"]) .pagination-wrapper {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
 </style>
