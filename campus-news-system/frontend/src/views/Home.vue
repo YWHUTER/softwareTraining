@@ -88,59 +88,91 @@
             :initial="{ opacity: 0, y: 20 }"
             :enter="{ opacity: 1, y: 0, transition: { delay: 200 } }"
           >
-            <div class="section-title">
-              <el-icon :size="20"><Tickets /></el-icon>
-              <h2>最新资讯</h2>
+            <!-- 头部标题 -->
+            <div class="filter-header">
+              <div class="section-title">
+                <div class="title-icon">
+                  <el-icon :size="20"><Tickets /></el-icon>
+                </div>
+                <h2>最新资讯</h2>
+              </div>
+              <div class="result-count" v-if="total > 0">
+                共找到 <span class="count-number">{{ total }}</span> 篇相关文章
+              </div>
             </div>
-            <div class="filter-controls">
+
+            <!-- 筛选工具栏 -->
+            <div class="filter-toolbar">
+              <!-- 左侧：分类Tabs -->
               <div class="filters-left">
-                <el-radio-group v-model="currentBoard" @change="handleBoardChange" class="board-filters">
+                <el-radio-group v-model="currentBoard" @change="handleBoardChange" class="custom-tabs">
                   <el-radio-button label="">
-                    <el-icon><Grid /></el-icon>
-                    <span>全部</span>
+                    <div class="tab-content">
+                      <el-icon><Grid /></el-icon>
+                      <span>全部</span>
+                    </div>
                   </el-radio-button>
                   <el-radio-button label="OFFICIAL">
-                    <el-icon><Document /></el-icon>
-                    <span>官方新闻</span>
+                    <div class="tab-content">
+                      <el-icon><Document /></el-icon>
+                      <span>官方新闻</span>
+                    </div>
                   </el-radio-button>
                   <el-radio-button label="CAMPUS">
-                    <el-icon><School /></el-icon>
-                    <span>全校新闻</span>
+                    <div class="tab-content">
+                      <el-icon><School /></el-icon>
+                      <span>全校新闻</span>
+                    </div>
                   </el-radio-button>
                   <el-radio-button label="COLLEGE">
-                    <el-icon><OfficeBuilding /></el-icon>
-                    <span>学院新闻</span>
+                    <div class="tab-content">
+                      <el-icon><OfficeBuilding /></el-icon>
+                      <span>学院新闻</span>
+                    </div>
                   </el-radio-button>
                 </el-radio-group>
               </div>
+
+              <!-- 右侧：筛选器 -->
               <div class="filters-right">
-                <el-date-picker
-                  v-model="selectedDate"
-                  type="date"
-                  placeholder="按日期筛选"
-                  clearable
-                  value-format="YYYY-MM-DD"
-                  @change="handleDateChange"
-                  class="date-picker"
-                />
-                <el-select v-model="sortBy" @change="handleSortChange" class="sort-select" placeholder="排序方式">
-                  <el-option label="按日期排序（最新）" value="date_desc">
-                    <el-icon><Clock /></el-icon>
-                    <span>按日期排序（最新）</span>
-                  </el-option>
-                  <el-option label="按日期排序（最早）" value="date_asc">
-                    <el-icon><Clock /></el-icon>
-                    <span>按日期排序（最早）</span>
-                  </el-option>
-                  <el-option label="按热度排序（最高）" value="views_desc">
-                    <el-icon><TrendCharts /></el-icon>
-                    <span>按热度排序（最高）</span>
-                  </el-option>
-                  <el-option label="按热度排序（最低）" value="views_asc">
-                    <el-icon><TrendCharts /></el-icon>
-                    <span>按热度排序（最低）</span>
-                  </el-option>
-                </el-select>
+                <div class="filter-item">
+                  <el-date-picker
+                    v-model="selectedDate"
+                    type="date"
+                    placeholder="按日期筛选"
+                    clearable
+                    value-format="YYYY-MM-DD"
+                    @change="handleDateChange"
+                    class="custom-input"
+                  />
+                </div>
+                <div class="filter-item">
+                  <el-select 
+                    v-model="sortBy" 
+                    @change="handleSortChange" 
+                    class="custom-input sort-select" 
+                    placeholder="排序方式"
+                  >
+                    <el-option label="最新发布" value="date_desc">
+                      <div class="option-item">
+                        <el-icon><Clock /></el-icon>
+                        <span>最新发布</span>
+                      </div>
+                    </el-option>
+                    <el-option label="最早发布" value="date_asc">
+                      <div class="option-item">
+                        <el-icon><Clock /></el-icon>
+                        <span>最早发布</span>
+                      </div>
+                    </el-option>
+                    <el-option label="最多浏览" value="views_desc">
+                      <div class="option-item">
+                        <el-icon><View /></el-icon>
+                        <span>最多浏览</span>
+                      </div>
+                    </el-option>
+                  </el-select>
+                </div>
               </div>
             </div>
           </div>
@@ -623,93 +655,184 @@ watch(() => route.path, (newPath) => {
   width: 100%;
 }
 
-/* 筛选栏 */
+/* 筛选栏容器 */
 .filter-section {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(20px) saturate(150%);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 24px;
-  margin-bottom: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 
-              0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05), 
+              0 0 0 1px rgba(255, 255, 255, 0.6) inset;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 20px;
   transition: all 0.3s ease;
-  border: 2px solid rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 .filter-section:hover {
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1), 
-              0 0 0 1px rgba(255, 255, 255, 0.6) inset;
-  background: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08), 
+              0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+}
+
+/* 头部样式 */
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding-bottom: 16px;
 }
 
 .section-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+
+.title-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .section-title h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: #2c3e50;
+  letter-spacing: 0.5px;
 }
 
-.filter-controls {
+.result-count {
+  font-size: 14px;
+  color: #909399;
+}
+
+.count-number {
+  color: #667eea;
+  font-weight: 700;
+  font-family: 'DIN Alternate', sans-serif;
+  font-size: 16px;
+  margin: 0 2px;
+}
+
+/* 工具栏样式 */
+.filter-toolbar {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  align-items: center;
+  gap: 20px;
   flex-wrap: wrap;
 }
 
+/* 左侧 Tabs 样式 */
 .filters-left {
+  flex: 1;
+  min-width: 300px;
+}
+
+.custom-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.custom-tabs :deep(.el-radio-button__inner) {
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 8px 16px !important;
+  background: white !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0,0,0,0.02) !important;
+  color: #606266 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  height: 36px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 
+.custom-tabs :deep(.el-radio-button:first-child .el-radio-button__inner) {
+  border-left: none !important;
+  border-radius: 8px !important;
+}
+
+.custom-tabs :deep(.el-radio-button:last-child .el-radio-button__inner) {
+  border-radius: 8px !important;
+}
+
+/* 选中状态 */
+.custom-tabs :deep(.el-radio-button.is-active .el-radio-button__inner) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+/* 悬浮状态 */
+.custom-tabs :deep(.el-radio-button:not(.is-active) .el-radio-button__inner:hover) {
+  color: #667eea !important;
+  background: #f8f9fa !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0,0,0,0.02) !important;
+}
+
+.tab-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+/* 右侧筛选器样式 */
 .filters-right {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
 }
 
-.board-filters {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.filter-item {
+  position: relative;
+}
+
+.custom-input {
+  width: 160px;
+}
+
+/* 输入框样式覆盖 */
+.custom-input :deep(.el-input__wrapper) {
+  background: white !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+  border-radius: 8px !important;
+  padding: 4px 12px !important;
+  transition: all 0.3s ease;
+}
+
+.custom-input :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  transform: translateY(-1px);
+}
+
+.custom-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2), 0 2px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
 .sort-select {
-  width: 180px;
+  width: 140px;
 }
 
-.sort-select :deep(.el-input__inner) {
-  font-weight: 500;
-}
-
-.sort-select :deep(.el-select-dropdown__item) {
+.option-item {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.board-filters :deep(.el-radio-button__inner) {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 500;
 }
 
 /* 文章列表 */
@@ -1125,17 +1248,52 @@ watch(() => route.path, (newPath) => {
   }
 
   .filter-section {
-    flex-direction: column;
-    align-items: stretch;
     padding: 16px;
   }
 
-  .board-filters {
-    flex-wrap: wrap;
+  .filter-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
   }
 
-  .board-filters :deep(.el-radio-button__inner) {
-    padding: 8px 16px;
+  .filters-left {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .custom-tabs {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px; /* 为滚动条留空间 */
+  }
+
+  .custom-tabs :deep(.el-radio-button) {
+    flex-shrink: 0;
+  }
+  
+  .filters-right {
+    flex-direction: column;
+    width: 100%;
+    gap: 12px;
+  }
+  
+  .filter-item {
+    width: 100%;
+  }
+  
+  .custom-input, .sort-select {
+    width: 100% !important;
+  }
+
+  .article-list {
+    min-height: auto;
+  }
+  
+  /* 隐藏滚动条但保持功能 */
+  .custom-tabs::-webkit-scrollbar {
+    height: 0;
+    width: 0;
   }
 
   .article-card {
