@@ -7,7 +7,7 @@ import logging
 import uvicorn
 
 from config import DATABASE_CONFIG, REDIS_CONFIG, RECOMMENDATION_CONFIG, SERVICE_CONFIG
-from models import DataLoader, HybridRecommender
+from models import DataLoader, HybridRecommender, UserProfileAnalyzer
 
 # 配置日志
 logging.basicConfig(
@@ -35,6 +35,7 @@ app.add_middleware(
 # 全局推荐器实例
 data_loader = None
 recommender = None
+user_profile_analyzer = None
 
 # 请求/响应模型
 class RecommendationItem(BaseModel):
@@ -59,13 +60,14 @@ class UserRecommendRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """应用启动时初始化推荐系统"""
-    global data_loader, recommender
+    global data_loader, recommender, user_profile_analyzer
     
     logger.info("正在初始化推荐系统...")
     try:
         data_loader = DataLoader(DATABASE_CONFIG)
         recommender = HybridRecommender(data_loader, RECOMMENDATION_CONFIG)
         recommender.train()
+        user_profile_analyzer = UserProfileAnalyzer(data_loader)
         logger.info("推荐系统初始化完成")
     except Exception as e:
         logger.error(f"推荐系统初始化失败: {e}")
@@ -215,6 +217,101 @@ async def retrain_model():
         return {"success": True, "message": "模型重新训练完成"}
     except Exception as e:
         logger.error(f"模型训练失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 用户画像分析 API ====================
+
+@app.get("/api/profile/{user_id}", tags=["用户画像"])
+async def get_user_profile(user_id: int):
+    """
+    获取用户画像分析
+    
+    返回用户的完整画像信息，包括：
+    - interest_tags: 兴趣标签（按权重排序）
+    - category_preference: 分类偏好
+    - activity_pattern: 活跃时间模式
+    - behavior_stats: 行为统计
+    - reading_level: 阅读深度等级
+    - user_type: 用户类型标签
+    """
+    if user_profile_analyzer is None:
+        raise HTTPException(status_code=503, detail="用户画像服务未就绪")
+    
+    try:
+        profile = user_profile_analyzer.analyze_user(user_id)
+        return {
+            "success": True,
+            "data": profile,
+            "message": "用户画像分析完成"
+        }
+    except Exception as e:
+        logger.error(f"用户画像分析失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/profile/{user_id}/interests", tags=["用户画像"])
+async def get_user_interests(
+    user_id: int,
+    top_n: int = Query(default=10, ge=1, le=50)
+):
+    """获取用户兴趣标签"""
+    if user_profile_analyzer is None:
+        raise HTTPException(status_code=503, detail="用户画像服务未就绪")
+    
+    try:
+        profile = user_profile_analyzer.analyze_user(user_id)
+        interests = profile.get('interest_tags', [])[:top_n]
+        return {
+            "success": True,
+            "data": interests,
+            "message": f"获取到{len(interests)}个兴趣标签"
+        }
+    except Exception as e:
+        logger.error(f"获取用户兴趣失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/profile/{user_id}/activity", tags=["用户画像"])
+async def get_user_activity_pattern(user_id: int):
+    """获取用户活跃时间模式"""
+    if user_profile_analyzer is None:
+        raise HTTPException(status_code=503, detail="用户画像服务未就绪")
+    
+    try:
+        profile = user_profile_analyzer.analyze_user(user_id)
+        return {
+            "success": True,
+            "data": profile.get('activity_pattern', {}),
+            "message": "获取活跃时间模式成功"
+        }
+    except Exception as e:
+        logger.error(f"获取活跃模式失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/profile/{user_id}/similar-users", tags=["用户画像"])
+async def get_similar_users(
+    user_id: int,
+    top_n: int = Query(default=5, ge=1, le=20)
+):
+    """
+    获取与指定用户兴趣相似的用户
+    
+    基于兴趣标签的余弦相似度计算
+    """
+    if user_profile_analyzer is None:
+        raise HTTPException(status_code=503, detail="用户画像服务未就绪")
+    
+    try:
+        similar_users = user_profile_analyzer.get_similar_users(user_id, top_n)
+        return {
+            "success": True,
+            "data": similar_users,
+            "message": f"找到{len(similar_users)}个相似用户"
+        }
+    except Exception as e:
+        logger.error(f"查找相似用户失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

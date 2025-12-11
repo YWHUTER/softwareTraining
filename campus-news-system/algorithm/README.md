@@ -17,6 +17,7 @@
 - ✅ 冷启动处理(新用户)
 - ✅ 模型自动更新
 - ✅ 服务降级机制
+- ✅ **用户画像分析** (NEW)
 
 ## 🚀 快速开始
 
@@ -93,6 +94,51 @@ GET /api/recommend/hot?top_n=10
 POST /api/retrain
 ```
 
+### 5. 用户画像分析 (NEW)
+```http
+# 获取完整用户画像
+GET /api/profile/{user_id}
+
+# 获取用户兴趣标签
+GET /api/profile/{user_id}/interests?top_n=10
+
+# 获取用户活跃时间模式
+GET /api/profile/{user_id}/activity
+
+# 获取相似用户
+GET /api/profile/{user_id}/similar-users?top_n=5
+```
+
+**用户画像返回数据示例:**
+```json
+{
+  "user_id": 1,
+  "interest_tags": [
+    {"tag": "校园活动", "weight": 1.0, "raw_score": 15.5},
+    {"tag": "学术讲座", "weight": 0.8, "raw_score": 12.4}
+  ],
+  "category_preference": [
+    {"category": "CAMPUS", "name": "全校新闻", "count": 25, "percentage": 50.0}
+  ],
+  "activity_pattern": {
+    "peak_hours": [10, 14, 20],
+    "active_days": ["周一", "周三", "周五"]
+  },
+  "behavior_stats": {
+    "total_interactions": 50,
+    "like_count": 20,
+    "favorite_count": 10,
+    "comment_count": 5
+  },
+  "reading_level": {
+    "level": "活跃读者",
+    "score": 65,
+    "description": "积极互动，有明确的阅读偏好"
+  },
+  "user_type": ["活跃用户", "评论活跃"]
+}
+```
+
 ## ⚙️ 配置说明
 
 编辑 `.env` 文件:
@@ -126,7 +172,7 @@ RECOMMENDATION_CONFIG = {
 ## 🏗️ 项目结构
 
 ```
-recommendation-service/
+algorithm/
 ├── main.py              # FastAPI应用入口
 ├── config.py            # 配置文件
 ├── requirements.txt     # Python依赖
@@ -135,7 +181,8 @@ recommendation-service/
 │   ├── data_loader.py       # 数据加载模块
 │   ├── content_based.py     # 内容推荐算法
 │   ├── collaborative_filter.py  # 协同过滤算法
-│   └── hybrid_recommender.py    # 混合推荐器
+│   ├── hybrid_recommender.py    # 混合推荐器
+│   └── user_profile.py      # 用户画像分析 (NEW)
 ├── start.bat            # Windows启动脚本
 ├── start.sh             # Linux启动脚本
 └── .env.example         # 环境变量示例

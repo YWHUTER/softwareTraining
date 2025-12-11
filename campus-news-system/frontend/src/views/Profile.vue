@@ -74,9 +74,14 @@
             </div>
           </div>
         </el-card>
+        
+        <!-- 用户画像分析 - 放在左侧基本信息下面 -->
+        <div class="profile-analysis-section">
+          <UserProfileCard v-if="userStore.user?.id" :user-id="userStore.user.id" />
+        </div>
       </el-col>
       
-      <!-- 右侧内容区 -->
+      <!-- 右侧内容区 - 恢复原来的18列宽度 -->
       <el-col :span="18">
         <!-- 数据统计卡片 -->
         <el-row :gutter="16" class="stats-row">
@@ -268,6 +273,7 @@ import { getArticleList, deleteArticle } from '@/api/article'
 import { uploadFile, updateAvatar } from '@/api/user'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { User, Message, Phone, School, Postcard, Document, View, Star, ChatDotRound, PieChart, TrendCharts, List, Plus, Camera } from '@element-plus/icons-vue'
+import UserProfileCard from '@/components/UserProfileCard.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -914,5 +920,10 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   font-weight: 600;
+}
+
+/* 用户画像分析区域 - 放在左侧基本信息下面 */
+.profile-analysis-section {
+  margin-top: 20px;
 }
 </style>
