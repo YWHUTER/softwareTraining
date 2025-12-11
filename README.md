@@ -269,5 +269,5 @@ GET /api/profile/1
   Made with ❤️ by WHUT Software Engineering Team
 </p>
 <p align="center">
-  © 2025 WHUT Campus News System. All rights reserved.
+  © 2025 WHUT 智园10舍313. All rights reserved.
 </p>
