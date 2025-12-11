@@ -548,7 +548,7 @@ defineExpose({ refresh })
 }
 
 /* 刷新动画 */
-.is-refreshing {
+.is-refreshing .recommendation-list {
   pointer-events: none;
 }
 
