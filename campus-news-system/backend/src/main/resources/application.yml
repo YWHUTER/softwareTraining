@@ -7,11 +7,16 @@ spring:
   application:
     name: campus-news-system
   
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+  
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/campus_news_system?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
-    password: 790205
+    password: 123456
   
   data:
     redis:
@@ -81,3 +86,14 @@ logging:
 recommendation:
   service:
     url: ${RECOMMENDATION_SERVICE_URL:http://localhost:5000}
+
+# 视频存储配置(远程服务器)
+video:
+  storage:
+    host: ${VIDEO_SERVER_HOST:203.195.182.166}
+    port: ${VIDEO_SERVER_PORT:22}
+    username: ${VIDEO_SERVER_USER:root}
+    password: ${VIDEO_SERVER_PASSWORD:YSW0910love}
+    remote-path: /var/www/videos
+    base-url: http://${VIDEO_SERVER_HOST:203.195.182.166}/videos
+    max-file-size: 524288000  # 500MB

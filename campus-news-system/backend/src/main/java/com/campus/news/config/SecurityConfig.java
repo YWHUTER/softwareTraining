@@ -54,6 +54,7 @@ public class SecurityConfig {
                 .requestMatchers("/ws/**").permitAll()  // WebSocket端点公开（内部做token验证）
                 .requestMatchers("/tag/hot", "/tag/list", "/tag/article/**").permitAll()  // 标签接口公开
                 .requestMatchers("/recommendation/**").permitAll()  // 推荐接口公开
+                .requestMatchers("/video/list", "/video/detail/**", "/video/categories", "/video/hot").permitAll()  // 视频接口公开
                 .anyRequest().authenticated()
             );
         

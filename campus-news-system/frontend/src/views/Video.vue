@@ -8,9 +8,9 @@
           <el-icon :size="24"><HomeFilled /></el-icon>
           <span>首页</span>
         </div>
-        <div class="sidebar-item">
-          <el-icon :size="24"><VideoCamera /></el-icon>
-          <span>Shorts</span>
+        <div class="sidebar-item" @click="showUploadDialog = true">
+          <el-icon :size="24"><Upload /></el-icon>
+          <span>上传视频</span>
         </div>
         <div class="sidebar-item">
           <el-icon :size="24"><Collection /></el-icon>
@@ -65,21 +65,34 @@
       <div class="yt-chips-bar">
         <div class="yt-chips-scroll">
           <button 
+            class="yt-chip"
+            :class="{ 'yt-chip-active': activeCategory === 'all' }"
+            @click="selectCategory('all')"
+          >
+            全部
+          </button>
+          <button 
             v-for="cat in categories" 
             :key="cat.id"
             class="yt-chip"
-            :class="{ 'yt-chip-active': activeCategory === cat.id }"
-            @click="activeCategory = cat.id"
+            :class="{ 'yt-chip-active': activeCategory === cat.code }"
+            @click="selectCategory(cat.code)"
           >
             {{ cat.name }}
           </button>
         </div>
       </div>
 
+      <!-- 加载状态 -->
+      <div v-if="loading" class="loading-container">
+        <el-icon class="is-loading" :size="40"><Loading /></el-icon>
+        <p>加载中...</p>
+      </div>
+
       <!-- 视频网格 -->
-      <div class="yt-grid">
+      <div v-else class="yt-grid">
         <div 
-          v-for="video in filteredVideos" 
+          v-for="video in videos" 
           :key="video.id" 
           class="yt-video-renderer"
           @click="handleVideoClick(video)"
@@ -87,10 +100,10 @@
           <!-- 缩略图容器 -->
           <div class="yt-thumbnail">
             <a class="yt-thumbnail-link">
-              <img :src="video.thumbnail" :alt="video.title" class="yt-thumbnail-img" />
+              <img :src="video.thumbnail || defaultThumbnail" :alt="video.title" class="yt-thumbnail-img" />
               <!-- 时长标签 -->
               <div class="yt-time-status">
-                <span class="yt-time-text">{{ video.duration }}</span>
+                <span class="yt-time-text">{{ video.duration || '00:00' }}</span>
               </div>
               <!-- 悬停遮罩 -->
               <div class="yt-thumbnail-hover">
@@ -103,7 +116,7 @@
           <div class="yt-meta">
             <a class="yt-avatar-link">
               <div class="yt-avatar">
-                {{ video.channel[0] }}
+                {{ (video.channelName || video.author?.realName || '未知')[0] }}
               </div>
             </a>
             <div class="yt-details">
@@ -111,15 +124,15 @@
                 <a class="yt-title-link">{{ video.title }}</a>
               </h3>
               <div class="yt-channel-info">
-                <a class="yt-channel-name">{{ video.channel }}</a>
+                <a class="yt-channel-name">{{ video.channelName || video.author?.realName || '未知频道' }}</a>
                 <el-tooltip content="验证频道" placement="top" :show-after="500">
                   <el-icon class="verified-icon" :size="12"><CircleCheckFilled /></el-icon>
                 </el-tooltip>
               </div>
               <div class="yt-video-meta-block">
-                <span class="yt-view-count">{{ formatViews(video.views) }}次观看</span>
+                <span class="yt-view-count">{{ formatViews(video.viewCount) }}次观看</span>
                 <span class="yt-dot">•</span>
-                <span class="yt-publish-time">{{ video.uploadTime }}</span>
+                <span class="yt-publish-time">{{ formatTime(video.createdAt) }}</span>
               </div>
             </div>
             <!-- 更多操作按钮 -->
@@ -129,34 +142,118 @@
           </div>
         </div>
       </div>
+
+      <!-- 空状态 -->
+      <div v-if="!loading && videos.length === 0" class="empty-state">
+        <el-icon :size="64"><VideoCamera /></el-icon>
+        <p>暂无视频</p>
+      </div>
+
+      <!-- 分页 -->
+      <div v-if="total > pageSize" class="pagination-container">
+        <el-pagination
+          v-model:current-page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          layout="prev, pager, next"
+          @current-change="handlePageChange"
+        />
+      </div>
     </div>
+
+    <!-- 上传视频对话框 -->
+    <el-dialog v-model="showUploadDialog" title="上传视频" width="600px">
+      <el-form :model="uploadForm" label-width="80px">
+        <el-form-item label="视频文件" required>
+          <el-upload
+            ref="videoUploadRef"
+            :auto-upload="false"
+            :limit="1"
+            accept="video/*"
+            :on-change="handleVideoFileChange"
+          >
+            <el-button type="primary">选择视频</el-button>
+            <template #tip>
+              <div class="el-upload__tip">支持 mp4, avi, mov, mkv 等格式，最大500MB</div>
+            </template>
+          </el-upload>
+        </el-form-item>
+        <el-form-item label="缩略图">
+          <el-upload
+            ref="thumbnailUploadRef"
+            :auto-upload="false"
+            :limit="1"
+            accept="image/*"
+            :on-change="handleThumbnailChange"
+            list-type="picture"
+          >
+            <el-button>选择缩略图</el-button>
+          </el-upload>
+        </el-form-item>
+        <el-form-item label="标题" required>
+          <el-input v-model="uploadForm.title" placeholder="请输入视频标题" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="uploadForm.description" type="textarea" :rows="3" placeholder="请输入视频描述" />
+        </el-form-item>
+        <el-form-item label="分类">
+          <el-select v-model="uploadForm.categoryId" placeholder="请选择分类">
+            <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="频道名称">
+          <el-input v-model="uploadForm.channelName" placeholder="默认使用您的用户名" />
+        </el-form-item>
+      </el-form>
+      <div v-if="uploadProgress > 0" class="upload-progress">
+        <el-progress :percentage="uploadProgress" :status="uploadProgress === 100 ? 'success' : ''" />
+      </div>
+      <template #footer>
+        <el-button @click="showUploadDialog = false">取消</el-button>
+        <el-button type="primary" :loading="uploading" @click="handleUpload">上传</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
-  VideoPlay, More, InfoFilled, HomeFilled, VideoCamera, Collection, 
-  Clock, Files, Timer, Pointer, ArrowRight, CircleCheckFilled, MoreFilled
+  VideoPlay, HomeFilled, VideoCamera, Collection, 
+  Clock, Files, Timer, Pointer, ArrowRight, CircleCheckFilled, MoreFilled,
+  Upload, Loading
 } from '@element-plus/icons-vue'
+import { getVideoList, getVideoCategories, uploadVideoComplete } from '@/api/video'
 
+const router = useRouter()
+
+const defaultThumbnail = 'https://picsum.photos/seed/default/640/360'
+
+// 状态
+const loading = ref(false)
+const videos = ref([])
+const categories = ref([])
 const activeCategory = ref('all')
+const currentPage = ref(1)
+const pageSize = ref(12)
+const total = ref(0)
 
-const categories = ref([
-  { id: 'all', name: '全部' },
-  { id: 'activity', name: '校园活动' },
-  { id: 'lecture', name: '讲座报告' },
-  { id: 'interview', name: '人物访谈' },
-  { id: 'campus', name: '校园风光' },
-  { id: 'sports', name: '体育赛事' },
-  { id: 'art', name: '文艺演出' },
-  { id: 'tech', name: '科技创新' },
-  { id: 'life', name: '校园生活' },
-  { id: 'news', name: '新闻直击' },
-  { id: 'documentary', name: '纪录片' },
-  { id: 'vlog', name: 'Vlog' }
-])
+// 上传
+const showUploadDialog = ref(false)
+const uploading = ref(false)
+const uploadProgress = ref(0)
+const uploadForm = ref({
+  title: '',
+  description: '',
+  categoryId: null,
+  channelName: '',
+  videoFile: null,
+  thumbnailFile: null,
+  duration: '',
+  durationSeconds: 0
+})
 
 const subscriptions = ref([
   { id: 1, name: '武理官方', color: '#ef4444', hasNew: true },
@@ -167,157 +264,188 @@ const subscriptions = ref([
   { id: 6, name: '学工部', color: '#8b5cf6', hasNew: false },
 ])
 
-const videos = ref([
-  {
-    id: 1,
-    title: '2024年武汉理工大学毕业典礼精彩回顾 - 青春不散场，梦想起航时',
-    thumbnail: 'https://picsum.photos/seed/v1/640/360',
-    channel: '武理官方',
-    views: 128000,
-    uploadTime: '2天前',
-    duration: '15:32',
-    category: 'activity'
-  },
-  {
-    id: 2,
-    title: '【院士讲坛】人工智能与未来科技发展：从大模型到通用人工智能',
-    thumbnail: 'https://picsum.photos/seed/v2/640/360',
-    channel: '学术报告厅',
-    views: 45600,
-    uploadTime: '1周前',
-    duration: '1:23:45',
-    category: 'lecture'
-  },
-  {
-    id: 3,
-    title: '对话杰出校友：从武理到世界500强，我的职场进阶之路',
-    thumbnail: 'https://picsum.photos/seed/v3/640/360',
-    channel: '校友会',
-    views: 23400,
-    uploadTime: '3天前',
-    duration: '28:16',
-    category: 'interview'
-  },
-  {
-    id: 4,
-    title: '4K航拍武理：四季校园风光大片，每一帧都是壁纸',
-    thumbnail: 'https://picsum.photos/seed/v4/640/360',
-    channel: '摄影协会',
-    views: 89200,
-    uploadTime: '2周前',
-    duration: '8:45',
-    category: 'campus'
-  },
-  {
-    id: 5,
-    title: '校运会开幕式全程回顾：青春飞扬 激情燃烧，看各学院方阵创意入场',
-    thumbnail: 'https://picsum.photos/seed/v5/640/360',
-    channel: '体育部',
-    views: 67800,
-    uploadTime: '1个月前',
-    duration: '45:20',
-    category: 'sports'
-  },
-  {
-    id: 6,
-    title: '新年音乐会：交响乐团专场演出，奏响新春华章',
-    thumbnail: 'https://picsum.photos/seed/v6/640/360',
-    channel: '艺术团',
-    views: 34500,
-    uploadTime: '3周前',
-    duration: '1:56:30',
-    category: 'art'
-  },
-  {
-    id: 7,
-    title: 'RoboMaster机器人大赛：武理战队夺冠之路纪录片',
-    thumbnail: 'https://picsum.photos/seed/v7/640/360',
-    channel: '科创中心',
-    views: 56700,
-    uploadTime: '5天前',
-    duration: '22:18',
-    category: 'tech'
-  },
-  {
-    id: 8,
-    title: 'Vlog：武理学子的一天 | 食堂测评 | 泡图书馆 | 社团活动',
-    thumbnail: 'https://picsum.photos/seed/v8/640/360',
-    channel: '学生媒体',
-    views: 78900,
-    uploadTime: '4天前',
-    duration: '12:05',
-    category: 'life'
-  },
-  {
-    id: 9,
-    title: '图书馆深夜：考研人的坚守与梦想，致每一个努力奋斗的你',
-    thumbnail: 'https://picsum.photos/seed/v9/640/360',
-    channel: '校报记者团',
-    views: 45600,
-    uploadTime: '1周前',
-    duration: '18:32',
-    category: 'life'
-  },
-  {
-    id: 10,
-    title: '校长开学典礼致辞：奋进新征程，做新时代的有为青年',
-    thumbnail: 'https://picsum.photos/seed/v10/640/360',
-    channel: '武理官方',
-    views: 234000,
-    uploadTime: '2个月前',
-    duration: '25:40',
-    category: 'activity'
-  },
-  {
-    id: 11,
-    title: '实验室探秘：走进材料科学前沿，感受科技的魅力',
-    thumbnail: 'https://picsum.photos/seed/v11/640/360',
-    channel: '科研处',
-    views: 28900,
-    uploadTime: '2周前',
-    duration: '35:15',
-    category: 'tech'
-  },
-  {
-    id: 12,
-    title: '足球联赛决赛：精彩进球集锦，绝杀时刻燃爆全场',
-    thumbnail: 'https://picsum.photos/seed/v12/640/360',
-    channel: '体育部',
-    views: 41200,
-    uploadTime: '6天前',
-    duration: '10:28',
-    category: 'sports'
+// 加载分类
+const loadCategories = async () => {
+  try {
+    const res = await getVideoCategories()
+    categories.value = res || []
+  } catch (error) {
+    console.error('加载分类失败:', error)
   }
-])
+}
 
-const filteredVideos = computed(() => {
-  if (activeCategory.value === 'all') {
-    return videos.value
+// 加载视频列表
+const loadVideos = async () => {
+  loading.value = true
+  console.log('开始加载视频列表...')
+  try {
+    const params = {
+      current: currentPage.value,
+      size: pageSize.value
+    }
+    if (activeCategory.value !== 'all') {
+      params.categoryCode = activeCategory.value
+    }
+    
+    console.log('请求参数:', params)
+    const res = await getVideoList(params)
+    console.log('视频列表响应:', res)
+    // 响应拦截器已经解包了data，所以直接使用res
+    videos.value = res.records || []
+    total.value = res.total || res.records?.length || 0
+    console.log('视频数量:', videos.value.length)
+  } catch (error) {
+    console.error('加载视频失败:', error)
+    ElMessage.error('加载视频失败')
+  } finally {
+    loading.value = false
   }
-  return videos.value.filter(v => v.category === activeCategory.value)
-})
+}
+
+// 选择分类
+const selectCategory = (code) => {
+  activeCategory.value = code
+  currentPage.value = 1
+  loadVideos()
+}
+
+// 分页
+const handlePageChange = (page) => {
+  currentPage.value = page
+  loadVideos()
+}
+
+// 点击视频 - 跳转到详情页
+const handleVideoClick = (video) => {
+  router.push(`/video/${video.id}`)
+}
+
+// 处理视频文件选择 - 提取视频时长
+const handleVideoFileChange = (file) => {
+  uploadForm.value.videoFile = file.raw
+  
+  // 创建临时video元素提取时长
+  const video = document.createElement('video')
+  video.preload = 'metadata'
+  
+  video.onloadedmetadata = () => {
+    window.URL.revokeObjectURL(video.src)
+    const seconds = Math.floor(video.duration)
+    uploadForm.value.durationSeconds = seconds
+    
+    // 格式化为 MM:SS 或 HH:MM:SS
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    
+    if (hours > 0) {
+      uploadForm.value.duration = `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+    } else {
+      uploadForm.value.duration = `${minutes}:${String(secs).padStart(2, '0')}`
+    }
+    console.log('视频时长:', uploadForm.value.duration, '秒数:', uploadForm.value.durationSeconds)
+  }
+  
+  video.src = URL.createObjectURL(file.raw)
+}
+
+// 处理缩略图选择
+const handleThumbnailChange = (file) => {
+  uploadForm.value.thumbnailFile = file.raw
+}
+
+// 上传视频
+const handleUpload = async () => {
+  if (!uploadForm.value.videoFile) {
+    ElMessage.warning('请选择视频文件')
+    return
+  }
+  if (!uploadForm.value.title) {
+    ElMessage.warning('请输入视频标题')
+    return
+  }
+  
+  uploading.value = true
+  uploadProgress.value = 0
+  
+  try {
+    await uploadVideoComplete({
+      video: uploadForm.value.videoFile,
+      thumbnail: uploadForm.value.thumbnailFile,
+      title: uploadForm.value.title,
+      description: uploadForm.value.description,
+      categoryId: uploadForm.value.categoryId,
+      channelName: uploadForm.value.channelName,
+      duration: uploadForm.value.duration,
+      durationSeconds: uploadForm.value.durationSeconds
+    }, (progressEvent) => {
+      uploadProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+    })
+    
+    ElMessage.success('视频上传成功')
+    showUploadDialog.value = false
+    resetUploadForm()
+    loadVideos()
+  } catch (error) {
+    ElMessage.error('上传失败: ' + (error.message || '未知错误'))
+  } finally {
+    uploading.value = false
+  }
+}
+
+// 重置上传表单
+const resetUploadForm = () => {
+  uploadForm.value = {
+    title: '',
+    description: '',
+    categoryId: null,
+    channelName: '',
+    videoFile: null,
+    thumbnailFile: null,
+    duration: '',
+    durationSeconds: 0
+  }
+  uploadProgress.value = 0
+}
 
 const formatViews = (num) => {
+  if (!num) return '0'
   if (num >= 10000) {
     return (num / 10000).toFixed(1) + '万'
   }
   return num.toLocaleString()
 }
 
-const handleVideoClick = (video) => {
-  ElMessage.info({
-    message: `视频播放功能开发中：${video.title}`,
-    duration: 2000
-  })
+const formatTime = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = now - date
+  
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  
+  if (minutes < 60) return `${minutes}分钟前`
+  if (hours < 24) return `${hours}小时前`
+  if (days < 30) return `${days}天前`
+  if (days < 365) return `${Math.floor(days / 30)}个月前`
+  return `${Math.floor(days / 365)}年前`
 }
+
+onMounted(() => {
+  loadCategories()
+  loadVideos()
+})
 </script>
+
 
 <style scoped>
 /* ========== 布局容器 ========== */
 .yt-container {
   display: flex;
   background-color: #ffffff;
-  min-height: calc(100vh - 60px); /* 减去顶部导航高度 */
+  min-height: calc(100vh - 60px);
 }
 
 /* ========== 侧边栏 ========== */
@@ -332,7 +460,6 @@ const handleVideoClick = (video) => {
   background-color: #ffffff;
 }
 
-/* 侧边栏分组 */
 .sidebar-section {
   padding: 8px 0;
 }
@@ -343,7 +470,6 @@ const handleVideoClick = (video) => {
   margin: 8px 12px;
 }
 
-/* 侧边栏标题 */
 .sidebar-header {
   padding: 6px 12px;
   font-size: 16px;
@@ -360,7 +486,6 @@ const handleVideoClick = (video) => {
   background-color: #f2f2f2;
 }
 
-/* 侧边栏条目 */
 .sidebar-item {
   display: flex;
   align-items: center;
@@ -393,7 +518,6 @@ const handleVideoClick = (video) => {
   white-space: nowrap;
 }
 
-/* 订阅列表样式 */
 .subscription-item {
   gap: 12px;
 }
@@ -437,7 +561,7 @@ const handleVideoClick = (video) => {
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  padding-bottom: 4px; /* 防止滚动条遮挡 */
+  padding-bottom: 4px;
 }
 
 .yt-chips-scroll::-webkit-scrollbar {
@@ -449,13 +573,11 @@ const handleVideoClick = (video) => {
   height: 32px;
   padding: 0 12px;
   border: none;
-  border-radius: 8px; /* 圆角矩形 */
+  border-radius: 8px;
   background-color: #f2f2f2;
   color: #0f0f0f;
-  font-family: 'Roboto', 'Arial', sans-serif;
   font-size: 14px;
   font-weight: 500;
-  line-height: 32px;
   white-space: nowrap;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -474,11 +596,30 @@ const handleVideoClick = (video) => {
   background-color: #3f3f3f;
 }
 
+/* ========== 加载状态 ========== */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: #606060;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: #606060;
+}
+
 /* ========== 视频网格 ========== */
 .yt-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr); /* 默认3列，仿照截图 */
-  gap: 40px 16px; /* 行间距加大 */
+  grid-template-columns: repeat(3, 1fr);
+  gap: 40px 16px;
   margin-bottom: 40px;
 }
 
@@ -500,7 +641,6 @@ const handleVideoClick = (video) => {
   }
 }
 
-/* ========== 视频渲染器 ========== */
 .yt-video-renderer {
   cursor: pointer;
 }
@@ -528,16 +668,9 @@ const handleVideoClick = (video) => {
 }
 
 .yt-video-renderer:hover .yt-thumbnail-img {
-  transform: scale(1.02); /* 轻微放大 */
-  border-radius: 0; /* YouTube悬停时圆角会变化，这里保持简单放大 */
+  transform: scale(1.02);
 }
 
-.yt-thumbnail-link:hover {
-  border-radius: 0; /* YouTube悬停时圆角变直角 */
-  transition: border-radius 0.2s;
-}
-
-/* 时长标签 */
 .yt-time-status {
   position: absolute;
   bottom: 8px;
@@ -553,7 +686,6 @@ const handleVideoClick = (video) => {
   font-weight: 500;
 }
 
-/* 悬停遮罩 */
 .yt-thumbnail-hover {
   position: absolute;
   inset: 0;
@@ -603,10 +735,9 @@ const handleVideoClick = (video) => {
 .yt-details {
   flex: 1;
   min-width: 0;
-  padding-right: 24px; /* 为更多按钮留空间 */
+  padding-right: 24px;
 }
 
-/* 标题 */
 .yt-video-title {
   margin: 0 0 4px;
   line-height: 22px;
@@ -614,7 +745,6 @@ const handleVideoClick = (video) => {
 
 .yt-title-link {
   color: #0f0f0f;
-  font-family: 'Roboto', 'Arial', sans-serif;
   font-size: 16px;
   font-weight: 500;
   display: -webkit-box;
@@ -625,7 +755,6 @@ const handleVideoClick = (video) => {
   text-overflow: ellipsis;
 }
 
-/* 频道信息 */
 .yt-channel-info {
   display: flex;
   align-items: center;
@@ -646,7 +775,6 @@ const handleVideoClick = (video) => {
   color: #606060;
 }
 
-/* 观看次数和时间 */
 .yt-video-meta-block {
   color: #606060;
   font-size: 14px;
@@ -656,7 +784,6 @@ const handleVideoClick = (video) => {
   margin: 0 4px;
 }
 
-/* 更多操作按钮 - 只有hover时显示 */
 .yt-more-actions {
   position: absolute;
   top: 0;
@@ -671,61 +798,51 @@ const handleVideoClick = (video) => {
   opacity: 1;
 }
 
-/* ========== 暗黑模式适配 ========== */
-.dark-mode .yt-container,
-.dark-mode .yt-sidebar,
-.dark-mode .yt-chips-bar {
-  background-color: #0f0f0f;
+/* ========== 分页 ========== */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0 40px;
 }
 
-.dark-mode .sidebar-header,
-.dark-mode .sidebar-item {
-  color: #f1f1f1;
+/* ========== 视频播放器 ========== */
+.video-player-container {
+  width: 100%;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.dark-mode .sidebar-item .el-icon {
-  color: #f1f1f1;
+.video-player {
+  width: 100%;
+  max-height: 70vh;
 }
 
-.dark-mode .sidebar-header:hover,
-.dark-mode .sidebar-item:hover,
-.dark-mode .sidebar-item.active {
-  background-color: #272727;
+.video-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid #e5e5e5;
 }
 
-.dark-mode .sidebar-divider {
-  background-color: #3f3f3f;
+.video-stats {
+  color: #606060;
+  font-size: 14px;
 }
 
-.dark-mode .yt-chip {
-  background-color: #272727;
-  color: #f1f1f1;
+.video-stats .dot {
+  margin: 0 8px;
 }
 
-.dark-mode .yt-chip:hover {
-  background-color: #3f3f3f;
-}
-
-.dark-mode .yt-chip-active {
-  background-color: #f1f1f1;
+.video-description {
+  padding: 16px 0;
   color: #0f0f0f;
+  white-space: pre-wrap;
 }
 
-.dark-mode .yt-title-link {
-  color: #f1f1f1;
-}
-
-.dark-mode .yt-channel-name,
-.dark-mode .yt-video-meta-block,
-.dark-mode .verified-icon {
-  color: #aaaaaa;
-}
-
-.dark-mode .yt-channel-name:hover {
-  color: #f1f1f1;
-}
-
-.dark-mode .yt-thumbnail-link {
-  background-color: #202020;
+/* ========== 上传进度 ========== */
+.upload-progress {
+  margin-top: 16px;
 }
 </style>

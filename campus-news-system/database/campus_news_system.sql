@@ -223,6 +223,57 @@ CREATE TABLE `chat_message` (
     FOREIGN KEY (`session_id`) REFERENCES `chat_session`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI聊天消息表';
 
+-- 15. 视频分类表
+CREATE TABLE `video_category` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(50) NOT NULL COMMENT '分类名称',
+    `code` VARCHAR(50) NOT NULL UNIQUE COMMENT '分类代码',
+    `sort_order` INT DEFAULT 0 COMMENT '排序顺序',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='视频分类表';
+
+-- 16. 视频表
+CREATE TABLE `video` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(200) NOT NULL COMMENT '视频标题',
+    `description` TEXT COMMENT '视频描述',
+    `video_url` VARCHAR(500) NOT NULL COMMENT '视频文件URL',
+    `thumbnail` VARCHAR(500) COMMENT '缩略图URL',
+    `duration` VARCHAR(20) COMMENT '视频时长(格式: HH:MM:SS)',
+    `duration_seconds` INT DEFAULT 0 COMMENT '视频时长(秒)',
+    `file_size` BIGINT DEFAULT 0 COMMENT '文件大小(字节)',
+    `category_id` BIGINT COMMENT '分类ID',
+    `author_id` BIGINT NOT NULL COMMENT '上传者ID',
+    `channel_name` VARCHAR(100) COMMENT '频道名称',
+    `view_count` INT DEFAULT 0 COMMENT '播放量',
+    `like_count` INT DEFAULT 0 COMMENT '点赞数',
+    `comment_count` INT DEFAULT 0 COMMENT '评论数',
+    `is_approved` TINYINT DEFAULT 0 COMMENT '审核状态: 0-待审核 1-已通过 2-已拒绝',
+    `status` TINYINT DEFAULT 1 COMMENT '状态: 0-已删除 1-正常',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_category` (`category_id`),
+    INDEX `idx_author` (`author_id`),
+    INDEX `idx_created_at` (`created_at`),
+    INDEX `idx_view_count` (`view_count`),
+    FOREIGN KEY (`category_id`) REFERENCES `video_category`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`author_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='视频表';
+
+-- 17. 视频点赞表
+CREATE TABLE `video_like` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `video_id` BIGINT NOT NULL COMMENT '视频ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_video_user` (`video_id`, `user_id`),
+    INDEX `idx_video` (`video_id`),
+    INDEX `idx_user` (`user_id`),
+    FOREIGN KEY (`video_id`) REFERENCES `video`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='视频点赞表';
+
 -- ============================================
 -- 初始化数据
 -- ============================================
@@ -264,6 +315,20 @@ INSERT INTO `tag` (`name`, `use_count`) VALUES
 ('志愿服务', 2),
 ('创新创业', 2),
 ('国际交流', 1);
+
+-- 初始化视频分类数据
+INSERT INTO `video_category` (`name`, `code`, `sort_order`) VALUES
+('校园活动', 'activity', 1),
+('讲座报告', 'lecture', 2),
+('人物访谈', 'interview', 3),
+('校园风光', 'campus', 4),
+('体育赛事', 'sports', 5),
+('文艺演出', 'art', 6),
+('科技创新', 'tech', 7),
+('校园生活', 'life', 8),
+('新闻直击', 'news', 9),
+('纪录片', 'documentary', 10),
+('Vlog', 'vlog', 11);
 
 -- ============================================
 -- 完成
