@@ -253,6 +253,16 @@ const viewMode = ref('grid') // grid, list, card, masonry
 
 const boardType = computed(() => route.params.type)
 
+// 根据板块类型设置默认视图模式
+const getDefaultViewMode = (type) => {
+  const viewModes = {
+    OFFICIAL: 'grid',    // 官方新闻使用网格视图
+    CAMPUS: 'list',      // 全校新闻使用列表视图
+    COLLEGE: 'masonry'   // 学院新闻使用瀑布流视图
+  }
+  return viewModes[type] || 'grid'
+}
+
 const boardTitle = computed(() => {
   const titles = {
     OFFICIAL: '官方新闻',
@@ -348,12 +358,14 @@ const getBoardTypeTag = (type) => {
   return tags[type] || ''
 }
 
-watch(boardType, () => {
+watch(boardType, (newType) => {
   currentPage.value = 1
+  viewMode.value = getDefaultViewMode(newType)
   fetchArticles()
 })
 
 onMounted(() => {
+  viewMode.value = getDefaultViewMode(boardType.value)
   fetchArticles()
 })
 </script>

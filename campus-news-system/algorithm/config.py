@@ -9,8 +9,8 @@ DATABASE_CONFIG = {
     "host": os.getenv("DB_HOST", "localhost"),
     "port": int(os.getenv("DB_PORT", 3306)),
     "user": os.getenv("DB_USER", "root"),
-    "password": os.getenv("DB_PASSWORD", "123456"),
-    "database": os.getenv("DB_NAME", "campus_news")
+    "password": os.getenv("DB_PASSWORD", ""),  # 从 .env 文件读取
+    "database": os.getenv("DB_NAME", "campus_news_system")
 }
 
 # Redis配置

@@ -28,17 +28,31 @@
               <el-icon><House /></el-icon>
               <span>首页</span>
             </el-menu-item>
-            <el-menu-item index="/board/OFFICIAL" class="menu-item">
-              <el-icon><Document /></el-icon>
-              <span>官方新闻</span>
+            <el-sub-menu index="news" class="menu-item news-menu-item">
+              <template #title>
+                <el-icon><Reading /></el-icon>
+                <span>武理新闻</span>
+              </template>
+              <el-menu-item index="/board/OFFICIAL">
+                <el-icon><Document /></el-icon>
+                <span>官方新闻</span>
+              </el-menu-item>
+              <el-menu-item index="/board/CAMPUS">
+                <el-icon><School /></el-icon>
+                <span>全校新闻</span>
+              </el-menu-item>
+              <el-menu-item index="/board/COLLEGE">
+                <el-icon><OfficeBuilding /></el-icon>
+                <span>学院新闻</span>
+              </el-menu-item>
+            </el-sub-menu>
+            <el-menu-item index="/video" class="menu-item video-menu-item">
+              <el-icon><VideoCamera /></el-icon>
+              <span>武理视界</span>
             </el-menu-item>
-            <el-menu-item index="/board/CAMPUS" class="menu-item">
-              <el-icon><School /></el-icon>
-              <span>全校新闻</span>
-            </el-menu-item>
-            <el-menu-item index="/board/COLLEGE" class="menu-item">
-              <el-icon><OfficeBuilding /></el-icon>
-              <span>学院新闻</span>
+            <el-menu-item index="/marketplace" class="menu-item marketplace-menu-item">
+              <el-icon><Shop /></el-icon>
+              <span>校园集市</span>
             </el-menu-item>
             <el-menu-item index="/follow" class="menu-item follow-menu-item">
               <el-icon><Star /></el-icon>
@@ -187,7 +201,7 @@
 
       <!-- 主内容区 -->
       <el-main class="main-content">
-        <div class="content-wrapper">
+        <div class="content-wrapper" :class="{ 'video-layout': isVideoPage }">
           <router-view v-slot="{ Component }">
             <transition name="fade" mode="out-in">
               <component :is="Component" />
@@ -242,6 +256,8 @@ const themeTooltip = computed(() => {
   if (themeMode.value === 'dark') return '当前：深色模式（点击切换到跟随系统）'
   return '当前：跟随系统（点击切换到浅色）'
 })
+
+const isVideoPage = computed(() => route.path === '/video')
 
 const toggleTheme = () => {
   themeStore.toggleTheme()
@@ -642,6 +658,21 @@ onUnmounted(() => {
 }
 
 /* AI 助手菜单项特殊样式 */
+.main-menu .news-menu-item {
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(3, 169, 244, 0.1) 100%);
+  color: #2196f3;
+}
+
+.main-menu .news-menu-item:hover {
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.2) 0%, rgba(3, 169, 244, 0.2) 100%);
+}
+
+.main-menu .news-menu-item.is-active {
+  color: #0288d1;
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.15) 0%, rgba(3, 169, 244, 0.15) 100%);
+  border-bottom-color: #0288d1;
+}
+
 .main-menu .ai-menu-item {
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
   color: #667eea;
@@ -655,6 +686,38 @@ onUnmounted(() => {
   color: #764ba2;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
   border-bottom-color: #764ba2;
+}
+
+/* 视频板块菜单项特殊样式 */
+.main-menu .video-menu-item {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+  color: #ef4444;
+}
+
+.main-menu .video-menu-item:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%);
+}
+
+.main-menu .video-menu-item.is-active {
+  color: #dc2626;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%);
+  border-bottom-color: #ef4444;
+}
+
+/* 校园集市菜单项特殊样式 */
+.main-menu .marketplace-menu-item {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  color: #a855f7;
+}
+
+.main-menu .marketplace-menu-item:hover {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+}
+
+.main-menu .marketplace-menu-item.is-active {
+  color: #7c3aed;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  border-bottom-color: #a855f7;
 }
 
 /* 关注菜单项特殊样式 */
@@ -889,6 +952,12 @@ onUnmounted(() => {
   padding: 30px;
 }
 
+.content-wrapper.video-layout {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
 /* 页面过渡动画 */
 .fade-enter-active,
 .fade-leave-active {
@@ -1070,9 +1139,24 @@ onUnmounted(() => {
   border-bottom-color: var(--primary-color);
 }
 
+.dark-mode .main-menu .news-menu-item {
+  background: rgba(33, 150, 243, 0.15);
+  color: #4fc3f7;
+}
+
 .dark-mode .main-menu .ai-menu-item {
   background: var(--primary-light);
   color: var(--primary-color);
+}
+
+.dark-mode .main-menu .video-menu-item {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.dark-mode .main-menu .marketplace-menu-item {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
 }
 
 .dark-mode .main-menu .follow-menu-item {

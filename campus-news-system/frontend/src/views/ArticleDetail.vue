@@ -5,7 +5,21 @@
       <el-col :xs="24" :sm="24" :md="17" :lg="17">
         <div class="main-content">
           <!-- 文章主体 -->
-          <el-card v-if="article" class="article-card" shadow="never">
+          <el-card v-if="article" class="article-card" :class="{ 'retro-newspaper-mode': isRetroMode }" shadow="never">
+            <!-- 复古模式报头 -->
+            <div v-if="isRetroMode" class="retro-header-banner">
+              <div class="retro-top-meta">
+                <span>{{ article.college?.name || 'CAMPUS NEWS' }}</span>
+                <span>{{ formatDate(article.createdAt, 'YYYY年MM月DD日') }}</span>
+              </div>
+              <div class="retro-brand">CAMPUS CHRONICLE</div>
+              <div class="retro-sub-meta">
+                <span>VOL. {{ article.id }}</span>
+                <span>ISSUE {{ new Date(article.createdAt).getMonth() + 1 }}</span>
+                <span>PRICE: FREE</span>
+              </div>
+            </div>
+
       <!-- 文章头部 -->
       <div class="article-header">
         <div class="header-meta">
@@ -131,6 +145,17 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
+        <el-button
+          size="large"
+          class="action-btn"
+          :type="isRetroMode ? 'info' : 'default'"
+          round
+          @click="toggleRetroMode"
+        >
+          <el-icon><Reading /></el-icon>
+          <span>{{ isRetroMode ? '退出复古' : '复古模式' }}</span>
+        </el-button>
+
         <el-button
           size="large"
           class="action-btn"
@@ -550,7 +575,7 @@ import { getCommentList, createComment, deleteComment } from '@/api/comment'
 import { toggleFollow, checkFollow, getFollowStats } from '@/api/follow'
 import { searchUsers } from '@/api/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Download, Link, Histogram, Document } from '@element-plus/icons-vue'
+import { Download, Link, Histogram, Document, Reading } from '@element-plus/icons-vue'
 import { htmlToText } from '@/utils/htmlParser'
 import QRCode from 'qrcode'
 import BackToTop from '@/components/BackToTop.vue'
@@ -570,6 +595,16 @@ const replyTo = ref(null)  // 当前回复的根评论
 const replyToUser = ref(null)  // 当前回复的目标用户
 const replyContent = ref('')  // 回复内容
 const isFollowingAuthor = ref(false)
+const isRetroMode = ref(false)
+
+const toggleRetroMode = () => {
+  isRetroMode.value = !isRetroMode.value
+  if (isRetroMode.value) {
+    ElMessage.success('已进入复古报纸模式')
+  } else {
+    ElMessage.success('已退出复古模式')
+  }
+}
 
 // 分享相关
 const showWechatDialog = ref(false)
@@ -2197,5 +2232,180 @@ onMounted(() => {
   .replies {
     padding-left: 12px;
   }
+}
+
+/* ========== 复古报纸模式样式 ========== */
+.retro-newspaper-mode {
+  background-color: #f4f1ea !important;
+  background-image: linear-gradient(0deg, transparent 24%, rgba(0, 0, 0, .05) 25%, rgba(0, 0, 0, .05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, .05) 75%, rgba(0, 0, 0, .05) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 0, 0, .05) 25%, rgba(0, 0, 0, .05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, .05) 75%, rgba(0, 0, 0, .05) 76%, transparent 77%, transparent) !important;
+  background-size: 50px 50px !important;
+  border: 1px solid #333 !important;
+  box-shadow: 10px 10px 0 rgba(0,0,0,0.2) !important;
+  color: #1a1a1a !important;
+  font-family: "Times New Roman", "Songti SC", "SimSun", serif !important;
+  padding: 0 !important;
+  border-radius: 2px !important;
+  backdrop-filter: none !important;
+}
+
+.retro-newspaper-mode .article-header {
+  padding-top: 20px;
+  text-align: center;
+  border-bottom: 3px double #333;
+}
+
+.retro-newspaper-mode .article-title {
+  font-family: "Impact", "Times New Roman", serif !important;
+  font-size: 48px !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px !important;
+  color: #000 !important;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+}
+
+.retro-newspaper-mode .header-meta {
+  display: none;
+}
+
+.retro-newspaper-mode .article-info {
+  justify-content: center;
+  border-top: 1px solid #333;
+  border-bottom: 1px solid #333;
+  padding: 10px 0;
+  margin-top: 20px;
+  font-style: italic;
+  font-family: "Times New Roman", serif;
+}
+
+.retro-newspaper-mode .author-section {
+  flex-direction: row;
+}
+
+.retro-newspaper-mode .author-avatar {
+  filter: grayscale(100%);
+  border: 1px solid #333;
+}
+
+.retro-newspaper-mode .article-cover {
+  float: left;
+  width: 50%;
+  max-width: 500px;
+  padding: 0;
+  margin: 30px 30px 20px 40px;
+  filter: grayscale(100%) contrast(1.2);
+  position: relative;
+  z-index: 1;
+}
+
+.retro-newspaper-mode .cover-image {
+  width: 100%;
+  height: auto;
+  max-height: 400px;
+  border: 4px solid #333;
+  border-radius: 0;
+  box-shadow: 8px 8px 0 rgba(0,0,0,0.15);
+  object-fit: cover;
+}
+
+.retro-newspaper-mode .article-body {
+  padding: 20px 40px;
+  columns: auto !important; /* 取消多列布局以支持文字环绕 */
+  text-align: justify;
+  min-height: 400px; /* 确保内容区高度 */
+}
+
+@media (max-width: 768px) {
+  .retro-newspaper-mode .article-cover {
+    float: none;
+    width: calc(100% - 80px);
+    margin: 20px 40px;
+    max-width: none;
+  }
+}
+
+.retro-newspaper-mode .article-content {
+  font-family: "Georgia", "Times New Roman", serif !important;
+  font-size: 18px !important;
+  line-height: 1.8 !important;
+  color: #222 !important;
+}
+
+.retro-newspaper-mode .article-content :deep(p) {
+  margin-bottom: 1.5em;
+  text-indent: 0; /* 取消首行缩进，因为有图片环绕 */
+}
+
+.retro-newspaper-mode .article-content :deep(p:first-of-type)::first-letter {
+  font-size: 4em;
+  float: left;
+  line-height: 0.8;
+  padding-right: 0.1em;
+  margin-top: 0.1em;
+  font-family: "Times New Roman", serif;
+  font-weight: bold;
+  color: #000;
+}
+
+.retro-newspaper-mode .article-content :deep(img) {
+  filter: grayscale(100%) contrast(1.1);
+  border: 2px solid #333;
+  border-radius: 0;
+  box-shadow: none;
+  max-width: 100%;
+}
+
+.retro-newspaper-mode .article-actions {
+  clear: both; /* 确保操作按钮在浮动内容下方 */
+  background: transparent;
+  backdrop-filter: none;
+  border-top: 3px double #333;
+  border-radius: 0;
+  margin: 40px 40px 20px;
+  padding-top: 30px;
+}
+
+/* 复古头部Banner */
+.retro-header-banner {
+  padding: 20px 40px 0;
+  text-align: center;
+  border-bottom: 4px solid #333;
+  background-color: #f4f1ea;
+}
+
+.retro-top-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  border-bottom: 1px solid #333;
+  padding-bottom: 4px;
+  margin-bottom: 10px;
+}
+
+.retro-brand {
+  font-family: "Impact", "Arial Black", sans-serif;
+  font-size: 64px;
+  line-height: 1;
+  margin: 10px 0;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.retro-sub-meta {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid #333;
+  border-bottom: 1px solid #333;
+  padding: 6px 0;
+  font-weight: bold;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+/* 适配暗黑模式下的复古模式 */
+.dark .retro-newspaper-mode {
+  filter: brightness(0.9);
 }
 </style>
