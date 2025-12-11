@@ -53,6 +53,7 @@ public class SecurityConfig {
                 .requestMatchers("/follow/stats/**").permitAll()  // 用户统计公开
                 .requestMatchers("/ws/**").permitAll()  // WebSocket端点公开（内部做token验证）
                 .requestMatchers("/tag/hot", "/tag/list", "/tag/article/**").permitAll()  // 标签接口公开
+                .requestMatchers("/recommendation/**").permitAll()  // 推荐接口公开
                 .anyRequest().authenticated()
             );
         

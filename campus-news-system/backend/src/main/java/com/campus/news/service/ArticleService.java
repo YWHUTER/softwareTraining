@@ -275,6 +275,33 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
         return articleMapper.updateById(article) > 0;
     }
 
+    /**
+     * 获取热门文章(按浏览量+点赞数排序)
+     */
+    public List<Article> getHotArticles(int count) {
+        QueryWrapper<Article> wrapper = new QueryWrapper<>();
+        wrapper.eq("is_approved", 1)
+               .eq("status", 1)
+               .orderByDesc("view_count")
+               .orderByDesc("like_count")
+               .last("LIMIT " + count);
+        return articleMapper.selectList(wrapper);
+    }
+
+    /**
+     * 根据ID列表批量获取文章
+     */
+    public List<Article> getArticlesByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        QueryWrapper<Article> wrapper = new QueryWrapper<>();
+        wrapper.in("id", ids)
+               .eq("is_approved", 1)
+               .eq("status", 1);
+        return articleMapper.selectList(wrapper);
+    }
+
     public java.util.Map<String, Object> getPublicStats() {
         java.util.Map<String, Object> stats = new java.util.HashMap<>();
         

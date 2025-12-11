@@ -269,13 +269,28 @@
             </div>
           </el-card>
 
+          <!-- AI智能推荐 -->
+          <div
+            v-motion
+            :initial="{ opacity: 0, x: 50 }"
+            :enter="{ opacity: 1, x: 0, transition: { delay: 400, type: 'spring' } }"
+          >
+            <RecommendationCard 
+              type="personalized" 
+              :count="5" 
+              title="智能算法推荐"
+              :show-refresh="true"
+              :show-more="false"
+            />
+          </div>
+
           <!-- 快捷入口 -->
           <el-card 
             class="sidebar-card quick-links-card" 
             shadow="hover"
             v-motion
             :initial="{ opacity: 0, x: 50 }"
-            :enter="{ opacity: 1, x: 0, transition: { delay: 400, type: 'spring' } }"
+            :enter="{ opacity: 1, x: 0, transition: { delay: 500, type: 'spring' } }"
           >
             <template #header>
               <div class="card-title">
@@ -326,6 +341,7 @@ import ImageWithFallback from '@/components/ImageWithFallback.vue'
 import ModernNewsCard from '@/components/ModernNewsCard.vue'
 import LoadingSkeleton from '@/components/LoadingSkeleton.vue'
 import CountTo from '@/components/CountTo.vue'
+import RecommendationCard from '@/components/RecommendationCard.vue'
 
 const router = useRouter()
 const route = useRoute()

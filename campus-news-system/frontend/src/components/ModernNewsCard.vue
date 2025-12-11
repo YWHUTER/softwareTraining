@@ -11,7 +11,7 @@
       <div class="absolute inset-0 bg-gray-200 dark:bg-slate-700 animate-pulse" v-if="loading"></div>
       <img 
         v-else
-        :src="image || 'https://picsum.photos/400/300'" 
+        :src="image || defaultImage" 
         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         alt="News Cover"
         @error="handleImageError"
@@ -69,6 +69,7 @@
 <script setup>
 import { ref } from 'vue'
 import { Calendar, View, Star, ChatDotRound } from '@element-plus/icons-vue'
+import defaultImage from '@/assets/nailong.jpg'
 
 const props = defineProps({
   title: String,
@@ -124,7 +125,7 @@ const handleMouseLeave = () => {
 }
 
 const handleImageError = (e) => {
-  e.target.src = 'https://picsum.photos/400/300'
+  e.target.src = defaultImage
 }
 
 const formatDate = (date) => {

@@ -459,6 +459,17 @@
             </div>
           </el-card>
           
+          <!-- AI相似文章推荐 -->
+          <RecommendationCard 
+            v-if="article?.id"
+            type="similar" 
+            :article-id="article.id" 
+            :count="5" 
+            title="相似文章推荐"
+            :show-refresh="true"
+            class="similar-articles-card"
+          />
+
           <!-- 作者其他文章 -->
           <el-card v-if="authorArticles.length > 0" class="author-articles-card" shadow="never">
             <template #header>
@@ -543,6 +554,7 @@ import { Download, Link, Histogram, Document } from '@element-plus/icons-vue'
 import { htmlToText } from '@/utils/htmlParser'
 import QRCode from 'qrcode'
 import BackToTop from '@/components/BackToTop.vue'
+import RecommendationCard from '@/components/RecommendationCard.vue'
 
 const route = useRoute()
 const router = useRouter()

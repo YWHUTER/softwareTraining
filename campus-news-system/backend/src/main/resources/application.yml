@@ -76,3 +76,8 @@ logging:
   level:
     com.campus.news: debug
     org.springframework.security: debug
+
+# 推荐服务配置
+recommendation:
+  service:
+    url: ${RECOMMENDATION_SERVICE_URL:http://localhost:5000}
