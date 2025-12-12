@@ -56,3 +56,31 @@ export const updateUserInfo = (data) => {
     data
   })
 }
+
+// ========== 关注相关 API ==========
+
+// 关注/取消关注用户
+export const toggleFollow = (userId) => {
+  return request({
+    url: `/follow/${userId}`,
+    method: 'post'
+  })
+}
+
+// 检查是否已关注
+export const checkFollowStatus = (userId) => {
+  return request({
+    url: `/follow/check/${userId}`,
+    method: 'get'
+  })
+}
+
+// 关注用户
+export const followUser = (userId) => {
+  return toggleFollow(userId)
+}
+
+// 取消关注
+export const unfollowUser = (userId) => {
+  return toggleFollow(userId)
+}

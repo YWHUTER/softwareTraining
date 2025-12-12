@@ -55,6 +55,8 @@ public class SecurityConfig {
                 .requestMatchers("/tag/hot", "/tag/list", "/tag/article/**").permitAll()  // 标签接口公开
                 .requestMatchers("/recommendation/**").permitAll()  // 推荐接口公开
                 .requestMatchers("/video/list", "/video/detail/**", "/video/categories", "/video/hot").permitAll()  // 视频接口公开
+                .requestMatchers("/video/comment/list/**").permitAll()  // 视频评论列表公开
+                .requestMatchers("/video/related/**", "/video/channel/**", "/video/search/**", "/video/latest", "/video/stats/**").permitAll()  // 新增视频接口公开
                 .anyRequest().authenticated()
             );
         

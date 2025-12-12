@@ -27,14 +27,23 @@
           </div>
           
           <div class="video-actions">
-            <button 
-              class="action-btn" 
-              :class="{ active: video?.isLiked }"
-              @click="handleLike"
-            >
-              <el-icon><Pointer /></el-icon>
-              <span>{{ video?.likeCount || 0 }}</span>
-            </button>
+            <div class="like-dislike-group">
+              <button 
+                class="action-btn like-btn" 
+                :class="{ active: video?.isLiked }"
+                @click="handleLike"
+              >
+                <el-icon><Pointer /></el-icon>
+                <span>{{ video?.likeCount || 0 }}</span>
+              </button>
+              <button 
+                class="action-btn dislike-btn" 
+                :class="{ active: isDisliked }"
+                @click="handleDislike"
+              >
+                <el-icon style="transform: rotate(180deg)"><Pointer /></el-icon>
+              </button>
+            </div>
             <button class="action-btn" @click="handleShare">
               <el-icon><Share /></el-icon>
               <span>分享</span>
@@ -42,6 +51,14 @@
             <button class="action-btn" @click="handleDownload">
               <el-icon><Download /></el-icon>
               <span>下载</span>
+            </button>
+            <button 
+              class="action-btn" 
+              :class="{ active: isInWatchLater }"
+              @click="handleWatchLater"
+            >
+              <el-icon><Clock /></el-icon>
+              <span>{{ isInWatchLater ? '已保存' : '保存' }}</span>
             </button>
             <button class="action-btn">
               <el-icon><MoreFilled /></el-icon>
@@ -53,15 +70,22 @@
       <!-- 频道信息和描述 -->
       <div class="channel-section">
         <div class="channel-info">
-          <div class="channel-avatar">
+          <div class="channel-avatar" @click="goToChannel(video?.authorId)" style="cursor: pointer;">
             <img v-if="video?.author?.avatar" :src="getAvatarUrl(video.author.avatar)" />
             <span v-else>{{ (video?.channelName || video?.author?.realName || '?')[0] }}</span>
           </div>
           <div class="channel-details">
-            <div class="channel-name">{{ video?.channelName || video?.author?.realName || '未知频道' }}</div>
+            <div class="channel-name" @click="goToChannel(video?.authorId)" style="cursor: pointer;">
+              {{ video?.channelName || video?.author?.realName || '未知频道' }}
+            </div>
             <div class="subscriber-count">{{ video?.author?.followerCount || 0 }} 位订阅者</div>
           </div>
-          <button class="subscribe-btn" :class="{ subscribed: isSubscribed }" @click="toggleSubscribe">
+          <button 
+            v-if="!isOwnVideo"
+            class="subscribe-btn" 
+            :class="{ subscribed: isSubscribed }" 
+            @click="toggleSubscribe"
+          >
             {{ isSubscribed ? '已订阅' : '订阅' }}
           </button>
         </div>
@@ -79,7 +103,7 @@
       <!-- 评论区 -->
       <div class="comments-section">
         <div class="comments-header">
-          <span class="comments-count">{{ comments.length }} 条评论</span>
+          <span class="comments-count">{{ totalComments }} 条评论</span>
           <div class="sort-options">
             <button :class="{ active: sortBy === 'hot' }" @click="sortBy = 'hot'">按热度</button>
             <button :class="{ active: sortBy === 'new' }" @click="sortBy = 'new'">按时间</button>
@@ -120,15 +144,51 @@
               </div>
               <p class="comment-text">{{ comment.content }}</p>
               <div class="comment-footer">
-                <button class="like-btn">
+                <button class="like-btn" :class="{ active: comment.isLiked }" @click="handleCommentLike(comment)">
                   <el-icon><Pointer /></el-icon>
                   <span>{{ comment.likeCount || 0 }}</span>
                 </button>
-                <button class="reply-btn">回复</button>
+                <button class="reply-btn" @click="startReply(comment)">回复</button>
+              </div>
+              <!-- 回复输入框 -->
+              <div v-if="replyingTo?.id === comment.id" class="reply-input-wrapper">
+                <input 
+                  v-model="replyContent" 
+                  type="text" 
+                  :placeholder="'回复 @' + (comment.user?.realName || '用户')"
+                  @keyup.enter="submitReply"
+                />
+                <div class="reply-actions">
+                  <button class="cancel-btn" @click="cancelReply">取消</button>
+                  <button class="submit-btn" :disabled="!replyContent.trim()" @click="submitReply">回复</button>
+                </div>
+              </div>
+              <!-- 显示回复列表 -->
+              <div v-if="comment.replies?.length" class="replies-list">
+                <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
+                  <div class="reply-avatar">
+                    <img v-if="reply.user?.avatar" :src="getAvatarUrl(reply.user.avatar)" />
+                    <span v-else>{{ (reply.user?.realName || '?')[0] }}</span>
+                  </div>
+                  <div class="reply-content">
+                    <div class="reply-header">
+                      <span class="reply-author">{{ reply.user?.realName || '匿名用户' }}</span>
+                      <span v-if="reply.replyToUser" class="reply-to">
+                        回复 <span class="reply-to-name">@{{ reply.replyToUser.realName }}</span>
+                      </span>
+                      <span class="reply-time">{{ formatTime(reply.createdAt) }}</span>
+                    </div>
+                    <p class="reply-text">{{ reply.content }}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <div v-if="comments.length === 0" class="no-comments">
+          <div v-if="commentsLoading" class="comments-loading">
+            <el-icon class="is-loading"><Loading /></el-icon>
+            加载中...
+          </div>
+          <div v-else-if="comments.length === 0" class="no-comments">
             暂无评论，来发表第一条评论吧
           </div>
         </div>
@@ -165,11 +225,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Pointer, Share, Download, MoreFilled } from '@element-plus/icons-vue'
-import { getVideoDetail, getVideoList, toggleVideoLike } from '@/api/video'
+import { Pointer, Share, Download, MoreFilled, Loading, Clock } from '@element-plus/icons-vue'
+import { getVideoDetail, toggleVideoLike, getVideoComments, createVideoComment, toggleCommentLike, getRelatedVideos, toggleDislike, toggleWatchLater, saveWatchProgress, getWatchProgress, addWatchHistory } from '@/api/video'
+import { toggleFollow, checkFollowStatus } from '@/api/user'
 
 const route = useRoute()
 const router = useRouter()
@@ -188,32 +249,94 @@ const isSubscribed = ref(false)
 const sortBy = ref('hot')
 const currentUser = ref(null)
 
-// 计算属性
-const sortedComments = computed(() => {
-  const list = [...comments.value]
-  if (sortBy.value === 'hot') {
-    return list.sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
-  }
-  return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+const totalComments = ref(0)
+const commentsLoading = ref(false)
+const replyingTo = ref(null) // 正在回复的评论
+const replyContent = ref('')
+const isDisliked = ref(false)
+const isInWatchLater = ref(false)
+const savedProgress = ref(0)
+
+// 计算属性 - 前端不再排序，由后端处理
+const sortedComments = computed(() => comments.value)
+
+// 是否是自己的视频
+const isOwnVideo = computed(() => {
+  if (!currentUser.value || !video.value) return false
+  return currentUser.value.id === video.value.authorId
 })
 
 // 加载视频详情
 const loadVideo = async () => {
   try {
+    currentVideoId = route.params.id // 保存当前视频ID
     const res = await getVideoDetail(route.params.id)
     video.value = res
+    // 加载订阅状态
+    loadSubscribeStatus()
+    // 加载观看进度
+    loadWatchProgress()
+    // 添加到观看历史
+    addToHistory()
   } catch (error) {
     ElMessage.error('加载视频失败')
   }
 }
 
-// 加载推荐视频
+// 添加到观看历史
+const addToHistory = async () => {
+  if (!currentUser.value || !currentVideoId) return
+  try {
+    await addWatchHistory(currentVideoId)
+  } catch (error) {
+    // 静默处理
+  }
+}
+
+// 加载观看进度
+const loadWatchProgress = async () => {
+  if (!currentUser.value || !currentVideoId) return
+  try {
+    const progress = await getWatchProgress(currentVideoId)
+    savedProgress.value = progress || 0
+    // 如果有保存的进度，跳转到该位置
+    if (savedProgress.value > 0 && videoPlayer.value) {
+      setTimeout(() => {
+        if (videoPlayer.value) {
+          videoPlayer.value.currentTime = savedProgress.value
+        }
+      }, 500)
+    }
+  } catch (error) {
+    // 静默处理
+  }
+}
+
+// 加载推荐视频（使用相关视频推荐API）
 const loadRecommended = async () => {
   try {
-    const res = await getVideoList({ current: 1, size: 10 })
-    recommendedVideos.value = (res.records || []).filter(v => v.id !== Number(route.params.id))
+    const res = await getRelatedVideos(route.params.id, 15)
+    recommendedVideos.value = res || []
   } catch (error) {
-    console.error('加载推荐视频失败')
+    console.error('加载推荐视频失败:', error)
+  }
+}
+
+// 加载评论
+const loadComments = async () => {
+  commentsLoading.value = true
+  try {
+    const res = await getVideoComments(route.params.id, {
+      current: 1,
+      size: 50,
+      sortBy: sortBy.value
+    })
+    comments.value = res.records || []
+    totalComments.value = res.total || 0
+  } catch (error) {
+    console.error('加载评论失败:', error)
+  } finally {
+    commentsLoading.value = false
   }
 }
 
@@ -250,18 +373,110 @@ const handleDownload = () => {
   }
 }
 
-// 订阅
-const toggleSubscribe = () => {
-  isSubscribed.value = !isSubscribed.value
-  ElMessage.success(isSubscribed.value ? '订阅成功' : '已取消订阅')
+// 订阅（关注视频作者）
+const toggleSubscribe = async () => {
+  if (!currentUser.value) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  if (!video.value?.authorId) return
+  
+  try {
+    const res = await toggleFollow(video.value.authorId)
+    isSubscribed.value = res.isFollowing
+    // 更新粉丝数
+    if (video.value.author) {
+      video.value.author.followerCount += res.isFollowing ? 1 : -1
+    }
+    ElMessage.success(res.message)
+  } catch (error) {
+    ElMessage.error('操作失败')
+  }
+}
+
+// 加载订阅状态
+const loadSubscribeStatus = async () => {
+  if (!currentUser.value || !video.value?.authorId) return
+  // 不能关注自己
+  if (currentUser.value.id === video.value.authorId) return
+  
+  try {
+    const res = await checkFollowStatus(video.value.authorId)
+    isSubscribed.value = res
+  } catch (error) {
+    console.error('加载订阅状态失败')
+  }
 }
 
 // 提交评论
-const submitComment = () => {
+const submitComment = async () => {
   if (!newComment.value.trim()) return
-  ElMessage.info('评论功能开发中')
-  newComment.value = ''
-  commentFocused.value = false
+  if (!currentUser.value) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  try {
+    await createVideoComment({
+      videoId: Number(route.params.id),
+      content: newComment.value.trim(),
+      parentId: null
+    })
+    ElMessage.success('评论成功')
+    newComment.value = ''
+    commentFocused.value = false
+    loadComments()
+  } catch (error) {
+    ElMessage.error('评论失败')
+  }
+}
+
+// 点赞评论
+const handleCommentLike = async (comment) => {
+  if (!currentUser.value) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  try {
+    const res = await toggleCommentLike(comment.id)
+    comment.isLiked = res
+    comment.likeCount += res ? 1 : -1
+  } catch (error) {
+    ElMessage.error('操作失败')
+  }
+}
+
+// 开始回复评论
+const startReply = (comment) => {
+  if (!currentUser.value) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  replyingTo.value = comment
+  replyContent.value = ''
+}
+
+// 取消回复
+const cancelReply = () => {
+  replyingTo.value = null
+  replyContent.value = ''
+}
+
+// 提交回复
+const submitReply = async () => {
+  if (!replyContent.value.trim() || !replyingTo.value) return
+  
+  try {
+    await createVideoComment({
+      videoId: Number(route.params.id),
+      content: replyContent.value.trim(),
+      parentId: replyingTo.value.id
+    })
+    ElMessage.success('回复成功')
+    cancelReply()
+    loadComments()
+  } catch (error) {
+    ElMessage.error('回复失败')
+  }
 }
 
 // 取消评论
@@ -275,9 +490,98 @@ const goToVideo = (id) => {
   router.push(`/video/${id}`)
 }
 
-// 视频事件
-const onTimeUpdate = () => {}
-const onLoadedMetadata = () => {}
+// 跳转频道
+const goToChannel = (userId) => {
+  if (userId) {
+    router.push(`/channel/${userId}`)
+  }
+}
+
+// 视频事件 - 保存观看进度
+let progressSaveTimeout = null
+let lastSavedTime = 0
+let currentVideoId = null // 保存当前视频ID，避免路由变化时丢失
+
+const onTimeUpdate = () => {
+  if (!currentUser.value || !videoPlayer.value || !currentVideoId) return
+  
+  const currentTime = Math.floor(videoPlayer.value.currentTime)
+  
+  // 每30秒保存一次进度，且进度变化超过5秒才保存
+  if (progressSaveTimeout) return
+  if (Math.abs(currentTime - lastSavedTime) < 5) return
+  
+  const videoIdToSave = currentVideoId
+  progressSaveTimeout = setTimeout(async () => {
+    try {
+      if (videoPlayer.value && currentTime > 0 && videoIdToSave) {
+        await saveWatchProgress(videoIdToSave, currentTime)
+        lastSavedTime = currentTime
+      }
+    } catch (error) {
+      // 静默处理错误，不影响用户体验
+    }
+    progressSaveTimeout = null
+  }, 30000)
+}
+
+const onLoadedMetadata = () => {
+  // 如果有保存的进度，跳转到该位置
+  if (savedProgress.value > 0 && videoPlayer.value) {
+    videoPlayer.value.currentTime = savedProgress.value
+    lastSavedTime = savedProgress.value
+  }
+}
+
+// 页面离开时保存进度
+const saveProgressOnLeave = async (videoId) => {
+  if (!currentUser.value || !videoPlayer.value) return
+  const idToSave = videoId || currentVideoId
+  if (!idToSave) return
+  
+  try {
+    const currentTime = Math.floor(videoPlayer.value.currentTime)
+    if (currentTime > 0 && currentTime !== lastSavedTime) {
+      await saveWatchProgress(idToSave, currentTime)
+    }
+  } catch (error) {
+    // 静默处理
+  }
+}
+
+// 不喜欢
+const handleDislike = async () => {
+  if (!currentUser.value) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  try {
+    const res = await toggleDislike(video.value.id)
+    isDisliked.value = res
+    // 如果点了不喜欢，取消点赞
+    if (res && video.value.isLiked) {
+      video.value.isLiked = false
+      video.value.likeCount -= 1
+    }
+  } catch (error) {
+    ElMessage.error('操作失败')
+  }
+}
+
+// 稍后观看
+const handleWatchLater = async () => {
+  if (!currentUser.value) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  try {
+    const res = await toggleWatchLater(video.value.id)
+    isInWatchLater.value = res
+    ElMessage.success(res ? '已添加到稍后观看' : '已从稍后观看移除')
+  } catch (error) {
+    ElMessage.error('操作失败')
+  }
+}
 
 // 工具函数
 const getAvatarUrl = (url) => {
@@ -311,17 +615,39 @@ const formatTime = (dateStr) => {
 }
 
 // 监听路由变化
-watch(() => route.params.id, () => {
-  if (route.params.id) {
+watch(() => route.params.id, async (newId, oldId) => {
+  // 切换视频时保存旧视频的进度
+  if (oldId && newId !== oldId) {
+    await saveProgressOnLeave(oldId)
+    lastSavedTime = 0
+    savedProgress.value = 0
+  }
+  if (newId) {
     loadVideo()
     loadRecommended()
+    loadComments()
   }
+})
+
+// 监听排序变化
+watch(sortBy, () => {
+  loadComments()
 })
 
 onMounted(() => {
   loadCurrentUser()
   loadVideo()
   loadRecommended()
+  loadComments()
+})
+
+// 页面离开时保存进度
+onBeforeUnmount(() => {
+  saveProgressOnLeave()
+  // 清理定时器
+  if (progressSaveTimeout) {
+    clearTimeout(progressSaveTimeout)
+  }
 })
 </script>
 
@@ -414,6 +740,32 @@ onMounted(() => {
 .action-btn.active {
   background: #065fd4;
   color: #ffffff;
+}
+
+/* 点赞/不喜欢按钮组 */
+.like-dislike-group {
+  display: flex;
+  background: #f2f2f2;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.like-dislike-group .action-btn {
+  border-radius: 0;
+}
+
+.like-dislike-group .like-btn {
+  border-radius: 18px 0 0 18px;
+  border-right: 1px solid #e5e5e5;
+}
+
+.like-dislike-group .dislike-btn {
+  border-radius: 0 18px 18px 0;
+  padding: 10px 14px;
+}
+
+.like-dislike-group .action-btn.active {
+  background: #0f0f0f;
 }
 
 /* 频道区域 */
@@ -737,6 +1089,121 @@ onMounted(() => {
 
 .like-btn:hover, .reply-btn:hover {
   background: #f2f2f2;
+}
+
+.like-btn.active {
+  color: #065fd4;
+}
+
+.comments-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px;
+  color: #606060;
+}
+
+/* 回复输入框 */
+.reply-input-wrapper {
+  margin-top: 12px;
+  padding-left: 52px;
+}
+
+.reply-input-wrapper input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e5e5e5;
+  padding: 8px 0;
+  color: #0f0f0f;
+  font-size: 14px;
+  outline: none;
+}
+
+.reply-input-wrapper input:focus {
+  border-bottom-color: #0f0f0f;
+}
+
+.reply-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* 回复列表 */
+.replies-list {
+  margin-top: 12px;
+  padding-left: 52px;
+}
+
+.reply-item {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.reply-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #909090;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.reply-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reply-avatar span {
+  color: #fff;
+  font-size: 10px;
+}
+
+.reply-content {
+  flex: 1;
+}
+
+.reply-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+  flex-wrap: wrap;
+}
+
+.reply-author {
+  font-size: 12px;
+  font-weight: 500;
+  color: #0f0f0f;
+}
+
+.reply-to {
+  font-size: 12px;
+  color: #606060;
+}
+
+.reply-to-name {
+  color: #065fd4;
+}
+
+.reply-time {
+  font-size: 11px;
+  color: #909090;
+}
+
+.reply-text {
+  font-size: 13px;
+  color: #0f0f0f;
+  margin: 0;
+  line-height: 1.4;
 }
 
 .no-comments {

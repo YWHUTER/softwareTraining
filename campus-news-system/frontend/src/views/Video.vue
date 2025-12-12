@@ -4,7 +4,7 @@
     <div class="yt-sidebar">
       <!-- 主要导航 -->
       <div class="sidebar-section">
-        <div class="sidebar-item active">
+        <div class="sidebar-item" :class="{ active: currentView === 'home' }" @click="switchView('home')">
           <el-icon :size="24"><HomeFilled /></el-icon>
           <span>首页</span>
         </div>
@@ -26,7 +26,11 @@
           <span>我</span>
           <el-icon><ArrowRight /></el-icon>
         </div>
-        <div class="sidebar-item">
+        <div class="sidebar-item" :class="{ active: currentView === 'myVideos' }" @click="switchView('myVideos')">
+          <el-icon :size="24"><VideoCamera /></el-icon>
+          <span>我的视频</span>
+        </div>
+        <div class="sidebar-item" :class="{ active: currentView === 'history' }" @click="switchView('history')">
           <el-icon :size="24"><Clock /></el-icon>
           <span>历史记录</span>
         </div>
@@ -34,11 +38,11 @@
           <el-icon :size="24"><Files /></el-icon>
           <span>播放列表</span>
         </div>
-        <div class="sidebar-item">
+        <div class="sidebar-item" :class="{ active: currentView === 'watchLater' }" @click="switchView('watchLater')">
           <el-icon :size="24"><Timer /></el-icon>
           <span>稍后观看</span>
         </div>
-        <div class="sidebar-item">
+        <div class="sidebar-item" :class="{ active: currentView === 'liked' }" @click="switchView('liked')">
           <el-icon :size="24"><Pointer /></el-icon>
           <span>点赞的视频</span>
         </div>
@@ -61,8 +65,93 @@
 
     <!-- 主内容区 -->
     <div class="yt-main">
+      <!-- 搜索栏 -->
+      <div class="search-bar-container">
+        <div class="search-input-wrapper">
+          <el-icon class="search-icon"><Search /></el-icon>
+          <input 
+            v-model="searchKeyword" 
+            type="text" 
+            placeholder="搜索视频..."
+            class="search-input"
+            @keyup.enter="handleSearch"
+            @input="handleSearchInput"
+          />
+          <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">
+            <el-icon><Close /></el-icon>
+          </button>
+          <button class="search-btn" @click="handleSearch">
+            <el-icon><Search /></el-icon>
+          </button>
+        </div>
+        <!-- 搜索建议 -->
+        <div v-if="showSuggestions && suggestions.length > 0" class="search-suggestions">
+          <div 
+            v-for="(suggestion, index) in suggestions" 
+            :key="index"
+            class="suggestion-item"
+            @click="selectSuggestion(suggestion)"
+          >
+            <el-icon><Search /></el-icon>
+            <span>{{ suggestion }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 搜索筛选器 -->
+      <div v-if="isSearchMode" class="search-filters">
+        <div class="filter-group">
+          <span class="filter-label">时长:</span>
+          <button 
+            v-for="opt in durationOptions" 
+            :key="opt.value"
+            class="filter-btn"
+            :class="{ active: searchFilters.duration === opt.value }"
+            @click="setFilter('duration', opt.value)"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">上传日期:</span>
+          <button 
+            v-for="opt in uploadDateOptions" 
+            :key="opt.value"
+            class="filter-btn"
+            :class="{ active: searchFilters.uploadDate === opt.value }"
+            @click="setFilter('uploadDate', opt.value)"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">排序:</span>
+          <button 
+            v-for="opt in sortOptions" 
+            :key="opt.value"
+            class="filter-btn"
+            :class="{ active: searchFilters.sortBy === opt.value }"
+            @click="setFilter('sortBy', opt.value)"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 页面标题 -->
+      <div v-if="currentView !== 'home' && !isSearchMode" class="page-title">
+        <h2>{{ getViewTitle() }}</h2>
+        <button v-if="currentView === 'history'" class="clear-history-btn" @click="handleClearHistory">
+          清空历史
+        </button>
+      </div>
+      <div v-if="isSearchMode" class="page-title">
+        <h2>搜索结果: "{{ searchKeyword }}"</h2>
+        <span class="result-count">共 {{ total }} 个结果</span>
+      </div>
+      
       <!-- 分类筛选栏 -->
-      <div class="yt-chips-bar">
+      <div v-if="currentView === 'home'" class="yt-chips-bar">
         <div class="yt-chips-scroll">
           <button 
             class="yt-chip"
@@ -114,7 +203,7 @@
           
           <!-- 视频元数据 -->
           <div class="yt-meta">
-            <a class="yt-avatar-link">
+            <a class="yt-avatar-link" @click.stop="goToChannel(video.authorId)">
               <div class="yt-avatar">
                 {{ (video.channelName || video.author?.realName || '未知')[0] }}
               </div>
@@ -124,7 +213,7 @@
                 <a class="yt-title-link">{{ video.title }}</a>
               </h3>
               <div class="yt-channel-info">
-                <a class="yt-channel-name">{{ video.channelName || video.author?.realName || '未知频道' }}</a>
+                <a class="yt-channel-name" @click.stop="goToChannel(video.authorId)">{{ video.channelName || video.author?.realName || '未知频道' }}</a>
                 <el-tooltip content="验证频道" placement="top" :show-after="500">
                   <el-icon class="verified-icon" :size="12"><CircleCheckFilled /></el-icon>
                 </el-tooltip>
@@ -223,9 +312,9 @@ import { ElMessage } from 'element-plus'
 import { 
   VideoPlay, HomeFilled, VideoCamera, Collection, 
   Clock, Files, Timer, Pointer, ArrowRight, CircleCheckFilled, MoreFilled,
-  Upload, Loading
+  Upload, Loading, Search, Close
 } from '@element-plus/icons-vue'
-import { getVideoList, getVideoCategories, uploadVideoComplete } from '@/api/video'
+import { getVideoList, getVideoCategories, uploadVideoComplete, getLikedVideos, getMyVideos, searchVideos, getSearchSuggestions, getWatchHistory, getWatchLaterList, clearHistory } from '@/api/video'
 
 const router = useRouter()
 
@@ -239,6 +328,8 @@ const activeCategory = ref('all')
 const currentPage = ref(1)
 const pageSize = ref(12)
 const total = ref(0)
+const currentView = ref('home') // home, liked, myVideos, history, watchLater
+const currentUser = ref(null)
 
 // 上传
 const showUploadDialog = ref(false)
@@ -254,6 +345,39 @@ const uploadForm = ref({
   duration: '',
   durationSeconds: 0
 })
+
+// 搜索相关
+const searchKeyword = ref('')
+const isSearchMode = ref(false)
+const showSuggestions = ref(false)
+const suggestions = ref([])
+const searchFilters = ref({
+  duration: null,
+  uploadDate: null,
+  sortBy: 'relevance'
+})
+
+const durationOptions = [
+  { label: '全部', value: null },
+  { label: '短视频(<4分钟)', value: 'short' },
+  { label: '中等(4-20分钟)', value: 'medium' },
+  { label: '长视频(>20分钟)', value: 'long' }
+]
+
+const uploadDateOptions = [
+  { label: '全部', value: null },
+  { label: '今天', value: 'today' },
+  { label: '本周', value: 'week' },
+  { label: '本月', value: 'month' },
+  { label: '今年', value: 'year' }
+]
+
+const sortOptions = [
+  { label: '相关性', value: 'relevance' },
+  { label: '上传日期', value: 'date' },
+  { label: '观看次数', value: 'views' },
+  { label: '评分', value: 'rating' }
+]
 
 const subscriptions = ref([
   { id: 1, name: '武理官方', color: '#ef4444', hasNew: true },
@@ -277,23 +401,40 @@ const loadCategories = async () => {
 // 加载视频列表
 const loadVideos = async () => {
   loading.value = true
-  console.log('开始加载视频列表...')
   try {
+    let res
     const params = {
       current: currentPage.value,
       size: pageSize.value
     }
-    if (activeCategory.value !== 'all') {
-      params.categoryCode = activeCategory.value
+    
+    if (isSearchMode.value) {
+      // 搜索模式
+      res = await searchVideos({
+        keyword: searchKeyword.value,
+        ...params,
+        categoryCode: activeCategory.value !== 'all' ? activeCategory.value : null,
+        duration: searchFilters.value.duration,
+        uploadDate: searchFilters.value.uploadDate,
+        sortBy: searchFilters.value.sortBy
+      })
+    } else if (currentView.value === 'liked') {
+      res = await getLikedVideos(params)
+    } else if (currentView.value === 'myVideos') {
+      res = await getMyVideos(params)
+    } else if (currentView.value === 'history') {
+      res = await getWatchHistory(params)
+    } else if (currentView.value === 'watchLater') {
+      res = await getWatchLaterList(params)
+    } else {
+      if (activeCategory.value !== 'all') {
+        params.categoryCode = activeCategory.value
+      }
+      res = await getVideoList(params)
     }
     
-    console.log('请求参数:', params)
-    const res = await getVideoList(params)
-    console.log('视频列表响应:', res)
-    // 响应拦截器已经解包了data，所以直接使用res
     videos.value = res.records || []
     total.value = res.total || res.records?.length || 0
-    console.log('视频数量:', videos.value.length)
   } catch (error) {
     console.error('加载视频失败:', error)
     ElMessage.error('加载视频失败')
@@ -302,8 +443,113 @@ const loadVideos = async () => {
   }
 }
 
+// 搜索相关方法
+let searchTimeout = null
+const handleSearchInput = async () => {
+  if (searchTimeout) clearTimeout(searchTimeout)
+  
+  if (searchKeyword.value.length >= 2) {
+    searchTimeout = setTimeout(async () => {
+      try {
+        const res = await getSearchSuggestions(searchKeyword.value)
+        suggestions.value = res || []
+        showSuggestions.value = true
+      } catch (error) {
+        console.error('获取搜索建议失败')
+      }
+    }, 300)
+  } else {
+    suggestions.value = []
+    showSuggestions.value = false
+  }
+}
+
+const handleSearch = () => {
+  if (!searchKeyword.value.trim()) {
+    clearSearch()
+    return
+  }
+  isSearchMode.value = true
+  showSuggestions.value = false
+  currentPage.value = 1
+  loadVideos()
+}
+
+const selectSuggestion = (suggestion) => {
+  searchKeyword.value = suggestion
+  handleSearch()
+}
+
+const clearSearch = () => {
+  searchKeyword.value = ''
+  isSearchMode.value = false
+  showSuggestions.value = false
+  suggestions.value = []
+  searchFilters.value = { duration: null, uploadDate: null, sortBy: 'relevance' }
+  currentPage.value = 1
+  loadVideos()
+}
+
+const setFilter = (key, value) => {
+  searchFilters.value[key] = value
+  currentPage.value = 1
+  loadVideos()
+}
+
+// 跳转到频道
+const goToChannel = (userId) => {
+  if (userId) {
+    router.push(`/channel/${userId}`)
+  }
+}
+
+// 获取视图标题
+const getViewTitle = () => {
+  switch (currentView.value) {
+    case 'liked': return '点赞的视频'
+    case 'myVideos': return '我的视频'
+    case 'history': return '观看历史'
+    case 'watchLater': return '稍后观看'
+    default: return ''
+  }
+}
+
+// 清空历史记录
+const handleClearHistory = async () => {
+  try {
+    await clearHistory()
+    ElMessage.success('历史记录已清空')
+    loadVideos()
+  } catch (error) {
+    ElMessage.error('清空失败')
+  }
+}
+
+// 切换视图
+const switchView = (view) => {
+  if (!currentUser.value && view !== 'home') {
+    ElMessage.warning('请先登录')
+    return
+  }
+  currentView.value = view
+  currentPage.value = 1
+  if (view === 'home') {
+    activeCategory.value = 'all'
+  }
+  loadVideos()
+}
+
+// 加载当前用户
+const loadCurrentUser = () => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    currentUser.value = JSON.parse(userStr)
+  }
+}
+
 // 选择分类
 const selectCategory = (code) => {
+  currentView.value = 'home'
   activeCategory.value = code
   currentPage.value = 1
   loadVideos()
@@ -434,6 +680,7 @@ const formatTime = (dateStr) => {
 }
 
 onMounted(() => {
+  loadCurrentUser()
   loadCategories()
   loadVideos()
 })
@@ -543,6 +790,17 @@ onMounted(() => {
   flex: 1;
   padding: 0 24px;
   overflow-x: hidden;
+}
+
+.page-title {
+  padding: 24px 0 16px;
+}
+
+.page-title h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #0f0f0f;
 }
 
 /* ========== 分类标签栏 ========== */
@@ -844,5 +1102,179 @@ onMounted(() => {
 /* ========== 上传进度 ========== */
 .upload-progress {
   margin-top: 16px;
+}
+
+/* ========== 搜索栏 ========== */
+.search-bar-container {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: #f2f2f2;
+  border-radius: 40px;
+  padding: 0 16px;
+  height: 44px;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.search-input-wrapper:focus-within {
+  background: #ffffff;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+  border: 1px solid #e5e5e5;
+}
+
+.search-icon {
+  color: #606060;
+  margin-right: 12px;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  color: #0f0f0f;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: #909090;
+}
+
+.clear-btn {
+  background: none;
+  border: none;
+  color: #606060;
+  cursor: pointer;
+  padding: 4px;
+  margin-right: 8px;
+}
+
+.search-btn {
+  background: #f2f2f2;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #0f0f0f;
+}
+
+.search-btn:hover {
+  background: #e5e5e5;
+}
+
+/* 搜索建议 */
+.search-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  margin-top: 4px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  color: #0f0f0f;
+}
+
+.suggestion-item:hover {
+  background: #f2f2f2;
+}
+
+.suggestion-item .el-icon {
+  color: #606060;
+}
+
+/* 搜索筛选器 */
+.search-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid #e5e5e5;
+  margin-bottom: 16px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label {
+  color: #606060;
+  font-size: 14px;
+  margin-right: 4px;
+}
+
+.filter-btn {
+  padding: 6px 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 16px;
+  background: transparent;
+  color: #0f0f0f;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  background: #f2f2f2;
+}
+
+.filter-btn.active {
+  background: #0f0f0f;
+  color: #ffffff;
+  border-color: #0f0f0f;
+}
+
+.page-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.page-title h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #0f0f0f;
+}
+
+.result-count {
+  color: #606060;
+  font-size: 14px;
+}
+
+.clear-history-btn {
+  margin-left: auto;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 18px;
+  background: #f2f2f2;
+  color: #0f0f0f;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.clear-history-btn:hover {
+  background: #e5e5e5;
 }
 </style>

@@ -51,4 +51,15 @@ public class VideoLikeService extends ServiceImpl<VideoLikeMapper, VideoLike> {
                 .eq("id", videoId)
                 .setSql("like_count = like_count + " + delta));
     }
+    
+    public java.util.List<Long> getLikedVideoIds(Long userId) {
+        QueryWrapper<VideoLike> wrapper = new QueryWrapper<>();
+        wrapper.eq("user_id", userId)
+               .select("video_id")
+               .orderByDesc("created_at");
+        return videoLikeMapper.selectList(wrapper)
+                .stream()
+                .map(VideoLike::getVideoId)
+                .toList();
+    }
 }

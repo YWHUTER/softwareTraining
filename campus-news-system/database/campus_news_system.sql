@@ -274,6 +274,40 @@ CREATE TABLE `video_like` (
     FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='视频点赞表';
 
+-- 18. 视频评论表
+CREATE TABLE `video_comment` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `video_id` BIGINT NOT NULL COMMENT '视频ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `content` TEXT NOT NULL COMMENT '评论内容',
+    `parent_id` BIGINT COMMENT '父评论ID',
+    `reply_to_user_id` BIGINT COMMENT '回复目标用户ID',
+    `like_count` INT DEFAULT 0 COMMENT '点赞数',
+    `status` TINYINT DEFAULT 1 COMMENT '状态: 0-已删除 1-正常',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_video` (`video_id`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_parent` (`parent_id`),
+    FOREIGN KEY (`video_id`) REFERENCES `video`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`parent_id`) REFERENCES `video_comment`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`reply_to_user_id`) REFERENCES `user`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='视频评论表';
+
+-- 19. 视频评论点赞表
+CREATE TABLE `video_comment_like` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `comment_id` BIGINT NOT NULL COMMENT '评论ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_comment_user` (`comment_id`, `user_id`),
+    INDEX `idx_comment` (`comment_id`),
+    INDEX `idx_user` (`user_id`),
+    FOREIGN KEY (`comment_id`) REFERENCES `video_comment`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='视频评论点赞表';
+
 -- ============================================
 -- 初始化数据
 -- ============================================
