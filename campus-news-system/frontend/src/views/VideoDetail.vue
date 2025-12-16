@@ -1,9 +1,9 @@
 <template>
-  <div class="video-page">
+  <div class="video-page" :class="{ 'theater-mode': theaterMode }">
     <!-- 主内容区 -->
     <div class="video-main">
       <!-- 视频播放器 -->
-      <div class="video-player-wrapper">
+      <div class="video-player-wrapper" :class="{ 'theater': theaterMode }">
         <video
           ref="videoPlayer"
           :src="video?.videoUrl"
@@ -12,7 +12,36 @@
           class="video-player"
           @timeupdate="onTimeUpdate"
           @loadedmetadata="onLoadedMetadata"
+          @play="isPlaying = true"
+          @pause="isPlaying = false"
+          @ended="onVideoEnded"
         ></video>
+        <!-- 播放器控制栏 -->
+        <div class="player-controls-overlay">
+          <div class="player-top-controls">
+            <button class="control-btn" @click="toggleTheaterMode" title="剧场模式">
+              <el-icon><FullScreen /></el-icon>
+            </button>
+            <button class="control-btn" @click="togglePictureInPicture" title="画中画">
+              <el-icon><Picture /></el-icon>
+            </button>
+          </div>
+        </div>
+        <!-- 自动播放下一个提示 -->
+        <div v-if="showAutoplayNext" class="autoplay-next-overlay">
+          <div class="autoplay-card">
+            <img :src="nextVideo?.thumbnail || defaultThumbnail" />
+            <div class="autoplay-info">
+              <span class="autoplay-label">即将播放</span>
+              <h4>{{ nextVideo?.title }}</h4>
+              <div class="autoplay-countdown">
+                <div class="countdown-ring" :style="{ '--progress': autoplayCountdown / 5 }"></div>
+                <span>{{ autoplayCountdown }}</span>
+              </div>
+            </div>
+            <button class="cancel-autoplay" @click="cancelAutoplay">取消</button>
+          </div>
+        </div>
       </div>
 
       <!-- 视频信息 -->
@@ -196,9 +225,15 @@
     </div>
 
     <!-- 推荐视频侧边栏 -->
-    <div class="video-sidebar">
+    <div class="video-sidebar" :class="{ 'hidden': theaterMode }">
       <div class="sidebar-header">
-        <span>推荐视频</span>
+        <div class="sidebar-title">
+          <span>推荐视频</span>
+        </div>
+        <div class="autoplay-toggle">
+          <span>自动播放</span>
+          <el-switch v-model="autoplayEnabled" size="small" />
+        </div>
       </div>
       <div class="recommended-list">
         <div 
@@ -228,7 +263,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Pointer, Share, Download, MoreFilled, Loading, Clock } from '@element-plus/icons-vue'
+import { Pointer, Share, Download, MoreFilled, Loading, Clock, FullScreen, Picture } from '@element-plus/icons-vue'
 import { getVideoDetail, toggleVideoLike, getVideoComments, createVideoComment, toggleCommentLike, getRelatedVideos, toggleDislike, toggleWatchLater, saveWatchProgress, getWatchProgress, addWatchHistory } from '@/api/video'
 import { toggleFollow, checkFollowStatus } from '@/api/user'
 
@@ -239,6 +274,13 @@ const defaultThumbnail = 'https://picsum.photos/seed/default/320/180'
 
 // 状态
 const video = ref(null)
+const theaterMode = ref(false)
+const isPlaying = ref(false)
+const autoplayEnabled = ref(true)
+const showAutoplayNext = ref(false)
+const autoplayCountdown = ref(5)
+const nextVideo = ref(null)
+let autoplayTimer = null
 const videoPlayer = ref(null)
 const recommendedVideos = ref([])
 const comments = ref([])
@@ -317,8 +359,54 @@ const loadRecommended = async () => {
   try {
     const res = await getRelatedVideos(route.params.id, 15)
     recommendedVideos.value = res || []
+    // 设置下一个视频
+    if (res && res.length > 0) {
+      nextVideo.value = res[0]
+    }
   } catch (error) {
     console.error('加载推荐视频失败:', error)
+  }
+}
+
+// 剧场模式
+const toggleTheaterMode = () => {
+  theaterMode.value = !theaterMode.value
+}
+
+// 画中画
+const togglePictureInPicture = async () => {
+  if (!videoPlayer.value) return
+  try {
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture()
+    } else {
+      await videoPlayer.value.requestPictureInPicture()
+    }
+  } catch (error) {
+    console.error('画中画失败:', error)
+  }
+}
+
+// 视频结束
+const onVideoEnded = () => {
+  if (autoplayEnabled.value && nextVideo.value) {
+    showAutoplayNext.value = true
+    autoplayCountdown.value = 5
+    autoplayTimer = setInterval(() => {
+      autoplayCountdown.value--
+      if (autoplayCountdown.value <= 0) {
+        clearInterval(autoplayTimer)
+        goToVideo(nextVideo.value.id)
+      }
+    }, 1000)
+  }
+}
+
+// 取消自动播放
+const cancelAutoplay = () => {
+  showAutoplayNext.value = false
+  if (autoplayTimer) {
+    clearInterval(autoplayTimer)
   }
 }
 
@@ -1300,6 +1388,168 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
+/* 剧场模式 */
+.video-page.theater-mode {
+  flex-direction: column;
+}
+
+.video-page.theater-mode .video-main {
+  max-width: 100%;
+}
+
+.video-player-wrapper.theater {
+  max-height: 80vh;
+  background: #000;
+  margin: 0 -24px;
+  border-radius: 0;
+}
+
+.video-sidebar.hidden {
+  display: none;
+}
+
+/* 播放器控制 */
+.player-controls-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 12px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.video-player-wrapper:hover .player-controls-overlay {
+  opacity: 1;
+}
+
+.player-top-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.control-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.control-btn:hover {
+  background: rgba(0,0,0,0.8);
+}
+
+/* 自动播放下一个 */
+.autoplay-next-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.autoplay-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #272727;
+  padding: 16px;
+  border-radius: 12px;
+  max-width: 500px;
+}
+
+.autoplay-card img {
+  width: 160px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.autoplay-info {
+  flex: 1;
+}
+
+.autoplay-label {
+  color: #aaa;
+  font-size: 12px;
+}
+
+.autoplay-info h4 {
+  color: #fff;
+  margin: 4px 0 8px;
+  font-size: 14px;
+}
+
+.autoplay-countdown {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.countdown-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid #333;
+  border-top-color: #fff;
+  animation: countdown-spin 1s linear infinite;
+}
+
+@keyframes countdown-spin {
+  to { transform: rotate(360deg); }
+}
+
+.autoplay-countdown span {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.cancel-autoplay {
+  padding: 8px 16px;
+  border: 1px solid #fff;
+  border-radius: 18px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.cancel-autoplay:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* 侧边栏头部 */
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.sidebar-title span {
+  font-size: 16px;
+  font-weight: 500;
+  color: #0f0f0f;
+}
+
+.autoplay-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #606060;
+}
+
 /* 响应式 */
 @media (max-width: 1200px) {
   .video-page {
@@ -1343,6 +1593,11 @@ onBeforeUnmount(() => {
   
   .action-btn span {
     display: none;
+  }
+  
+  .autoplay-card {
+    flex-direction: column;
+    text-align: center;
   }
 }
 </style>

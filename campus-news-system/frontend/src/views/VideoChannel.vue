@@ -2,24 +2,37 @@
   <div class="channel-page">
     <!-- 频道头部 -->
     <div class="channel-header">
-      <div class="channel-banner">
+      <div class="channel-banner" :style="{ background: getBannerGradient() }">
+        <div class="banner-pattern"></div>
         <div class="banner-gradient"></div>
       </div>
       <div class="channel-info-section">
-        <div class="channel-avatar-large">
+        <div class="channel-avatar-large" :style="{ background: getAvatarGradient() }">
           <img v-if="channelInfo?.user?.avatar" :src="getAvatarUrl(channelInfo.user.avatar)" />
           <span v-else>{{ (channelInfo?.user?.realName || '?')[0] }}</span>
         </div>
         <div class="channel-details">
-          <h1 class="channel-name">{{ channelInfo?.user?.realName || '未知频道' }}</h1>
+          <div class="channel-name-row">
+            <h1 class="channel-name">{{ channelInfo?.user?.realName || '未知频道' }}</h1>
+            <el-icon v-if="channelInfo?.verified" class="verified-badge"><CircleCheckFilled /></el-icon>
+          </div>
+          <div class="channel-handle">@{{ channelInfo?.user?.username }}</div>
           <div class="channel-stats">
-            <span>@{{ channelInfo?.user?.username }}</span>
-            <span class="dot">•</span>
             <span>{{ formatNumber(channelInfo?.subscriberCount) }} 位订阅者</span>
             <span class="dot">•</span>
             <span>{{ channelInfo?.videoCount || 0 }} 个视频</span>
+            <span class="dot">•</span>
+            <span>{{ formatNumber(channelInfo?.totalViews) }} 次观看</span>
           </div>
-          <p class="channel-description">{{ channelInfo?.user?.bio || '这个频道还没有简介' }}</p>
+          <p class="channel-description">
+            {{ truncateDescription(channelInfo?.user?.bio) }}
+            <button v-if="channelInfo?.user?.bio?.length > 100" class="more-btn" @click="activeTab = 'about'">...更多</button>
+          </p>
+          <div class="channel-links" v-if="channelInfo?.links?.length">
+            <a v-for="link in channelInfo.links.slice(0, 3)" :key="link.url" :href="link.url" target="_blank" class="channel-link">
+              {{ link.title }}
+            </a>
+          </div>
         </div>
         <div class="channel-actions">
           <button 
@@ -28,7 +41,11 @@
             :class="{ subscribed: isSubscribed }"
             @click="toggleSubscribe"
           >
+            <el-icon v-if="isSubscribed"><Bell /></el-icon>
             {{ isSubscribed ? '已订阅' : '订阅' }}
+          </button>
+          <button v-if="isOwnChannel" class="customize-btn" @click="customizeChannel">
+            自定义频道
           </button>
         </div>
       </div>
@@ -154,7 +171,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Loading, VideoCamera } from '@element-plus/icons-vue'
+import { Loading, VideoCamera, CircleCheckFilled, Bell } from '@element-plus/icons-vue'
 import { getChannelInfo, getChannelVideos } from '@/api/video'
 import { toggleFollow, checkFollowStatus } from '@/api/user'
 
@@ -266,6 +283,40 @@ const getAvatarUrl = (url) => {
   return url.startsWith('http') ? url : `http://localhost:8080${url}`
 }
 
+const getBannerGradient = () => {
+  const colors = [
+    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'
+  ]
+  const id = channelInfo.value?.user?.id || 0
+  return colors[id % colors.length]
+}
+
+const getAvatarGradient = () => {
+  const colors = [
+    'linear-gradient(135deg, #ff0000, #cc0000)',
+    'linear-gradient(135deg, #667eea, #764ba2)',
+    'linear-gradient(135deg, #f093fb, #f5576c)',
+    'linear-gradient(135deg, #4facfe, #00f2fe)'
+  ]
+  const id = channelInfo.value?.user?.id || 0
+  return colors[id % colors.length]
+}
+
+const truncateDescription = (text) => {
+  if (!text) return '这个频道还没有简介'
+  if (text.length <= 100) return text
+  return text.substring(0, 100)
+}
+
+const customizeChannel = () => {
+  ElMessage.info('频道自定义功能开发中')
+}
+
 const formatNumber = (num) => {
   if (!num) return '0'
   if (num >= 10000) return (num / 10000).toFixed(1) + '万'
@@ -326,8 +377,14 @@ onMounted(() => {
 
 .channel-banner {
   height: 200px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   position: relative;
+  overflow: hidden;
+}
+
+.banner-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
 
 .banner-gradient {
@@ -353,7 +410,6 @@ onMounted(() => {
   width: 160px;
   height: 160px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff0000, #cc0000);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -361,6 +417,11 @@ onMounted(() => {
   border: 4px solid #ffffff;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   flex-shrink: 0;
+  transition: transform 0.3s;
+}
+
+.channel-avatar-large:hover {
+  transform: scale(1.05);
 }
 
 .channel-avatar-large img {
@@ -380,11 +441,29 @@ onMounted(() => {
   padding-top: 50px;
 }
 
+.channel-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
 .channel-name {
   font-size: 24px;
   font-weight: 600;
   color: #0f0f0f;
-  margin: 0 0 8px;
+  margin: 0;
+}
+
+.verified-badge {
+  color: #606060;
+  font-size: 20px;
+}
+
+.channel-handle {
+  color: #606060;
+  font-size: 14px;
+  margin-bottom: 4px;
 }
 
 .channel-stats {
@@ -400,8 +479,34 @@ onMounted(() => {
 .channel-description {
   color: #606060;
   font-size: 14px;
-  margin: 0;
+  margin: 0 0 8px;
   max-width: 600px;
+  line-height: 1.5;
+}
+
+.more-btn {
+  background: none;
+  border: none;
+  color: #0f0f0f;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+
+.channel-links {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.channel-link {
+  color: #065fd4;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.channel-link:hover {
+  text-decoration: underline;
 }
 
 .channel-actions {
@@ -409,6 +514,9 @@ onMounted(() => {
 }
 
 .subscribe-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 10px 20px;
   border: none;
   border-radius: 20px;
@@ -417,16 +525,33 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .subscribe-btn:hover {
   background: #272727;
+  transform: scale(1.02);
 }
 
 .subscribe-btn.subscribed {
   background: #f2f2f2;
   color: #0f0f0f;
+}
+
+.customize-btn {
+  padding: 10px 20px;
+  border: 1px solid #e5e5e5;
+  border-radius: 20px;
+  background: transparent;
+  color: #0f0f0f;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.customize-btn:hover {
+  background: #f2f2f2;
 }
 
 /* 频道导航 */
