@@ -1209,9 +1209,9 @@ onMounted(() => {
 
 /* ========== 侧边栏 ========== */
 .yt-sidebar {
-  width: 240px;
+  width: 280px;
   flex-shrink: 0;
-  padding: 12px;
+  padding: 16px;
   overflow-y: auto;
   position: sticky;
   top: 0;
@@ -1259,13 +1259,14 @@ onMounted(() => {
 .sidebar-item {
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  height: 40px;
+  padding: 0 16px;
+  height: 44px;
   border-radius: 10px;
   cursor: pointer;
   color: #0f0f0f;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
   transition: background-color 0.2s;
+  font-size: 15px;
 }
 
 .sidebar-item:hover {
@@ -1318,8 +1319,9 @@ onMounted(() => {
 /* ========== 主内容区 ========== */
 .yt-main {
   flex: 1;
-  padding: 0 24px;
+  padding: 0 32px;
   overflow-x: hidden;
+  max-width: calc(100% - 280px);
 }
 
 /* ========== 搜索栏 ========== */
@@ -1549,13 +1551,13 @@ onMounted(() => {
 
 .yt-chip {
   flex-shrink: 0;
-  height: 32px;
-  padding: 0 12px;
+  height: 36px;
+  padding: 0 16px;
   border: none;
   border-radius: 8px;
   background-color: #f2f2f2;
   color: #0f0f0f;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
@@ -1602,19 +1604,23 @@ onMounted(() => {
 .shorts-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 16px;
+  gap: 20px;
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 1600px) {
   .shorts-grid { grid-template-columns: repeat(5, 1fr); }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1400px) {
   .shorts-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
-@media (max-width: 800px) {
+@media (max-width: 1100px) {
   .shorts-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 800px) {
+  .shorts-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 .short-card {
@@ -1814,11 +1820,15 @@ onMounted(() => {
 .yt-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 40px 16px;
+  gap: 32px 20px;
   margin-bottom: 40px;
 }
 
-@media (max-width: 1600px) {
+@media (max-width: 1800px) {
+  .yt-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 1400px) {
   .yt-grid { grid-template-columns: repeat(3, 1fr); }
 }
 

@@ -2,6 +2,14 @@
   <div class="search-page">
     <!-- 搜索横幅 -->
     <div class="search-banner">
+      <!-- 水滴特效层 -->
+      <div class="rain-container">
+        <div class="rain-drop" v-for="n in 30" :key="n" :style="getRainStyle(n)"></div>
+      </div>
+      <!-- 涟漪特效 -->
+      <div class="ripple-container">
+        <div class="ripple" v-for="n in 5" :key="'ripple-' + n" :style="getRippleStyle(n)"></div>
+      </div>
       <div class="banner-content">
         <h1 class="banner-title">
           <el-icon><Search /></el-icon>
@@ -300,6 +308,34 @@ const searchHistory = ref([])
 // 热门搜索关键词
 const hotKeywords = ['校园活动', '讲座', '竞赛', '招聘', '学术', '通知']
 
+// 水滴动画样式生成
+const getRainStyle = (n) => {
+  const left = Math.random() * 100
+  const delay = Math.random() * 5
+  const duration = 1 + Math.random() * 1
+  const opacity = 0.3 + Math.random() * 0.4
+  return {
+    left: `${left}%`,
+    animationDelay: `${delay}s`,
+    animationDuration: `${duration}s`,
+    opacity: opacity
+  }
+}
+
+// 涟漪动画样式生成
+const getRippleStyle = (n) => {
+  const left = 10 + Math.random() * 80
+  const top = 20 + Math.random() * 60
+  const delay = Math.random() * 8
+  const duration = 3 + Math.random() * 2
+  return {
+    left: `${left}%`,
+    top: `${top}%`,
+    animationDelay: `${delay}s`,
+    animationDuration: `${duration}s`
+  }
+}
+
 // 从URL参数初始化搜索
 onMounted(() => {
   loadHistory()
@@ -486,40 +522,112 @@ const formatTime = (time) => {
 
 /* 搜索横幅 */
 .search-banner {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
-  backdrop-filter: blur(10px);
+  background-image: url('@/assets/search-banner.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   border-radius: 24px;
   padding: 70px 60px;
   margin-bottom: 40px;
   color: white;
-  box-shadow: 0 20px 50px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
   position: relative;
   overflow: hidden;
   animation: fadeInDown 0.6s ease-out;
 }
 
+/* 半透明遮罩层，确保文字可读 */
 .search-banner::before {
   content: '';
   position: absolute;
-  top: -50%;
-  left: -20%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
-  border-radius: 50%;
-  animation: float 15s infinite ease-in-out;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.35) 100%);
+  z-index: 1;
+  pointer-events: none;
 }
 
 .search-banner::after {
-  content: '';
+  display: none;
+}
+
+/* 水滴特效容器 */
+.rain-container {
   position: absolute;
-  bottom: -40%;
-  right: -15%;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 水滴 */
+.rain-drop {
+  position: absolute;
+  top: -20px;
+  width: 2px;
+  height: 15px;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.6));
+  border-radius: 0 0 5px 5px;
+  animation: rainFall linear infinite;
+}
+
+@keyframes rainFall {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(350px);
+    opacity: 0;
+  }
+}
+
+/* 涟漪特效容器 */
+.ripple-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 涟漪 */
+.ripple {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 50%;
-  animation: float 20s infinite ease-in-out reverse;
+  animation: rippleExpand ease-out infinite;
+}
+
+@keyframes rippleExpand {
+  0% {
+    transform: scale(0);
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(20);
+    opacity: 0;
+  }
 }
 
 @keyframes float {
@@ -529,7 +637,7 @@ const formatTime = (time) => {
 
 .banner-content {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   text-align: center;
 }
 

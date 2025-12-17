@@ -1,7 +1,22 @@
 <template>
-  <div class="video-page" :class="{ 'theater-mode': theaterMode }">
-    <!-- 主内容区 -->
-    <div class="video-main">
+  <div class="video-detail-page" :class="{ 'theater-mode': theaterMode }">
+    <!-- 返回导航栏 -->
+    <div class="back-nav">
+      <button class="back-btn" @click="goBack">
+        <el-icon><ArrowLeft /></el-icon>
+        <span>返回视频首页</span>
+      </button>
+      <div class="nav-breadcrumb">
+        <span class="breadcrumb-item" @click="goToVideoHome">视频</span>
+        <el-icon class="breadcrumb-separator"><ArrowRight /></el-icon>
+        <span class="breadcrumb-current">{{ video?.title || '视频详情' }}</span>
+      </div>
+    </div>
+
+    <!-- 内容容器 -->
+    <div class="video-content-wrapper">
+      <!-- 主内容区 -->
+      <div class="video-main">
       <!-- 视频播放器 -->
       <div class="video-player-wrapper" :class="{ 'theater': theaterMode }">
         <video
@@ -62,15 +77,16 @@
                 :class="{ active: video?.isLiked }"
                 @click="handleLike"
               >
-                <el-icon><Pointer /></el-icon>
-                <span>{{ video?.likeCount || 0 }}</span>
+                <el-icon :size="20"><Pointer /></el-icon>
+                <span>{{ formatLikeCount(video?.likeCount) }}</span>
               </button>
               <button 
                 class="action-btn dislike-btn" 
                 :class="{ active: isDisliked }"
                 @click="handleDislike"
               >
-                <el-icon style="transform: rotate(180deg)"><Pointer /></el-icon>
+                <el-icon :size="20" class="dislike-icon"><Pointer /></el-icon>
+                <span>{{ formatLikeCount(video?.dislikeCount) }}</span>
               </button>
             </div>
             <button class="action-btn" @click="handleShare">
@@ -256,6 +272,7 @@
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -263,7 +280,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Pointer, Share, Download, MoreFilled, Loading, Clock, FullScreen, Picture } from '@element-plus/icons-vue'
+import { Pointer, Share, Download, MoreFilled, Loading, Clock, FullScreen, Picture, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import { getVideoDetail, toggleVideoLike, getVideoComments, createVideoComment, toggleCommentLike, getRelatedVideos, toggleDislike, toggleWatchLater, saveWatchProgress, getWatchProgress, addWatchHistory } from '@/api/video'
 import { toggleFollow, checkFollowStatus } from '@/api/user'
 
@@ -438,11 +455,27 @@ const loadCurrentUser = () => {
 
 // 点赞
 const handleLike = async () => {
+  if (!currentUser.value) {
+    ElMessage.warning('请先登录')
+    return
+  }
   if (!video.value) return
   try {
     const res = await toggleVideoLike(video.value.id)
+    const wasLiked = video.value.isLiked
     video.value.isLiked = res
-    video.value.likeCount += res ? 1 : -1
+    
+    // 更新点赞数
+    if (res && !wasLiked) {
+      video.value.likeCount = (video.value.likeCount || 0) + 1
+      // 如果之前点了倒赞，取消倒赞
+      if (isDisliked.value) {
+        isDisliked.value = false
+        video.value.dislikeCount = Math.max(0, (video.value.dislikeCount || 0) - 1)
+      }
+    } else if (!res && wasLiked) {
+      video.value.likeCount = Math.max(0, (video.value.likeCount || 0) - 1)
+    }
   } catch (error) {
     ElMessage.error('操作失败')
   }
@@ -578,6 +611,20 @@ const goToVideo = (id) => {
   router.push(`/video/${id}`)
 }
 
+// 返回视频首页
+const goBack = () => {
+  // 如果有历史记录且来自视频页面，则返回
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/video')
+  }
+}
+
+const goToVideoHome = () => {
+  router.push('/video')
+}
+
 // 跳转频道
 const goToChannel = (userId) => {
   if (userId) {
@@ -637,19 +684,28 @@ const saveProgressOnLeave = async (videoId) => {
   }
 }
 
-// 不喜欢
+// 不喜欢（倒赞）
 const handleDislike = async () => {
   if (!currentUser.value) {
     ElMessage.warning('请先登录')
     return
   }
+  if (!video.value) return
   try {
     const res = await toggleDislike(video.value.id)
+    const wasDisliked = isDisliked.value
     isDisliked.value = res
-    // 如果点了不喜欢，取消点赞
-    if (res && video.value.isLiked) {
-      video.value.isLiked = false
-      video.value.likeCount -= 1
+    
+    // 更新倒赞数
+    if (res && !wasDisliked) {
+      video.value.dislikeCount = (video.value.dislikeCount || 0) + 1
+      // 如果之前点了点赞，取消点赞
+      if (video.value.isLiked) {
+        video.value.isLiked = false
+        video.value.likeCount = Math.max(0, (video.value.likeCount || 0) - 1)
+      }
+    } else if (!res && wasDisliked) {
+      video.value.dislikeCount = Math.max(0, (video.value.dislikeCount || 0) - 1)
     }
   } catch (error) {
     ElMessage.error('操作失败')
@@ -675,6 +731,13 @@ const handleWatchLater = async () => {
 const getAvatarUrl = (url) => {
   if (!url) return ''
   return url.startsWith('http') ? url : `http://localhost:8080${url}`
+}
+
+// 格式化点赞数（确保不显示负数）
+const formatLikeCount = (num) => {
+  if (!num || num < 0) return '0'
+  if (num >= 10000) return (num / 10000).toFixed(1) + '万'
+  return num.toString()
 }
 
 const formatViews = (num) => {
@@ -741,14 +804,85 @@ onBeforeUnmount(() => {
 
 
 <style scoped>
-.video-page {
+/* 返回导航栏 */
+.back-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e5e5;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  background: #f2f2f2;
+  color: #0f0f0f;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background: #e5e5e5;
+}
+
+.back-btn .el-icon {
+  font-size: 18px;
+}
+
+.nav-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #606060;
+  font-size: 14px;
+}
+
+.breadcrumb-item {
+  color: #065fd4;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.breadcrumb-item:hover {
+  color: #0056b8;
+  text-decoration: underline;
+}
+
+.breadcrumb-separator {
+  font-size: 12px;
+  color: #909090;
+}
+
+.breadcrumb-current {
+  color: #606060;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-detail-page {
+  background: #ffffff;
+  min-height: calc(100vh - 60px);
+}
+
+.video-content-wrapper {
   display: flex;
   max-width: 1800px;
   margin: 0 auto;
   padding: 24px;
   gap: 24px;
-  background: #ffffff;
-  min-height: calc(100vh - 60px);
 }
 
 /* 主内容区 */
@@ -840,6 +974,19 @@ onBeforeUnmount(() => {
 
 .like-dislike-group .action-btn {
   border-radius: 0;
+  background: #f2f2f2;
+  color: #606060;
+  transition: all 0.2s;
+  min-width: 80px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.like-dislike-group .action-btn:hover {
+  background: #e5e5e5;
 }
 
 .like-dislike-group .like-btn {
@@ -849,11 +996,34 @@ onBeforeUnmount(() => {
 
 .like-dislike-group .dislike-btn {
   border-radius: 0 18px 18px 0;
-  padding: 10px 14px;
 }
 
-.like-dislike-group .action-btn.active {
-  background: #0f0f0f;
+/* 点赞激活状态 - 白底红色 */
+.like-dislike-group .like-btn.active {
+  background: #ffffff;
+  color: #ff0000;
+}
+
+/* 倒赞激活状态 - 白底蓝色 */
+.like-dislike-group .dislike-btn.active {
+  background: #ffffff;
+  color: #065fd4;
+}
+
+/* 倒赞图标旋转 */
+.dislike-icon {
+  transform: rotate(180deg);
+}
+
+/* 确保图标大小一致 */
+.like-dislike-group .el-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.like-dislike-group .action-btn span {
+  font-size: 14px;
+  font-weight: 500;
 }
 
 /* 频道区域 */
@@ -1389,19 +1559,25 @@ onBeforeUnmount(() => {
 }
 
 /* 剧场模式 */
-.video-page.theater-mode {
+.video-detail-page.theater-mode .video-content-wrapper {
   flex-direction: column;
+  max-width: 100%;
+  padding: 0;
 }
 
-.video-page.theater-mode .video-main {
+.video-detail-page.theater-mode .video-main {
   max-width: 100%;
 }
 
 .video-player-wrapper.theater {
   max-height: 80vh;
   background: #000;
-  margin: 0 -24px;
+  margin: 0;
   border-radius: 0;
+}
+
+.video-detail-page.theater-mode .video-sidebar {
+  display: none;
 }
 
 .video-sidebar.hidden {
@@ -1552,7 +1728,7 @@ onBeforeUnmount(() => {
 
 /* 响应式 */
 @media (max-width: 1200px) {
-  .video-page {
+  .video-content-wrapper {
     flex-direction: column;
   }
   
@@ -1565,20 +1741,33 @@ onBeforeUnmount(() => {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 16px;
   }
+  
+  .nav-breadcrumb {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
-  .video-page {
-    padding: 0;
+  .video-content-wrapper {
+    padding: 12px;
+  }
+  
+  .back-nav {
+    padding: 8px 12px;
+  }
+  
+  .back-btn span {
+    display: none;
   }
   
   .video-player-wrapper {
     border-radius: 0;
+    margin: 0 -12px;
   }
   
   .video-info, .channel-section, .comments-section {
-    padding-left: 12px;
-    padding-right: 12px;
+    padding-left: 0;
+    padding-right: 0;
   }
   
   .video-meta-actions {
