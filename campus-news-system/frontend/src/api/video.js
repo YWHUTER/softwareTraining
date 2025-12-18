@@ -352,3 +352,22 @@ export function getWatchProgress(videoId) {
     method: 'get'
   })
 }
+
+// ========== 订阅相关 API ==========
+
+// 获取订阅用户的视频
+export function getSubscriptionVideos(params) {
+  return request({
+    url: '/video/subscriptions',
+    method: 'get',
+    params
+  })
+}
+
+// 获取订阅的频道列表
+export function getSubscribedChannels() {
+  return request({
+    url: '/video/subscriptions/channels',
+    method: 'get'
+  })
+}

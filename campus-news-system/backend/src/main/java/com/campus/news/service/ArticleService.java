@@ -48,6 +48,7 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
         article.setCoverImage(request.getCoverImage());
         article.setAuthorId(userId);
         article.setBoardType(request.getBoardType());
+        article.setCategory(request.getCategory());
         article.setCollegeId(request.getCollegeId());
         article.setIsPinned(request.getIsPinned());
         article.setViewCount(0);
@@ -82,6 +83,8 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
                 throw new BusinessException("您未绑定学院，无法发布学院新闻");
             }
         }
+        
+        // MARKETPLACE 和 CAMPUS 板块所有登录用户都可以发布
     }
     
     public PageResult<Article> getArticleList(ArticleQueryRequest request, Long currentUserId) {
@@ -90,6 +93,9 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
         
         if (request.getBoardType() != null) {
             wrapper.eq("board_type", request.getBoardType());
+        }
+        if (request.getCategory() != null && !request.getCategory().isEmpty()) {
+            wrapper.eq("category", request.getCategory());
         }
         if (request.getCollegeId() != null) {
             wrapper.eq("college_id", request.getCollegeId());

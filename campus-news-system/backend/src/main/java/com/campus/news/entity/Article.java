@@ -15,7 +15,8 @@ public class Article {
     private String summary;
     private String coverImage;
     private Long authorId;
-    private String boardType; // OFFICIAL, CAMPUS, COLLEGE
+    private String boardType; // OFFICIAL, CAMPUS, COLLEGE, MARKETPLACE
+    private String category; // 分类（用于校园集市）: daily, trade, help, activity, lost, study, sports
     private Long collegeId;
     private Integer viewCount;
     private Integer likeCount;

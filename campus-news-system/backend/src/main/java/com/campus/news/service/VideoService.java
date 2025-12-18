@@ -26,6 +26,7 @@ public class VideoService extends ServiceImpl<VideoMapper, Video> {
     private final UserService userService;
     private final VideoCategoryService videoCategoryService;
     private final VideoLikeService videoLikeService;
+    private final com.campus.news.mapper.UserFollowMapper userFollowMapper;
     
     @Transactional
     public Video createVideo(VideoCreateRequest request, Long userId) {
@@ -489,5 +490,88 @@ public class VideoService extends ServiceImpl<VideoMapper, Video> {
         
         orderedVideos.forEach(video -> enrichVideo(video, currentUserId));
         return orderedVideos;
+    }
+    
+    /**
+     * 获取订阅用户的视频（关注的人发布的视频）
+     */
+    public PageResult<Video> getSubscriptionVideos(Long userId, Integer current, Integer size) {
+        // 获取用户关注的人的ID列表
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.campus.news.entity.UserFollow> followWrapper = 
+            new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        followWrapper.eq("follower_id", userId);
+        List<com.campus.news.entity.UserFollow> follows = userFollowMapper.selectList(followWrapper);
+        
+        if (follows.isEmpty()) {
+            return new PageResult<>(0L, List.of(), (long) current, (long) size);
+        }
+        
+        List<Long> followingIds = follows.stream()
+                .map(com.campus.news.entity.UserFollow::getFollowingId)
+                .toList();
+        
+        // 查询这些用户发布的视频
+        Page<Video> page = new Page<>(current, size);
+        QueryWrapper<Video> wrapper = new QueryWrapper<>();
+        wrapper.in("author_id", followingIds)
+               .eq("is_approved", 1)
+               .eq("status", 1)
+               .orderByDesc("created_at");
+        
+        Page<Video> resultPage = videoMapper.selectPage(page, wrapper);
+        resultPage.getRecords().forEach(video -> enrichVideo(video, userId));
+        
+        return new PageResult<>(resultPage.getTotal(), resultPage.getRecords(),
+                resultPage.getCurrent(), resultPage.getSize());
+    }
+    
+    /**
+     * 获取用户关注的频道列表（带最新视频信息）
+     */
+    public List<java.util.Map<String, Object>> getSubscribedChannels(Long userId) {
+        // 获取用户关注的人的ID列表
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.campus.news.entity.UserFollow> followWrapper = 
+            new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        followWrapper.eq("follower_id", userId)
+                     .orderByDesc("created_at");
+        List<com.campus.news.entity.UserFollow> follows = userFollowMapper.selectList(followWrapper);
+        
+        List<java.util.Map<String, Object>> channels = new java.util.ArrayList<>();
+        
+        for (com.campus.news.entity.UserFollow follow : follows) {
+            User user = userService.getUserInfo(follow.getFollowingId());
+            if (user == null) continue;
+            
+            // 检查该用户是否有视频
+            QueryWrapper<Video> videoWrapper = new QueryWrapper<>();
+            videoWrapper.eq("author_id", user.getId())
+                       .eq("is_approved", 1)
+                       .eq("status", 1);
+            long videoCount = videoMapper.selectCount(videoWrapper);
+            
+            // 只返回有视频的频道
+            if (videoCount > 0) {
+                // 获取最新视频时间
+                QueryWrapper<Video> latestWrapper = new QueryWrapper<>();
+                latestWrapper.eq("author_id", user.getId())
+                            .eq("is_approved", 1)
+                            .eq("status", 1)
+                            .orderByDesc("created_at")
+                            .last("LIMIT 1");
+                Video latestVideo = videoMapper.selectOne(latestWrapper);
+                
+                java.util.Map<String, Object> channel = new java.util.HashMap<>();
+                channel.put("userId", user.getId());
+                channel.put("name", user.getRealName() != null ? user.getRealName() : user.getUsername());
+                channel.put("avatar", user.getAvatar());
+                channel.put("videoCount", videoCount);
+                channel.put("hasNew", latestVideo != null && 
+                    latestVideo.getCreatedAt().isAfter(java.time.LocalDateTime.now().minusDays(7)));
+                
+                channels.add(channel);
+            }
+        }
+        
+        return channels;
     }
 }

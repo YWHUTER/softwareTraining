@@ -2,13 +2,18 @@
   <div class="yt-container">
     <!-- 左侧侧边栏 -->
     <div class="yt-sidebar" :class="{ collapsed: sidebarCollapsed }">
+      <!-- Logo -->
+      <div class="whutube-logo" @click="goToVideoHome">
+        <img src="@/assets/whutube.png" alt="WHUTube" class="logo-img" />
+      </div>
+      
       <!-- 主要导航 -->
       <div class="sidebar-section">
         <div class="sidebar-item" :class="{ active: currentView === 'home' }" @click="switchView('home')">
           <el-icon :size="24"><HomeFilled /></el-icon>
           <span>首页</span>
         </div>
-        <div class="sidebar-item" :class="{ active: currentView === 'shorts' }" @click="switchView('shorts')">
+        <div class="sidebar-item" @click="goToShorts">
           <el-icon :size="24"><Film /></el-icon>
           <span>Shorts</span>
         </div>
@@ -37,10 +42,6 @@
         <div class="sidebar-item" :class="{ active: currentView === 'history' }" @click="switchView('history')">
           <el-icon :size="24"><Clock /></el-icon>
           <span>历史记录</span>
-        </div>
-        <div class="sidebar-item">
-          <el-icon :size="24"><Files /></el-icon>
-          <span>播放列表</span>
         </div>
         <div class="sidebar-item" :class="{ active: currentView === 'watchLater' }" @click="switchView('watchLater')">
           <el-icon :size="24"><Timer /></el-icon>
@@ -95,17 +96,17 @@
           <button class="voice-btn" title="语音搜索">
             <el-icon><Microphone /></el-icon>
           </button>
-        </div>
-        <!-- 搜索建议 -->
-        <div v-if="showSuggestions && suggestions.length > 0" class="search-suggestions">
-          <div 
-            v-for="(suggestion, index) in suggestions" 
-            :key="index"
-            class="suggestion-item"
-            @mousedown="selectSuggestion(suggestion)"
-          >
-            <el-icon><Search /></el-icon>
-            <span>{{ suggestion }}</span>
+          <!-- 搜索建议 -->
+          <div v-if="showSuggestions && suggestions.length > 0" class="search-suggestions">
+            <div 
+              v-for="(suggestion, index) in suggestions" 
+              :key="index"
+              class="suggestion-item"
+              @mousedown="selectSuggestion(suggestion)"
+            >
+              <el-icon><Search /></el-icon>
+              <span>{{ suggestion }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -190,70 +191,6 @@
         </button>
       </div>
 
-      <!-- Shorts 区域 -->
-      <div v-if="currentView === 'home' && shorts.length > 0 && !isSearchMode" class="shorts-section">
-        <div class="section-header">
-          <el-icon class="shorts-icon"><Film /></el-icon>
-          <h3>Shorts</h3>
-        </div>
-        <div class="shorts-grid">
-          <div 
-            v-for="short in shorts.slice(0, 6)" 
-            :key="short.id" 
-            class="short-card"
-            @click="handleVideoClick(short)"
-          >
-            <div class="short-thumbnail">
-              <img :src="short.thumbnail || defaultThumbnail" :alt="short.title" />
-              <div class="short-overlay">
-                <el-icon class="play-icon"><VideoPlay /></el-icon>
-              </div>
-            </div>
-            <div class="short-info">
-              <h4>{{ short.title }}</h4>
-              <span>{{ formatViews(short.viewCount) }}次观看</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Shorts 视图 -->
-      <div v-if="currentView === 'shorts'" class="shorts-view">
-        <div class="shorts-feed">
-          <div 
-            v-for="short in videos" 
-            :key="short.id" 
-            class="short-item"
-            @click="handleVideoClick(short)"
-          >
-            <div class="short-player">
-              <img :src="short.thumbnail || defaultThumbnail" :alt="short.title" />
-              <div class="short-actions">
-                <button class="short-action-btn">
-                  <el-icon><Pointer /></el-icon>
-                  <span>{{ formatViews(short.likeCount) }}</span>
-                </button>
-                <button class="short-action-btn">
-                  <el-icon><ChatDotRound /></el-icon>
-                  <span>{{ short.commentCount || 0 }}</span>
-                </button>
-                <button class="short-action-btn">
-                  <el-icon><Share /></el-icon>
-                  <span>分享</span>
-                </button>
-              </div>
-            </div>
-            <div class="short-meta">
-              <div class="short-channel">
-                <div class="channel-avatar-small">{{ (short.channelName || '?')[0] }}</div>
-                <span>@{{ short.channelName || short.author?.realName }}</span>
-              </div>
-              <h4>{{ short.title }}</h4>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- 加载状态 -->
       <div v-if="loading" class="loading-container">
         <div class="loading-spinner"></div>
@@ -261,7 +198,7 @@
       </div>
 
       <!-- 视频网格 -->
-      <div v-else-if="currentView !== 'shorts'" class="yt-grid">
+      <div v-else class="yt-grid">
         <div 
           v-for="video in videos" 
           :key="video.id" 
@@ -572,13 +509,14 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
   VideoPlay, VideoPause, HomeFilled, VideoCamera, Collection, 
-  Clock, Files, Timer, Pointer, ArrowRight, ArrowLeft, CircleCheckFilled, MoreFilled,
-  Upload, Loading, Search, Close, Film, Share, ChatDotRound, List, CircleClose, Plus, Microphone
+  Clock, Timer, Pointer, ArrowRight, ArrowLeft, CircleCheckFilled, MoreFilled,
+  Upload, Loading, Search, Close, Film, Share, List, CircleClose, Plus, Microphone
 } from '@element-plus/icons-vue'
 import { 
   getVideoList, getVideoCategories, uploadVideoComplete, getLikedVideos, 
   getMyVideos, searchVideos, getSearchSuggestions, getWatchHistory, 
-  getWatchLaterList, clearHistory, toggleWatchLater 
+  getWatchLaterList, clearHistory, toggleWatchLater, getSubscriptionVideos,
+  getSubscribedChannels
 } from '@/api/video'
 
 const router = useRouter()
@@ -588,7 +526,6 @@ const defaultThumbnail = 'https://picsum.photos/seed/default/640/360'
 // 状态
 const loading = ref(false)
 const videos = ref([])
-const shorts = ref([])
 const categories = ref([])
 const activeCategory = ref('all')
 const currentPage = ref(1)
@@ -672,6 +609,24 @@ const sortOptions = [
 
 const subscriptions = ref([])
 
+// 加载订阅频道列表
+const loadSubscriptions = async () => {
+  if (!currentUser.value) return
+  try {
+    const res = await getSubscribedChannels()
+    subscriptions.value = (res || []).map(channel => ({
+      id: channel.userId,
+      userId: channel.userId,
+      name: channel.name,
+      avatar: channel.avatar ? (channel.avatar.startsWith('http') ? channel.avatar : `http://localhost:8080${channel.avatar}`) : null,
+      color: getAvatarColor(channel.userId),
+      hasNew: channel.hasNew
+    }))
+  } catch (error) {
+    console.error('加载订阅频道失败:', error)
+  }
+}
+
 // 加载分类
 const loadCategories = async () => {
   try {
@@ -709,9 +664,8 @@ const loadVideos = async () => {
       res = await getWatchHistory(params)
     } else if (currentView.value === 'watchLater') {
       res = await getWatchLaterList(params)
-    } else if (currentView.value === 'shorts') {
-      params.maxDuration = 60
-      res = await getVideoList(params)
+    } else if (currentView.value === 'subscriptions') {
+      res = await getSubscriptionVideos(params)
     } else {
       if (activeCategory.value !== 'all') {
         params.categoryCode = activeCategory.value
@@ -721,26 +675,11 @@ const loadVideos = async () => {
     
     videos.value = (res.records || []).map(v => ({ ...v, isPreviewPlaying: false }))
     total.value = res.total || res.records?.length || 0
-    
-    // 加载 Shorts (首页时)
-    if (currentView.value === 'home' && !isSearchMode.value) {
-      loadShorts()
-    }
   } catch (error) {
     console.error('加载视频失败:', error)
     ElMessage.error('加载视频失败')
   } finally {
     loading.value = false
-  }
-}
-
-// 加载 Shorts
-const loadShorts = async () => {
-  try {
-    const res = await getVideoList({ current: 1, size: 6, maxDuration: 60 })
-    shorts.value = res.records || []
-  } catch (error) {
-    console.error('加载Shorts失败')
   }
 }
 
@@ -848,6 +787,21 @@ const goToChannel = (userId) => {
   }
 }
 
+// 跳转到 Shorts 页面
+const goToShorts = () => {
+  router.push('/shorts')
+}
+
+// 跳转到视频首页
+const goToVideoHome = () => {
+  currentView.value = 'home'
+  activeCategory.value = 'all'
+  currentPage.value = 1
+  isSearchMode.value = false
+  searchKeyword.value = ''
+  loadVideos()
+}
+
 // 获取视图标题
 const getViewTitle = () => {
   const titles = {
@@ -855,8 +809,7 @@ const getViewTitle = () => {
     myVideos: '我的视频',
     history: '观看历史',
     watchLater: '稍后观看',
-    subscriptions: '订阅内容',
-    shorts: 'Shorts'
+    subscriptions: '订阅内容'
   }
   return titles[currentView.value] || ''
 }
@@ -887,7 +840,7 @@ const handleClearHistory = async () => {
 
 // 切换视图
 const switchView = (view) => {
-  if (!currentUser.value && view !== 'home' && view !== 'shorts') {
+  if (!currentUser.value && view !== 'home') {
     ElMessage.warning('请先登录')
     return
   }
@@ -1187,6 +1140,7 @@ onMounted(() => {
   loadCurrentUser()
   loadCategories()
   loadVideos()
+  loadSubscriptions()
   
   // 监听分类滚动
   nextTick(() => {
@@ -1326,9 +1280,28 @@ onMounted(() => {
 
 /* ========== 搜索栏 ========== */
 .search-bar-container {
-  position: relative;
-  max-width: 640px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 700px;
   margin: 16px auto;
+  padding: 0 16px;
+  width: 100%;
+}
+
+.whutube-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 16px 12px 16px;
+  margin-bottom: 8px;
+}
+
+.whutube-logo .logo-img {
+  width: 120px;
+  height: auto;
+  object-fit: contain;
 }
 
 .search-input-wrapper {
@@ -1340,6 +1313,8 @@ onMounted(() => {
   height: 44px;
   transition: all 0.2s;
   border: 1px solid transparent;
+  flex: 1;
+  position: relative;
 }
 
 .search-input-wrapper:focus-within {
@@ -1575,202 +1550,6 @@ onMounted(() => {
 
 .yt-chip-active:hover {
   background-color: #272727;
-}
-
-/* ========== Shorts 区域 ========== */
-.shorts-section {
-  margin-bottom: 32px;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.section-header h3 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #0f0f0f;
-}
-
-.shorts-icon {
-  color: #ff0000;
-  font-size: 24px;
-}
-
-.shorts-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 20px;
-}
-
-@media (max-width: 1600px) {
-  .shorts-grid { grid-template-columns: repeat(5, 1fr); }
-}
-
-@media (max-width: 1400px) {
-  .shorts-grid { grid-template-columns: repeat(4, 1fr); }
-}
-
-@media (max-width: 1100px) {
-  .shorts-grid { grid-template-columns: repeat(3, 1fr); }
-}
-
-@media (max-width: 800px) {
-  .shorts-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-.short-card {
-  cursor: pointer;
-}
-
-.short-thumbnail {
-  position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  aspect-ratio: 9 / 16;
-  background: #000;
-}
-
-.short-thumbnail img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s;
-}
-
-.short-card:hover .short-thumbnail img {
-  transform: scale(1.05);
-}
-
-.short-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.short-card:hover .short-overlay {
-  opacity: 1;
-}
-
-.short-overlay .play-icon {
-  font-size: 48px;
-  color: #fff;
-}
-
-.short-info {
-  padding: 8px 4px;
-}
-
-.short-info h4 {
-  margin: 0 0 4px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #0f0f0f;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.short-info span {
-  font-size: 12px;
-  color: #606060;
-}
-
-/* Shorts 视图 */
-.shorts-view {
-  max-width: 400px;
-  margin: 0 auto;
-}
-
-.shorts-feed {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.short-item {
-  cursor: pointer;
-}
-
-.short-player {
-  position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  aspect-ratio: 9 / 16;
-  background: #000;
-}
-
-.short-player img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.short-actions {
-  position: absolute;
-  right: 12px;
-  bottom: 80px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.short-action-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  color: #fff;
-  cursor: pointer;
-}
-
-.short-action-btn .el-icon {
-  font-size: 28px;
-}
-
-.short-action-btn span {
-  font-size: 12px;
-}
-
-.short-meta {
-  padding: 12px 4px;
-}
-
-.short-channel {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.channel-avatar-small {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #ff0000;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-}
-
-.short-meta h4 {
-  margin: 0;
-  font-size: 14px;
-  color: #0f0f0f;
 }
 
 /* ========== 加载状态 ========== */

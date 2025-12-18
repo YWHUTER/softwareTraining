@@ -183,6 +183,24 @@ public class VideoController {
         return Result.success(videoService.getVideoStats(id));
     }
     
+    @Operation(summary = "获取订阅用户的视频")
+    @GetMapping("/subscriptions")
+    public Result<PageResult<Video>> getSubscriptionVideos(
+            @RequestParam(defaultValue = "1") Integer current,
+            @RequestParam(defaultValue = "12") Integer size,
+            Authentication authentication) {
+        Long userId = getCurrentUserId(authentication);
+        return Result.success(videoService.getSubscriptionVideos(userId, current, size));
+    }
+    
+    @Operation(summary = "获取订阅的频道列表")
+    @GetMapping("/subscriptions/channels")
+    public Result<java.util.List<java.util.Map<String, Object>>> getSubscribedChannels(
+            Authentication authentication) {
+        Long userId = getCurrentUserId(authentication);
+        return Result.success(videoService.getSubscribedChannels(userId));
+    }
+    
     private Long getCurrentUserId(Authentication authentication) {
         String username = authentication.getName();
         com.campus.news.entity.User userEntity = userService.getOne(

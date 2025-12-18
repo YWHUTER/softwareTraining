@@ -9,6 +9,7 @@
               <el-option label="官方新闻" value="OFFICIAL" />
               <el-option label="全校新闻" value="CAMPUS" />
               <el-option label="学院新闻" value="COLLEGE" />
+              <el-option label="校园集市" value="MARKETPLACE" />
             </el-select>
             <el-select v-model="isApproved" placeholder="审核状态" clearable @change="fetchArticles" style="width: 120px; margin-right: 10px;">
               <el-option label="待审核" :value="0" />
@@ -181,7 +182,8 @@ const getBoardTypeName = (type) => {
   const types = {
     OFFICIAL: '官方',
     CAMPUS: '全校',
-    COLLEGE: '学院'
+    COLLEGE: '学院',
+    MARKETPLACE: '集市'
   }
   return types[type] || type
 }
@@ -190,7 +192,8 @@ const getBoardTypeTag = (type) => {
   const tags = {
     OFFICIAL: 'danger',
     CAMPUS: 'primary',
-    COLLEGE: 'success'
+    COLLEGE: 'success',
+    MARKETPLACE: 'warning'
   }
   return tags[type] || ''
 }

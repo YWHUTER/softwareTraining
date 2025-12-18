@@ -18,8 +18,9 @@ public class ArticleCreateRequest {
     private String coverImage;
     
     @NotBlank(message = "板块类型不能为空")
-    private String boardType; // OFFICIAL, CAMPUS, COLLEGE
+    private String boardType; // OFFICIAL, CAMPUS, COLLEGE, MARKETPLACE
     
+    private String category; // 分类（用于校园集市）
     private Long collegeId;
     private Integer isPinned = 0;
     

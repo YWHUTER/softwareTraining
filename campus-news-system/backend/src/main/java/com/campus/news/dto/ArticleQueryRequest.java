@@ -10,6 +10,7 @@ public class ArticleQueryRequest {
     private Long current = 1L;
     private Long size = 10L;
     private String boardType;
+    private String category; // 分类筛选（用于校园集市）
     private Long collegeId;
     private Long authorId;
     private String keyword;

@@ -284,24 +284,21 @@ const getAvatarUrl = (url) => {
 }
 
 const getBannerGradient = () => {
-  const colors = [
-    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'
-  ]
-  const id = channelInfo.value?.user?.id || 0
-  return colors[id % colors.length]
+  // 简洁的白色背景，无 banner
+  return '#ffffff'
 }
 
 const getAvatarGradient = () => {
+  // 柔和的颜色，类似 YouTube 的头像背景
   const colors = [
-    'linear-gradient(135deg, #ff0000, #cc0000)',
-    'linear-gradient(135deg, #667eea, #764ba2)',
-    'linear-gradient(135deg, #f093fb, #f5576c)',
-    'linear-gradient(135deg, #4facfe, #00f2fe)'
+    '#5c6bc0', // 靛蓝
+    '#26a69a', // 青色
+    '#7e57c2', // 紫色
+    '#42a5f5', // 蓝色
+    '#66bb6a', // 绿色
+    '#ef5350', // 红色
+    '#ffa726', // 橙色
+    '#78909c'  // 蓝灰
   ]
   const id = channelInfo.value?.user?.id || 0
   return colors[id % colors.length]
@@ -370,58 +367,51 @@ onMounted(() => {
   min-height: calc(100vh - 60px);
 }
 
-/* 频道头部 */
+/* 频道头部 - YouTube 风格 */
 .channel-header {
   position: relative;
+  background: #ffffff;
 }
 
 .channel-banner {
-  height: 200px;
-  position: relative;
-  overflow: hidden;
+  height: 0;
+  display: none;
 }
 
 .banner-pattern {
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  display: none;
 }
 
 .banner-gradient {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 80px;
-  background: linear-gradient(transparent, rgba(255,255,255,0.8));
+  display: none;
 }
 
 .channel-info-section {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 24px;
-  max-width: 1200px;
+  max-width: 1284px;
   margin: 0 auto;
-  padding: 0 24px;
-  transform: translateY(-40px);
+  padding: 16px 24px 24px;
+  transform: translateY(0);
 }
 
 .channel-avatar-large {
-  width: 160px;
-  height: 160px;
+  width: 128px;
+  height: 128px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border: 4px solid #ffffff;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border: none;
+  box-shadow: none;
   flex-shrink: 0;
-  transition: transform 0.3s;
+  transition: none;
 }
 
 .channel-avatar-large:hover {
-  transform: scale(1.05);
+  transform: none;
 }
 
 .channel-avatar-large img {
@@ -433,37 +423,38 @@ onMounted(() => {
 .channel-avatar-large span {
   color: #fff;
   font-size: 48px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .channel-details {
   flex: 1;
-  padding-top: 50px;
+  padding-top: 0;
 }
 
 .channel-name-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .channel-name {
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 400;
   color: #0f0f0f;
   margin: 0;
+  letter-spacing: -0.5px;
 }
 
 .verified-badge {
   color: #606060;
-  font-size: 20px;
+  font-size: 16px;
 }
 
 .channel-handle {
   color: #606060;
   font-size: 14px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .channel-stats {
@@ -473,30 +464,35 @@ onMounted(() => {
 }
 
 .channel-stats .dot {
-  margin: 0 6px;
+  margin: 0 4px;
 }
 
 .channel-description {
   color: #606060;
   font-size: 14px;
-  margin: 0 0 8px;
+  margin: 0;
   max-width: 600px;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .more-btn {
   background: none;
   border: none;
-  color: #0f0f0f;
+  color: #606060;
   font-weight: 500;
   cursor: pointer;
   padding: 0;
+}
+
+.more-btn:hover {
+  color: #0f0f0f;
 }
 
 .channel-links {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  margin-top: 8px;
 }
 
 .channel-link {
@@ -510,39 +506,43 @@ onMounted(() => {
 }
 
 .channel-actions {
-  padding-top: 50px;
+  padding-top: 0;
+  align-self: center;
 }
 
 .subscribe-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
+  gap: 6px;
+  padding: 10px 16px;
   border: none;
-  border-radius: 20px;
+  border-radius: 18px;
   background: #0f0f0f;
   color: #ffffff;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s;
 }
 
 .subscribe-btn:hover {
   background: #272727;
-  transform: scale(1.02);
 }
 
 .subscribe-btn.subscribed {
   background: #f2f2f2;
-  color: #0f0f0f;
+  color: #606060;
+}
+
+.subscribe-btn.subscribed:hover {
+  background: #e5e5e5;
 }
 
 .customize-btn {
-  padding: 10px 20px;
-  border: 1px solid #e5e5e5;
-  border-radius: 20px;
-  background: transparent;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 18px;
+  background: #f2f2f2;
   color: #0f0f0f;
   font-size: 14px;
   font-weight: 500;
@@ -551,21 +551,21 @@ onMounted(() => {
 }
 
 .customize-btn:hover {
-  background: #f2f2f2;
+  background: #e5e5e5;
 }
 
-/* 频道导航 */
+/* 频道导航 - YouTube 风格 */
 .channel-tabs {
   display: flex;
-  gap: 8px;
-  max-width: 1200px;
+  gap: 0;
+  max-width: 1284px;
   margin: 0 auto;
   padding: 0 24px;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
 }
 
 .tab-btn {
-  padding: 16px 24px;
+  padding: 12px 32px;
   border: none;
   background: transparent;
   color: #606060;
@@ -573,6 +573,7 @@ onMounted(() => {
   font-weight: 500;
   cursor: pointer;
   position: relative;
+  transition: color 0.2s;
 }
 
 .tab-btn:hover {
@@ -589,54 +590,59 @@ onMounted(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 2px;
   background: #0f0f0f;
 }
 
 /* 内容区域 */
 .channel-content {
-  max-width: 1200px;
+  max-width: 1284px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 16px 24px;
 }
 
-/* 排序栏 */
+/* 排序栏 - YouTube 风格 */
 .sort-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
 }
 
 .sort-label {
   color: #606060;
   font-size: 14px;
+  margin-right: 8px;
 }
 
 .sort-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 16px;
-  background: #f2f2f2;
+  padding: 6px 12px;
+  border: 1px solid #d3d3d3;
+  border-radius: 8px;
+  background: #ffffff;
   color: #0f0f0f;
   font-size: 14px;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 .sort-btn:hover {
-  background: #e5e5e5;
+  background: #f2f2f2;
 }
 
 .sort-btn.active {
   background: #0f0f0f;
   color: #ffffff;
+  border-color: #0f0f0f;
 }
 
-/* 视频网格 */
+/* 视频网格 - YouTube 风格 */
 .video-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  gap: 16px 16px;
 }
 
 @media (max-width: 1200px) {
@@ -657,37 +663,38 @@ onMounted(() => {
 
 .video-thumbnail {
   position: relative;
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
   aspect-ratio: 16 / 9;
-  background: #e5e5e5;
-  margin-bottom: 12px;
+  background: #f2f2f2;
+  margin-bottom: 8px;
 }
 
 .video-thumbnail img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.2s;
+  transition: none;
 }
 
 .video-card:hover .video-thumbnail img {
-  transform: scale(1.05);
+  transform: none;
 }
 
 .video-thumbnail .duration {
   position: absolute;
-  bottom: 8px;
-  right: 8px;
+  bottom: 4px;
+  right: 4px;
   background: rgba(0,0,0,0.8);
   color: #fff;
   font-size: 12px;
-  padding: 2px 6px;
+  padding: 2px 4px;
   border-radius: 4px;
+  font-weight: 500;
 }
 
 .video-info {
-  padding: 0 4px;
+  padding: 0;
 }
 
 .video-title {
@@ -699,6 +706,7 @@ onMounted(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  line-height: 1.4;
 }
 
 .video-meta {
@@ -710,7 +718,7 @@ onMounted(() => {
   margin: 0 4px;
 }
 
-/* 简介区域 */
+/* 简介区域 - YouTube 风格 */
 .about-section {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -718,29 +726,31 @@ onMounted(() => {
 }
 
 .about-card, .stats-card {
-  background: #f9f9f9;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.1);
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px;
 }
 
 .about-card h3, .stats-card h3 {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 500;
   color: #0f0f0f;
-  margin: 0 0 16px;
+  margin: 0 0 12px;
 }
 
 .about-card p {
   color: #606060;
-  line-height: 1.6;
+  line-height: 1.5;
   margin: 0;
+  font-size: 14px;
 }
 
 .stat-item {
   display: flex;
   justify-content: space-between;
-  padding: 12px 0;
-  border-bottom: 1px solid #e5e5e5;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
 }
 
 .stat-item:last-child {
@@ -749,11 +759,13 @@ onMounted(() => {
 
 .stat-label {
   color: #606060;
+  font-size: 14px;
 }
 
 .stat-value {
   font-weight: 500;
   color: #0f0f0f;
+  font-size: 14px;
 }
 
 /* 加载和空状态 */
@@ -762,8 +774,13 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px;
-  color: #606060;
+  padding: 80px 20px;
+  color: #909090;
+}
+
+.empty-state p {
+  margin-top: 16px;
+  font-size: 14px;
 }
 
 /* 分页 */
@@ -782,20 +799,36 @@ onMounted(() => {
   }
   
   .channel-avatar-large {
-    width: 120px;
-    height: 120px;
+    width: 80px;
+    height: 80px;
+  }
+  
+  .channel-avatar-large span {
+    font-size: 32px;
   }
   
   .channel-details {
-    padding-top: 16px;
+    padding-top: 12px;
   }
   
   .channel-actions {
-    padding-top: 16px;
+    padding-top: 12px;
   }
   
   .about-section {
     grid-template-columns: 1fr;
+  }
+  
+  .channel-name {
+    font-size: 20px;
+  }
+  
+  .channel-tabs {
+    padding: 0 16px;
+  }
+  
+  .tab-btn {
+    padding: 12px 16px;
   }
 }
 </style>
