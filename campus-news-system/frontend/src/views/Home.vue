@@ -11,7 +11,7 @@
         :interval="5000" 
         arrow="hover" 
         :height="carouselHeight"
-        indicator-position="bottom"
+        indicator-position="outside"
         class="banner-carousel"
       >
         <el-carousel-item v-for="item in carouselItems" :key="item.id">
@@ -314,13 +314,13 @@
             </div>
           </el-card>
           
-          <!-- 标签云 -->
+          <!-- 热词云 -->
           <div
             v-motion
             :initial="{ opacity: 0, x: 50 }"
             :enter="{ opacity: 1, x: 0, transition: { delay: 500, type: 'spring' } }"
           >
-            <TagCloud class="sidebar-card" />
+            <HotWordCloud class="sidebar-card" />
           </div>
         </div>
       </el-col>
@@ -336,6 +336,7 @@ import { ref, onMounted, watch, computed, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getArticleList, getPublicStats } from '@/api/article'
 import TagCloud from '@/components/TagCloud.vue'
+import HotWordCloud from '@/components/HotWordCloud.vue'
 import BackToTop from '@/components/BackToTop.vue'
 import ImageWithFallback from '@/components/ImageWithFallback.vue'
 import ModernNewsCard from '@/components/ModernNewsCard.vue'
