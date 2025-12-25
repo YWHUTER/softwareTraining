@@ -17,6 +17,15 @@ export function getVideoDetail(id) {
   })
 }
 
+// 获取视频详情（静默模式，不显示错误消息）
+export function getVideoDetailSilent(id) {
+  return request({
+    url: `/video/detail/${id}`,
+    method: 'get',
+    silent: true
+  })
+}
+
 // 获取视频分类
 export function getVideoCategories() {
   return request({

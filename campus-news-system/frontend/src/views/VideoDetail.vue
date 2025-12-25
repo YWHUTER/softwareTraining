@@ -105,6 +105,14 @@
               <el-icon><Clock /></el-icon>
               <span>{{ isInWatchLater ? '已保存' : '保存' }}</span>
             </button>
+            <button 
+              v-if="isOwnVideo" 
+              class="action-btn delete-btn" 
+              @click="handleDeleteVideo"
+            >
+              <el-icon><Delete /></el-icon>
+              <span>删除</span>
+            </button>
             <button class="action-btn">
               <el-icon><MoreFilled /></el-icon>
             </button>
@@ -279,10 +287,11 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Pointer, Share, Download, MoreFilled, Loading, Clock, FullScreen, Picture, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
-import { getVideoDetail, toggleVideoLike, getVideoComments, createVideoComment, toggleCommentLike, getRelatedVideos, toggleDislike, toggleWatchLater, saveWatchProgress, getWatchProgress, addWatchHistory } from '@/api/video'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Pointer, Share, Download, MoreFilled, Loading, Clock, FullScreen, Picture, ArrowLeft, ArrowRight, Delete } from '@element-plus/icons-vue'
+import { getVideoDetail, getVideoDetailSilent, toggleVideoLike, getVideoComments, createVideoComment, toggleCommentLike, getRelatedVideos, toggleDislike, toggleWatchLater, saveWatchProgress, getWatchProgress, addWatchHistory, deleteVideo } from '@/api/video'
 import { toggleFollow, checkFollowStatus } from '@/api/user'
+import { getSimilarVideos } from '@/api/recommendation'
 
 const route = useRoute()
 const router = useRouter()
@@ -327,6 +336,9 @@ const isOwnVideo = computed(() => {
 
 // 加载视频详情
 const loadVideo = async () => {
+  // 如果视频已被删除，不再加载
+  if (isDeleted.value) return
+  
   try {
     currentVideoId = route.params.id // 保存当前视频ID
     const res = await getVideoDetail(route.params.id)
@@ -338,7 +350,10 @@ const loadVideo = async () => {
     // 添加到观看历史
     addToHistory()
   } catch (error) {
-    ElMessage.error('加载视频失败')
+    // 如果视频已删除，不显示错误
+    if (!isDeleted.value) {
+      ElMessage.error('加载视频失败')
+    }
   }
 }
 
@@ -371,17 +386,47 @@ const loadWatchProgress = async () => {
   }
 }
 
-// 加载推荐视频（使用相关视频推荐API）
+// 加载推荐视频（优先使用算法服务的相似视频推荐）
 const loadRecommended = async () => {
+  // 如果视频已删除，不加载推荐
+  if (isDeleted.value) return
+  
   try {
-    const res = await getRelatedVideos(route.params.id, 15)
+    // 先尝试使用算法服务的相似视频推荐
+    let res = null
+    try {
+      const similarRes = await getSimilarVideos(route.params.id, 15)
+      if (similarRes && similarRes.length > 0) {
+        // 根据推荐结果获取视频详情（使用静默模式，不显示错误消息）
+        const videoPromises = similarRes.map(async (rec) => {
+          try {
+            const videoDetail = await getVideoDetailSilent(rec.videoId)
+            return { ...videoDetail, recommendReason: rec.reason }
+          } catch {
+            return null
+          }
+        })
+        const videoResults = await Promise.all(videoPromises)
+        res = videoResults.filter(v => v !== null)
+      }
+    } catch (e) {
+      console.log('算法推荐服务不可用，使用后端推荐')
+    }
+    
+    // 如果算法服务没有返回结果，使用后端的相关视频API
+    if (!res || res.length === 0) {
+      res = await getRelatedVideos(route.params.id, 15)
+    }
+    
     recommendedVideos.value = res || []
     // 设置下一个视频
     if (res && res.length > 0) {
       nextVideo.value = res[0]
     }
   } catch (error) {
-    console.error('加载推荐视频失败:', error)
+    if (!isDeleted.value) {
+      console.error('加载推荐视频失败:', error)
+    }
   }
 }
 
@@ -429,6 +474,9 @@ const cancelAutoplay = () => {
 
 // 加载评论
 const loadComments = async () => {
+  // 如果视频已删除，不加载评论
+  if (isDeleted.value) return
+  
   commentsLoading.value = true
   try {
     const res = await getVideoComments(route.params.id, {
@@ -439,7 +487,9 @@ const loadComments = async () => {
     comments.value = res.records || []
     totalComments.value = res.total || 0
   } catch (error) {
-    console.error('加载评论失败:', error)
+    if (!isDeleted.value) {
+      console.error('加载评论失败:', error)
+    }
   } finally {
     commentsLoading.value = false
   }
@@ -485,6 +535,34 @@ const handleLike = async () => {
 const handleShare = () => {
   navigator.clipboard.writeText(window.location.href)
   ElMessage.success('链接已复制到剪贴板')
+}
+
+// 标记视频是否已删除，避免删除后再次加载
+const isDeleted = ref(false)
+
+// 删除视频
+const handleDeleteVideo = async () => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除视频"${video.value?.title}"吗？此操作不可恢复。`,
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    await deleteVideo(video.value.id)
+    isDeleted.value = true  // 标记已删除
+    ElMessage.success('视频已删除')
+    // 返回视频列表
+    router.push('/video')
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败: ' + (error.message || '未知错误'))
+    }
+  }
 }
 
 // 下载
@@ -772,8 +850,9 @@ watch(() => route.params.id, async (newId, oldId) => {
     await saveProgressOnLeave(oldId)
     lastSavedTime = 0
     savedProgress.value = 0
+    isDeleted.value = false  // 重置删除状态
   }
-  if (newId) {
+  if (newId && !isDeleted.value) {
     loadVideo()
     loadRecommended()
     loadComments()

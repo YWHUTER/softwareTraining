@@ -25,8 +25,12 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   response => {
     const res = response.data
+    // 检查是否需要静默处理错误（不显示错误消息）
+    const silent = response.config.silent
     if (res.code !== 200) {
-      ElMessage.error(res.message || '请求失败')
+      if (!silent) {
+        ElMessage.error(res.message || '请求失败')
+      }
       if (res.code === 401) {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
@@ -37,12 +41,14 @@ request.interceptors.response.use(
     return res.data
   },
   error => {
+    // 检查是否需要静默处理错误
+    const silent = error.config?.silent
     if (error.response && error.response.status === 401) {
       ElMessage.error('登录已过期，请重新登录')
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       router.push('/login')
-    } else {
+    } else if (!silent) {
       ElMessage.error(error.message || '网络错误')
     }
     return Promise.reject(error)

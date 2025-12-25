@@ -13,6 +13,10 @@
           <el-icon :size="24"><HomeFilled /></el-icon>
           <span>首页</span>
         </div>
+        <div class="sidebar-item recommend-item" :class="{ active: currentView === 'recommend' }" @click="switchView('recommend')">
+          <el-icon :size="24"><TrendCharts /></el-icon>
+          <span>推荐</span>
+        </div>
         <div class="sidebar-item" @click="goToShorts">
           <el-icon :size="24"><Film /></el-icon>
           <span>Shorts</span>
@@ -152,10 +156,25 @@
       </div>
 
       <!-- 页面标题 -->
-      <div v-if="currentView !== 'home' && currentView !== 'shorts' && !isSearchMode" class="page-title">
+      <div v-if="currentView !== 'home' && currentView !== 'shorts' && currentView !== 'recommend' && !isSearchMode" class="page-title">
         <h2>{{ getViewTitle() }}</h2>
         <button v-if="currentView === 'history'" class="clear-history-btn" @click="handleClearHistory">
           清空历史
+        </button>
+      </div>
+      
+      <!-- 推荐视图标题 -->
+      <div v-if="currentView === 'recommend'" class="recommend-page-header">
+        <div class="recommend-title-section">
+          <el-icon class="recommend-icon" :size="32"><TrendCharts /></el-icon>
+          <div class="recommend-title-text">
+            <h2>为你推荐</h2>
+            <p>根据你的喜好精选的视频内容</p>
+          </div>
+        </div>
+        <button class="refresh-recommend-btn" @click="loadRecommendedVideos" :disabled="loadingRecommendations">
+          <el-icon :class="{ 'is-loading': loadingRecommendations }"><Refresh /></el-icon>
+          换一批
         </button>
       </div>
       <div v-if="isSearchMode" class="page-title">
@@ -191,14 +210,139 @@
         </button>
       </div>
 
+      <!-- 推荐视频区域 -->
+      <div v-if="currentView === 'home' && !isSearchMode && recommendedVideos.length > 0" class="recommended-section">
+        <div class="section-header">
+          <h3 class="section-title">
+            <el-icon><Star /></el-icon>
+            {{ currentUser ? '为你推荐' : '热门推荐' }}
+          </h3>
+          <button class="refresh-btn" @click="loadRecommendedVideos" :disabled="loadingRecommendations">
+            <el-icon :class="{ 'is-loading': loadingRecommendations }"><Refresh /></el-icon>
+            换一批
+          </button>
+        </div>
+        <div class="recommended-grid">
+          <div 
+            v-for="video in recommendedVideos" 
+            :key="'rec-' + video.id" 
+            class="yt-video-renderer recommended-video"
+            @click="handleVideoClick(video)"
+            @mouseenter="startPreview(video)"
+            @mouseleave="stopPreview(video)"
+          >
+            <div class="yt-thumbnail">
+              <a class="yt-thumbnail-link">
+                <video 
+                  v-if="video.isPreviewPlaying && video.videoUrl"
+                  :src="video.videoUrl"
+                  class="preview-video"
+                  muted
+                  autoplay
+                  loop
+                ></video>
+                <img 
+                  v-show="!video.isPreviewPlaying"
+                  :src="video.thumbnail || defaultThumbnail" 
+                  :alt="video.title" 
+                  class="yt-thumbnail-img" 
+                />
+                <div class="yt-time-status" v-show="!video.isPreviewPlaying">
+                  <span class="yt-time-text">{{ video.duration || '00:00' }}</span>
+                </div>
+                <div class="yt-thumbnail-hover" v-show="!video.isPreviewPlaying">
+                  <el-icon class="yt-play-icon"><VideoPlay /></el-icon>
+                </div>
+                <div v-if="video.recommendReason" class="recommend-badge">
+                  {{ video.recommendReason }}
+                </div>
+              </a>
+            </div>
+            <div class="yt-meta">
+              <a class="yt-avatar-link" @click.stop="goToChannel(video.authorId)">
+                <div class="yt-avatar" :style="{ background: getAvatarColor(video.authorId) }">
+                  <img v-if="video.author?.avatar" :src="getAvatarUrl(video.author.avatar)" />
+                  <span v-else>{{ (video.channelName || video.author?.realName || '未知')[0] }}</span>
+                </div>
+              </a>
+              <div class="yt-details">
+                <h3 class="yt-video-title">
+                  <a class="yt-title-link">{{ video.title }}</a>
+                </h3>
+                <div class="yt-channel-info">
+                  <a class="yt-channel-name" @click.stop="goToChannel(video.authorId)">{{ video.channelName || video.author?.realName || '未知频道' }}</a>
+                </div>
+                <div class="yt-video-meta-block">
+                  <span class="yt-view-count">{{ formatViews(video.viewCount) }}次观看</span>
+                  <span class="yt-dot">•</span>
+                  <span class="yt-publish-time">{{ formatTime(video.createdAt) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 推荐视图内容 -->
+      <div v-if="currentView === 'recommend'" class="recommend-content">
+        <div v-if="loadingRecommendations" class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>正在为你生成推荐...</p>
+        </div>
+        <div v-else-if="recommendedVideos.length > 0" class="recommend-grid">
+          <div 
+            v-for="video in recommendedVideos" 
+            :key="'recommend-' + video.id" 
+            class="recommend-video-card"
+            @click="handleVideoClick(video)"
+          >
+            <div class="recommend-thumbnail">
+              <img :src="video.thumbnail || defaultThumbnail" :alt="video.title" />
+              <div class="recommend-duration">{{ video.duration || '00:00' }}</div>
+              <div class="recommend-play-overlay">
+                <el-icon :size="48"><VideoPlay /></el-icon>
+              </div>
+              <div v-if="video.recommendReason" class="recommend-reason-tag">
+                <el-icon><Star /></el-icon>
+                {{ video.recommendReason }}
+              </div>
+            </div>
+            <div class="recommend-video-info">
+              <div class="recommend-avatar" @click.stop="goToChannel(video.authorId)">
+                <img v-if="video.author?.avatar" :src="getAvatarUrl(video.author.avatar)" />
+                <span v-else>{{ (video.channelName || video.author?.realName || '未知')[0] }}</span>
+              </div>
+              <div class="recommend-details">
+                <h3 class="recommend-video-title">{{ video.title }}</h3>
+                <p class="recommend-channel" @click.stop="goToChannel(video.authorId)">
+                  {{ video.channelName || video.author?.realName || '未知频道' }}
+                </p>
+                <p class="recommend-meta">
+                  {{ formatViews(video.viewCount) }}次观看 · {{ formatTime(video.createdAt) }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="recommend-empty">
+          <el-icon :size="80"><TrendCharts /></el-icon>
+          <h3>暂无推荐视频</h3>
+          <p>正在为你寻找精彩内容</p>
+          <button class="retry-btn" @click="loadRecommendedVideos">
+            <el-icon><Refresh /></el-icon>
+            重新加载
+          </button>
+        </div>
+      </div>
+
       <!-- 加载状态 -->
-      <div v-if="loading" class="loading-container">
+      <div v-if="loading && currentView !== 'recommend'" class="loading-container">
         <div class="loading-spinner"></div>
         <p>加载中...</p>
       </div>
 
       <!-- 视频网格 -->
-      <div v-else class="yt-grid">
+      <div v-else-if="currentView !== 'recommend'" class="yt-grid">
         <div 
           v-for="video in videos" 
           :key="video.id" 
@@ -274,23 +418,30 @@
               </div>
             </div>
             <!-- 更多操作按钮 -->
-            <el-dropdown trigger="click" @click.stop>
-              <div class="yt-more-actions">
+            <el-dropdown trigger="click">
+              <div class="yt-more-actions" @click.stop>
                 <el-icon><MoreFilled /></el-icon>
               </div>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item @click="quickWatchLater(video)">
+                  <el-dropdown-item @click.stop="quickWatchLater(video)">
                     <el-icon><Clock /></el-icon> 稍后观看
                   </el-dropdown-item>
-                  <el-dropdown-item @click="addToQueue(video)">
+                  <el-dropdown-item @click.stop="addToQueue(video)">
                     <el-icon><List /></el-icon> 添加到队列
                   </el-dropdown-item>
-                  <el-dropdown-item @click="shareVideo(video)">
+                  <el-dropdown-item @click.stop="shareVideo(video)">
                     <el-icon><Share /></el-icon> 分享
                   </el-dropdown-item>
-                  <el-dropdown-item divided @click="notInterested(video)">
+                  <el-dropdown-item divided @click.stop="notInterested(video)">
                     <el-icon><CircleClose /></el-icon> 不感兴趣
+                  </el-dropdown-item>
+                  <el-dropdown-item 
+                    v-if="currentView === 'myVideos' || (currentUser && video.authorId === currentUser.id)"
+                    divided 
+                    @click.stop="handleDeleteVideo(video)"
+                  >
+                    <el-icon><Delete /></el-icon> 删除视频
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -506,18 +657,20 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   VideoPlay, VideoPause, HomeFilled, VideoCamera, Collection, 
   Clock, Timer, Pointer, ArrowRight, ArrowLeft, CircleCheckFilled, MoreFilled,
-  Upload, Loading, Search, Close, Film, Share, List, CircleClose, Plus, Microphone
+  Upload, Loading, Search, Close, Film, Share, List, CircleClose, Plus, Microphone,
+  Star, Refresh, TrendCharts, Delete
 } from '@element-plus/icons-vue'
 import { 
   getVideoList, getVideoCategories, uploadVideoComplete, getLikedVideos, 
   getMyVideos, searchVideos, getSearchSuggestions, getWatchHistory, 
   getWatchLaterList, clearHistory, toggleWatchLater, getSubscriptionVideos,
-  getSubscribedChannels
+  getSubscribedChannels, getVideoDetail, getVideoDetailSilent, getHotVideos, deleteVideo
 } from '@/api/video'
+import { getPersonalizedVideoRecommendations, getHotVideoRecommendations } from '@/api/recommendation'
 
 const router = useRouter()
 
@@ -534,6 +687,10 @@ const total = ref(0)
 const currentView = ref('home')
 const currentUser = ref(null)
 const sidebarCollapsed = ref(false)
+
+// 推荐视频
+const recommendedVideos = ref([])
+const loadingRecommendations = ref(false)
 
 // 分类滚动
 const chipsContainer = ref(null)
@@ -634,6 +791,72 @@ const loadCategories = async () => {
     categories.value = res || []
   } catch (error) {
     console.error('加载分类失败:', error)
+  }
+}
+
+// 加载推荐视频
+const loadRecommendedVideos = async () => {
+  loadingRecommendations.value = true
+  try {
+    let recommendations = []
+    // 根据是否登录选择不同的推荐接口
+    try {
+      if (currentUser.value) {
+        const res = await getPersonalizedVideoRecommendations(8)
+        recommendations = res || []
+      } else {
+        const res = await getHotVideoRecommendations(8)
+        recommendations = res || []
+      }
+    } catch (e) {
+      console.log('推荐服务不可用，使用热门视频作为替代')
+      recommendations = []
+    }
+    
+    // 根据推荐结果获取视频详情
+    let videoResults = []
+    if (recommendations.length > 0) {
+      const videoPromises = recommendations.map(async (rec) => {
+        try {
+          const video = await getVideoDetailSilent(rec.videoId)
+          return { ...video, recommendReason: rec.reason, recommendScore: rec.score }
+        } catch {
+          return null
+        }
+      })
+      videoResults = (await Promise.all(videoPromises)).filter(v => v !== null)
+    }
+    
+    // 如果推荐视频不足6个，用普通视频列表补充
+    if (videoResults.length < 6) {
+      try {
+        const existingIds = videoResults.map(v => v.id)
+        const listRes = await getVideoList({ current: 1, size: 6 - videoResults.length })
+        const supplementVideos = (listRes.records || [])
+          .filter(v => !existingIds.includes(v.id))
+          .map(v => ({ ...v, recommendReason: '最新视频', isPreviewPlaying: false }))
+        videoResults = [...videoResults, ...supplementVideos]
+      } catch (e) {
+        console.log('补充视频列表失败')
+      }
+    }
+    
+    recommendedVideos.value = videoResults.map(v => ({ ...v, isPreviewPlaying: false }))
+    
+    // 如果还是没有视频，尝试获取热门视频
+    if (recommendedVideos.value.length === 0) {
+      try {
+        const hotRes = await getHotVideos(8)
+        recommendedVideos.value = (hotRes || []).map(v => ({ ...v, recommendReason: '热门视频', isPreviewPlaying: false }))
+      } catch {
+        recommendedVideos.value = []
+      }
+    }
+  } catch (error) {
+    console.error('加载推荐视频失败:', error)
+    recommendedVideos.value = []
+  } finally {
+    loadingRecommendations.value = false
   }
 }
 
@@ -809,7 +1032,8 @@ const getViewTitle = () => {
     myVideos: '我的视频',
     history: '观看历史',
     watchLater: '稍后观看',
-    subscriptions: '订阅内容'
+    subscriptions: '订阅内容',
+    recommend: '为你推荐'
   }
   return titles[currentView.value] || ''
 }
@@ -822,7 +1046,8 @@ const getEmptyMessage = () => {
     history: '暂无观看历史',
     watchLater: '稍后观看列表为空',
     subscriptions: '还没有订阅的频道',
-    home: '暂无视频'
+    home: '暂无视频',
+    recommend: '暂无推荐视频'
   }
   return messages[currentView.value] || '暂无视频'
 }
@@ -840,7 +1065,8 @@ const handleClearHistory = async () => {
 
 // 切换视图
 const switchView = (view) => {
-  if (!currentUser.value && view !== 'home') {
+  // 推荐视图不需要登录
+  if (!currentUser.value && view !== 'home' && view !== 'recommend') {
     ElMessage.warning('请先登录')
     return
   }
@@ -850,7 +1076,12 @@ const switchView = (view) => {
   if (view === 'home') {
     activeCategory.value = 'all'
   }
-  loadVideos()
+  if (view === 'recommend') {
+    // 进入推荐视图时加载推荐视频
+    loadRecommendedVideos()
+  } else {
+    loadVideos()
+  }
 }
 
 // 加载当前用户
@@ -905,6 +1136,32 @@ const shareVideo = (video) => {
   const url = `${window.location.origin}/video/${video.id}`
   navigator.clipboard.writeText(url)
   ElMessage.success('链接已复制')
+}
+
+// 删除视频
+const handleDeleteVideo = async (video) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除视频"${video.title}"吗？此操作不可恢复。`,
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    await deleteVideo(video.id)
+    ElMessage.success('视频已删除')
+    // 从列表中移除
+    videos.value = videos.value.filter(v => v.id !== video.id)
+    // 同时从推荐列表中移除
+    recommendedVideos.value = recommendedVideos.value.filter(v => v.id !== video.id)
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败: ' + (error.message || '未知错误'))
+    }
+  }
 }
 
 // 不感兴趣
@@ -1057,6 +1314,9 @@ const handleUpload = async () => {
     })
     
     ElMessage.success('视频上传成功')
+    
+    // 上传成功后刷新视频列表
+    await loadVideos()
   } catch (error) {
     ElMessage.error('上传失败: ' + (error.message || '未知错误'))
     uploadStep.value = 2
@@ -1065,9 +1325,9 @@ const handleUpload = async () => {
   }
 }
 
-const goToMyVideos = () => {
+const goToMyVideos = async () => {
   showUploadDialog.value = false
-  switchView('myVideos')
+  await switchView('myVideos')
 }
 
 const uploadAnother = () => {
@@ -1141,6 +1401,7 @@ onMounted(() => {
   loadCategories()
   loadVideos()
   loadSubscriptions()
+  loadRecommendedVideos()
   
   // 监听分类滚动
   nextTick(() => {
@@ -2203,6 +2464,396 @@ onMounted(() => {
     width: calc(100% - 32px);
     left: 16px;
     right: 16px;
+  }
+}
+
+/* ========== 推荐视频区域 ========== */
+.recommended-section {
+  margin-bottom: 32px;
+  padding: 0 16px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f0f0f;
+  margin: 0;
+}
+
+.section-title .el-icon {
+  color: #ff6b00;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  border: none;
+  background: #f2f2f2;
+  border-radius: 18px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #606060;
+  transition: background 0.2s;
+}
+
+.refresh-btn:hover {
+  background: #e5e5e5;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.refresh-btn .el-icon.is-loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.recommended-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.recommended-video {
+  position: relative;
+}
+
+.recommend-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  max-width: 80%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+  .recommended-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .recommended-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .recommended-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========== 推荐按钮样式 ========== */
+.sidebar-item.recommend-item {
+  position: relative;
+}
+
+.sidebar-item.recommend-item .el-icon {
+  color: #ff0000;
+}
+
+/* ========== 推荐页面头部 ========== */
+.recommend-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  background: #f9f9f9;
+  border-radius: 12px;
+}
+
+.recommend-title-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.recommend-icon {
+  color: #ff0000;
+}
+
+.recommend-title-text h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #0f0f0f;
+}
+
+.recommend-title-text p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #606060;
+}
+
+.refresh-recommend-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  background: #0f0f0f;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.refresh-recommend-btn:hover {
+  background: #272727;
+}
+
+.refresh-recommend-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.refresh-recommend-btn .el-icon.is-loading {
+  animation: spin 1s linear infinite;
+}
+
+/* ========== 推荐内容区域 ========== */
+.recommend-content {
+  padding: 0 16px;
+}
+
+.recommend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.recommend-video-card {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.recommend-video-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.recommend-thumbnail {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+.recommend-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.recommend-video-card:hover .recommend-thumbnail img {
+  transform: scale(1.05);
+}
+
+.recommend-duration {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.recommend-play-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.recommend-video-card:hover .recommend-play-overlay {
+  opacity: 1;
+}
+
+.recommend-play-overlay .el-icon {
+  color: #fff;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.recommend-reason-tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.recommend-video-info {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+}
+
+.recommend-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ff0000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.recommend-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.recommend-avatar span {
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.recommend-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.recommend-video-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f0f0f;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.recommend-channel {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: #606060;
+  cursor: pointer;
+}
+
+.recommend-channel:hover {
+  color: #0f0f0f;
+}
+
+.recommend-meta {
+  margin: 0;
+  font-size: 12px;
+  color: #909090;
+}
+
+/* ========== 推荐空状态 ========== */
+.recommend-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+}
+
+.recommend-empty .el-icon {
+  color: #e0e0e0;
+  margin-bottom: 24px;
+}
+
+.recommend-empty h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: #606060;
+}
+
+.recommend-empty p {
+  margin: 0 0 24px;
+  font-size: 14px;
+  color: #909090;
+}
+
+.retry-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  background: #0f0f0f;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.retry-btn:hover {
+  background: #272727;
+}
+
+@media (max-width: 768px) {
+  .recommend-page-header {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+  
+  .recommend-title-section {
+    flex-direction: column;
+  }
+  
+  .recommend-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

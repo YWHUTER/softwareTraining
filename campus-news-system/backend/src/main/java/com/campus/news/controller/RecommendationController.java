@@ -81,4 +81,45 @@ public class RecommendationController {
         }
         return Result.error("模型训练失败");
     }
+
+    // ==================== 视频推荐接口 ====================
+
+    @Operation(summary = "获取个性化视频推荐", description = "根据用户行为获取个性化视频推荐")
+    @GetMapping("/video/personalized")
+    public Result<List<Map<String, Object>>> getPersonalizedVideoRecommendations(
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @Parameter(description = "推荐数量") @RequestParam(defaultValue = "10") int count,
+            @Parameter(description = "排除的视频ID") @RequestParam(required = false) List<Long> excludeIds,
+            @Parameter(description = "分类ID") @RequestParam(required = false) Long categoryId
+    ) {
+        Long userId = null;
+        if (token != null && token.startsWith("Bearer ")) {
+            try {
+                userId = jwtUtil.getUserIdFromToken(token.substring(7));
+            } catch (Exception ignored) {}
+        }
+
+        List<Map<String, Object>> recommendations = recommendationService.getVideoRecommendations(userId, count, excludeIds, categoryId);
+        return Result.success(recommendations);
+    }
+
+    @Operation(summary = "获取热门视频推荐", description = "获取热门视频推荐(无需登录)")
+    @GetMapping("/video/hot")
+    public Result<List<Map<String, Object>>> getHotVideoRecommendations(
+            @Parameter(description = "推荐数量") @RequestParam(defaultValue = "10") int count,
+            @Parameter(description = "分类ID") @RequestParam(required = false) Long categoryId
+    ) {
+        List<Map<String, Object>> hot = recommendationService.getHotVideoRecommendations(count, categoryId);
+        return Result.success(hot);
+    }
+
+    @Operation(summary = "获取相似视频", description = "获取与指定视频相似的视频推荐")
+    @GetMapping("/video/similar/{videoId}")
+    public Result<List<Map<String, Object>>> getSimilarVideos(
+            @Parameter(description = "视频ID") @PathVariable Long videoId,
+            @Parameter(description = "推荐数量") @RequestParam(defaultValue = "10") int count
+    ) {
+        List<Map<String, Object>> similar = recommendationService.getSimilarVideoRecommendations(videoId, count);
+        return Result.success(similar);
+    }
 }

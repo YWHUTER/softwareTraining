@@ -50,3 +50,56 @@ export function checkRecommendationHealth() {
     method: 'get'
   })
 }
+
+// ==================== 视频推荐 API ====================
+
+/**
+ * 获取个性化视频推荐
+ * @param {number} count 推荐数量
+ * @param {number[]} excludeIds 排除的视频ID
+ * @param {number} categoryId 分类ID(可选)
+ */
+export function getPersonalizedVideoRecommendations(count = 10, excludeIds = [], categoryId = null) {
+  const params = {
+    count,
+    excludeIds: excludeIds.join(',')
+  }
+  if (categoryId) {
+    params.categoryId = categoryId
+  }
+  return request({
+    url: '/recommendation/video/personalized',
+    method: 'get',
+    params
+  })
+}
+
+/**
+ * 获取热门视频推荐
+ * @param {number} count 推荐数量
+ * @param {number} categoryId 分类ID(可选)
+ */
+export function getHotVideoRecommendations(count = 10, categoryId = null) {
+  const params = { count }
+  if (categoryId) {
+    params.categoryId = categoryId
+  }
+  return request({
+    url: '/recommendation/video/hot',
+    method: 'get',
+    params
+  })
+}
+
+/**
+ * 获取相似视频推荐
+ * @param {number} videoId 视频ID
+ * @param {number} count 推荐数量
+ */
+export function getSimilarVideos(videoId, count = 10) {
+  return request({
+    url: `/recommendation/video/similar/${videoId}`,
+    method: 'get',
+    params: { count }
+  })
+}

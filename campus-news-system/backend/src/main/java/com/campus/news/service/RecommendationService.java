@@ -158,6 +158,110 @@ public class RecommendationService {
             .collect(Collectors.toList());
     }
 
+    // ==================== 视频推荐方法 ====================
+
+    /**
+     * 获取个性化视频推荐
+     */
+    public List<Map<String, Object>> getVideoRecommendations(Long userId, int count, List<Long> excludeIds, Long categoryId) {
+        try {
+            String url = recommendationServiceUrl + "/api/video/recommend";
+            
+            Map<String, Object> request = new HashMap<>();
+            request.put("user_id", userId);
+            request.put("top_n", count);
+            request.put("exclude_ids", excludeIds != null ? excludeIds : Collections.emptyList());
+            if (categoryId != null) {
+                request.put("category_id", categoryId);
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+
+            ResponseEntity<VideoRecommendationResponse> response = restTemplate.exchange(
+                url, HttpMethod.POST, entity, VideoRecommendationResponse.class
+            );
+
+            if (response.getBody() != null && response.getBody().isSuccess()) {
+                return response.getBody().getData().stream()
+                    .map(item -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("videoId", item.getVideoId());
+                        map.put("score", item.getScore());
+                        map.put("reason", item.getReason());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            log.error("调用视频推荐服务失败: {}", e.getMessage());
+        }
+        
+        return Collections.emptyList();
+    }
+
+    /**
+     * 获取热门视频推荐
+     */
+    public List<Map<String, Object>> getHotVideoRecommendations(int count, Long categoryId) {
+        try {
+            StringBuilder urlBuilder = new StringBuilder(recommendationServiceUrl + "/api/video/recommend/hot?top_n=" + count);
+            if (categoryId != null) {
+                urlBuilder.append("&category_id=").append(categoryId);
+            }
+            
+            ResponseEntity<VideoRecommendationResponse> response = restTemplate.getForEntity(
+                urlBuilder.toString(), VideoRecommendationResponse.class
+            );
+
+            if (response.getBody() != null && response.getBody().isSuccess()) {
+                return response.getBody().getData().stream()
+                    .map(item -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("videoId", item.getVideoId());
+                        map.put("score", item.getScore());
+                        map.put("reason", item.getReason());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            log.error("获取热门视频推荐失败: {}", e.getMessage());
+        }
+        
+        return Collections.emptyList();
+    }
+
+    /**
+     * 获取相似视频推荐
+     */
+    public List<Map<String, Object>> getSimilarVideoRecommendations(Long videoId, int count) {
+        try {
+            String url = recommendationServiceUrl + "/api/video/similar/" + videoId + "?top_n=" + count;
+            
+            ResponseEntity<VideoRecommendationResponse> response = restTemplate.getForEntity(
+                url, VideoRecommendationResponse.class
+            );
+
+            if (response.getBody() != null && response.getBody().isSuccess()) {
+                return response.getBody().getData().stream()
+                    .map(item -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("videoId", item.getVideoId());
+                        map.put("score", item.getScore());
+                        map.put("reason", item.getReason());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            log.error("获取相似视频推荐失败: {}", e.getMessage());
+        }
+        
+        return Collections.emptyList();
+    }
+
     // 响应模型
     @Data
     public static class RecommendationResponse {
@@ -170,6 +274,21 @@ public class RecommendationService {
     public static class RecommendationItem {
         @JsonProperty("article_id")
         private Long articleId;
+        private Double score;
+        private String reason;
+    }
+
+    @Data
+    public static class VideoRecommendationResponse {
+        private boolean success;
+        private List<VideoRecommendationItem> data;
+        private String message;
+    }
+
+    @Data
+    public static class VideoRecommendationItem {
+        @JsonProperty("video_id")
+        private Long videoId;
         private Double score;
         private String reason;
     }

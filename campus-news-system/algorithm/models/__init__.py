@@ -3,11 +3,13 @@ from .content_based import ContentBasedRecommender
 from .collaborative_filter import CollaborativeFilterRecommender
 from .hybrid_recommender import HybridRecommender
 from .user_profile import UserProfileAnalyzer
+from .video_recommender import VideoRecommender
 
 __all__ = [
     "DataLoader",
     "ContentBasedRecommender", 
     "CollaborativeFilterRecommender",
     "HybridRecommender",
-    "UserProfileAnalyzer"
+    "UserProfileAnalyzer",
+    "VideoRecommender"
 ]
