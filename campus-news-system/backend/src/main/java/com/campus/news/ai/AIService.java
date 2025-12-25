@@ -444,11 +444,94 @@ public class AIService {
                 context.append(searchArticles(searchKeyword));
             }
             
+            // 📈 今日数据查询
+            if (containsAny(lowerPrompt, "今天", "今日", "当天")) {
+                context.append(getTodayStatistics());
+            }
+            
+            // 💬 评论相关
+            if (containsAny(lowerPrompt, "评论", "互动", "讨论")) {
+                context.append(getCommentStatistics());
+            }
+            
+            // 🏆 作者排行
+            if (containsAny(lowerPrompt, "作者", "谁发的多", "写文章最多", "活跃用户")) {
+                context.append(getTopAuthors());
+            }
+            
         } catch (Exception e) {
             log.warn("查询数据失败: {}", e.getMessage());
         }
         
         return context.toString();
+    }
+    
+    /**
+     * 获取今日统计数据
+     */
+    private String getTodayStatistics() {
+        StringBuilder sb = new StringBuilder("\n【今日数据统计】\n");
+        try {
+            LocalDateTime todayStart = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
+            
+            // 今日新文章
+            QueryWrapper<Article> articleWrapper = new QueryWrapper<>();
+            articleWrapper.ge("created_at", todayStart).eq("is_approved", 1);
+            long todayArticles = articleMapper.selectCount(articleWrapper);
+            sb.append("- 今日新发布文章: ").append(todayArticles).append(" 篇\n");
+            
+            // 今日新用户
+            QueryWrapper<User> userWrapper = new QueryWrapper<>();
+            userWrapper.ge("created_at", todayStart);
+            long todayUsers = userMapper.selectCount(userWrapper);
+            sb.append("- 今日新注册用户: ").append(todayUsers).append(" 人\n");
+            
+        } catch (Exception e) {
+            sb.append("数据查询出错\n");
+        }
+        return sb.toString();
+    }
+    
+    /**
+     * 获取评论统计
+     */
+    private String getCommentStatistics() {
+        StringBuilder sb = new StringBuilder("\n【评论互动统计】\n");
+        sb.append("- 系统支持文章评论、回复评论等互动功能\n");
+        sb.append("- 用户可以在文章详情页发表评论\n");
+        sb.append("- 评论会通知文章作者\n");
+        return sb.toString();
+    }
+    
+    /**
+     * 获取活跃作者排行
+     */
+    private String getTopAuthors() {
+        StringBuilder sb = new StringBuilder("\n【活跃作者排行】\n");
+        try {
+            // 查询发文最多的用户
+            QueryWrapper<Article> wrapper = new QueryWrapper<>();
+            wrapper.eq("is_approved", 1)
+                   .select("author_id", "COUNT(*) as article_count")
+                   .groupBy("author_id")
+                   .orderByDesc("article_count")
+                   .last("LIMIT 5");
+            List<Map<String, Object>> results = articleMapper.selectMaps(wrapper);
+            
+            for (int i = 0; i < results.size(); i++) {
+                Map<String, Object> result = results.get(i);
+                Long authorId = ((Number) result.get("author_id")).longValue();
+                Long count = ((Number) result.get("article_count")).longValue();
+                User author = userMapper.selectById(authorId);
+                if (author != null) {
+                    sb.append(String.format("%d. %s - 发布 %d 篇文章\n", 
+                        i + 1, author.getUsername(), count));
+                }
+            }
+        } catch (Exception e) {
+            sb.append("查询出错\n");
+        }
+        return sb.toString();
     }
     
     /**
@@ -699,10 +782,33 @@ public class AIService {
             ## ✍️ 写作辅助能力
             
             我可以帮助你：
-            - 📝 撰写新闻稿：提供标题、摘要和正文框架
-            - 🎯 优化文案：让文章更有吸引力
-            - 📋 生成摘要：为长文自动生成精炼摘要
-            - 💡 创意建议：提供选题和写作方向建议
+            - 📝 **新闻稿撰写**：提供标题、摘要和正文框架
+            - 🎯 **文案优化**：让文章更有吸引力
+            - 📋 **摘要生成**：为长文自动生成精炼摘要
+            - 💡 **创意建议**：提供选题和写作方向建议
+            - 📧 **邮件模板**：撰写正式或非正式邮件
+            - 🎤 **演讲稿**：撰写开场白、主体和结尾
+            - 📝 **活动策划**：提供活动方案框架
+            - 🎨 **海报文案**：创意宣传语和标语
+            
+            ## 📚 学习辅助能力
+            
+            我可以帮助你：
+            - 📖 **知识解答**：解答学习中的疑问
+            - 📋 **学习计划**：制定合理的学习安排
+            - 💡 **学习方法**：分享高效学习技巧
+            - 📝 **论文指导**：提供论文写作建议
+            - 🎯 **考试技巧**：分享应试经验和方法
+            - 🌐 **英语学习**：翻译、语法、写作指导
+            
+            ## 🎓 校园生活指南
+            
+            我可以提供：
+            - 🏫 **校园导览**：介绍校园设施和服务
+            - 🍽️ **生活建议**：食堂、宿舍、图书馆使用攻略
+            - 👥 **社团推荐**：介绍各类学生组织
+            - 💼 **职业规划**：实习、求职、考研建议
+            - 🎭 **活动信息**：校园文化活动介绍
             
             ## 💬 回答原则
             

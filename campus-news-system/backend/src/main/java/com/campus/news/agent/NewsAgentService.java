@@ -115,13 +115,17 @@ public class NewsAgentService {
             sessionId = UUID.randomUUID().toString();
         }
         
-        log.info("Agent开始执行任务 - 会话: {}, 消息: {}", sessionId, request.getMessage());
+        log.info("Agent开始执行任务 - 会话: {}, 消息: {}, 用户ID: {}, 是否管理员: {}", 
+                 sessionId, request.getMessage(), request.getUserId(), request.getIsAdmin());
         
         AgentResponse response = new AgentResponse();
         response.setSessionId(sessionId);
         response.setSuccess(true);
         
         try {
+            // 设置用户上下文（用于权限控制）
+            NewsAgentTools.setCurrentUser(request.getUserId(), request.getIsAdmin());
+            
             // 记录开始时间
             long startTime = System.currentTimeMillis();
             
@@ -147,6 +151,9 @@ public class NewsAgentService {
             log.error("Agent任务执行失败", e);
             response.setSuccess(false);
             response.setError("任务执行失败：" + e.getMessage());
+        } finally {
+            // 清除用户上下文
+            NewsAgentTools.clearCurrentUser();
         }
         
         return response;
@@ -163,9 +170,13 @@ public class NewsAgentService {
             sessionId = UUID.randomUUID().toString();
         }
         
-        log.info("Agent开始流式执行任务 - 会话: {}", sessionId);
+        log.info("Agent开始流式执行任务 - 会话: {}, 用户ID: {}, 是否管理员: {}", 
+                 sessionId, request.getUserId(), request.getIsAdmin());
         
         try {
+            // 设置用户上下文（用于权限控制）
+            NewsAgentTools.setCurrentUser(request.getUserId(), request.getIsAdmin());
+            
             // 发送开始事件
             callback.onStart(sessionId);
             
@@ -187,6 +198,9 @@ public class NewsAgentService {
         } catch (Exception e) {
             log.error("Agent流式任务执行失败", e);
             callback.onError("执行失败：" + e.getMessage());
+        } finally {
+            // 清除用户上下文
+            NewsAgentTools.clearCurrentUser();
         }
     }
     
@@ -239,6 +253,8 @@ public class NewsAgentService {
     public static class AgentRequest {
         private String sessionId;
         private String message;
+        private Long userId;           // 当前用户ID
+        private Boolean isAdmin;       // 是否管理员
         private Map<String, Object> context;
     }
     

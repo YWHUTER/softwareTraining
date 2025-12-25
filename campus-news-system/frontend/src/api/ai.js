@@ -145,13 +145,26 @@ export const updateChatSessionTitle = (sessionId, title) => {
  * @param {Object} data - 请求数据
  * @param {string} data.message - 任务描述
  * @param {string} [data.sessionId] - 会话ID
+ * @param {number} [data.userId] - 用户ID
+ * @param {boolean} [data.isAdmin] - 是否管理员
  * @returns {Promise<Object>} Agent执行结果
  */
 export const executeAgentTask = (data) => {
+  // 自动从localStorage获取用户信息
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  // 检查是否是管理员：roles是对象数组，需要检查roleName属性
+  const isAdmin = user.roles?.some(role => role.roleName === 'ADMIN') || false
+  
+  const enrichedData = {
+    ...data,
+    userId: data.userId || user.id || null,
+    isAdmin: data.isAdmin !== undefined ? data.isAdmin : isAdmin
+  }
+  
   return request({
     url: '/ai/agent/execute',
     method: 'post',
-    data,
+    data: enrichedData,
     timeout: 120000  // Agent任务可能需要更长时间
   })
 }
