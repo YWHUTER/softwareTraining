@@ -172,7 +172,7 @@
             <p>根据你的喜好精选的视频内容</p>
           </div>
         </div>
-        <button class="refresh-recommend-btn" @click="loadRecommendedVideos" :disabled="loadingRecommendations">
+        <button class="refresh-recommend-btn" @click="loadRecommendedVideos(true)" :disabled="loadingRecommendations">
           <el-icon :class="{ 'is-loading': loadingRecommendations }"><Refresh /></el-icon>
           换一批
         </button>
@@ -208,79 +208,6 @@
         <button class="chips-scroll-btn right" @click="scrollChips('right')" v-show="canScrollRight">
           <el-icon><ArrowRight /></el-icon>
         </button>
-      </div>
-
-      <!-- 推荐视频区域 -->
-      <div v-if="currentView === 'home' && !isSearchMode && recommendedVideos.length > 0" class="recommended-section">
-        <div class="section-header">
-          <h3 class="section-title">
-            <el-icon><Star /></el-icon>
-            {{ currentUser ? '为你推荐' : '热门推荐' }}
-          </h3>
-          <button class="refresh-btn" @click="loadRecommendedVideos" :disabled="loadingRecommendations">
-            <el-icon :class="{ 'is-loading': loadingRecommendations }"><Refresh /></el-icon>
-            换一批
-          </button>
-        </div>
-        <div class="recommended-grid">
-          <div 
-            v-for="video in recommendedVideos" 
-            :key="'rec-' + video.id" 
-            class="yt-video-renderer recommended-video"
-            @click="handleVideoClick(video)"
-            @mouseenter="startPreview(video)"
-            @mouseleave="stopPreview(video)"
-          >
-            <div class="yt-thumbnail">
-              <a class="yt-thumbnail-link">
-                <video 
-                  v-if="video.isPreviewPlaying && video.videoUrl"
-                  :src="video.videoUrl"
-                  class="preview-video"
-                  muted
-                  autoplay
-                  loop
-                ></video>
-                <img 
-                  v-show="!video.isPreviewPlaying"
-                  :src="video.thumbnail || defaultThumbnail" 
-                  :alt="video.title" 
-                  class="yt-thumbnail-img" 
-                />
-                <div class="yt-time-status" v-show="!video.isPreviewPlaying">
-                  <span class="yt-time-text">{{ video.duration || '00:00' }}</span>
-                </div>
-                <div class="yt-thumbnail-hover" v-show="!video.isPreviewPlaying">
-                  <el-icon class="yt-play-icon"><VideoPlay /></el-icon>
-                </div>
-                <div v-if="video.recommendReason" class="recommend-badge">
-                  {{ video.recommendReason }}
-                </div>
-              </a>
-            </div>
-            <div class="yt-meta">
-              <a class="yt-avatar-link" @click.stop="goToChannel(video.authorId)">
-                <div class="yt-avatar" :style="{ background: getAvatarColor(video.authorId) }">
-                  <img v-if="video.author?.avatar" :src="getAvatarUrl(video.author.avatar)" />
-                  <span v-else>{{ (video.channelName || video.author?.realName || '未知')[0] }}</span>
-                </div>
-              </a>
-              <div class="yt-details">
-                <h3 class="yt-video-title">
-                  <a class="yt-title-link">{{ video.title }}</a>
-                </h3>
-                <div class="yt-channel-info">
-                  <a class="yt-channel-name" @click.stop="goToChannel(video.authorId)">{{ video.channelName || video.author?.realName || '未知频道' }}</a>
-                </div>
-                <div class="yt-video-meta-block">
-                  <span class="yt-view-count">{{ formatViews(video.viewCount) }}次观看</span>
-                  <span class="yt-dot">•</span>
-                  <span class="yt-publish-time">{{ formatTime(video.createdAt) }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- 推荐视图内容 -->
@@ -795,14 +722,17 @@ const loadCategories = async () => {
 }
 
 // 加载推荐视频
-const loadRecommendedVideos = async () => {
+const loadRecommendedVideos = async (refresh = false) => {
   loadingRecommendations.value = true
   try {
     let recommendations = []
+    // 换一批时，排除当前已显示的视频
+    const excludeIds = refresh ? recommendedVideos.value.map(v => v.id) : []
+    
     // 根据是否登录选择不同的推荐接口
     try {
       if (currentUser.value) {
-        const res = await getPersonalizedVideoRecommendations(8)
+        const res = await getPersonalizedVideoRecommendations(8, excludeIds)
         recommendations = res || []
       } else {
         const res = await getHotVideoRecommendations(8)
@@ -825,16 +755,21 @@ const loadRecommendedVideos = async () => {
         }
       })
       videoResults = (await Promise.all(videoPromises)).filter(v => v !== null)
+      // 按推荐分数排序
+      videoResults.sort((a, b) => (b.recommendScore || 0) - (a.recommendScore || 0))
     }
     
-    // 如果推荐视频不足6个，用普通视频列表补充
+    // 如果推荐视频不足6个，用热门视频补充
     if (videoResults.length < 6) {
       try {
-        const existingIds = videoResults.map(v => v.id)
-        const listRes = await getVideoList({ current: 1, size: 6 - videoResults.length })
+        const existingIds = [...excludeIds, ...videoResults.map(v => v.id)]
+        // 随机页码，让补充的视频也有变化
+        const randomPage = refresh ? Math.floor(Math.random() * 3) + 1 : 1
+        const listRes = await getVideoList({ current: randomPage, size: 8, sortBy: 'views', sortOrder: 'desc' })
         const supplementVideos = (listRes.records || [])
           .filter(v => !existingIds.includes(v.id))
-          .map(v => ({ ...v, recommendReason: '最新视频', isPreviewPlaying: false }))
+          .slice(0, 6 - videoResults.length)
+          .map(v => ({ ...v, recommendReason: '热门视频', isPreviewPlaying: false }))
         videoResults = [...videoResults, ...supplementVideos]
       } catch (e) {
         console.log('补充视频列表失败')
@@ -890,6 +825,9 @@ const loadVideos = async () => {
     } else if (currentView.value === 'subscriptions') {
       res = await getSubscriptionVideos(params)
     } else {
+      // 首页默认按发布时间排序（最新优先）
+      params.sortBy = 'date'
+      params.sortOrder = 'desc'
       if (activeCategory.value !== 'all') {
         params.categoryCode = activeCategory.value
       }
