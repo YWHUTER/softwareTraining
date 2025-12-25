@@ -92,12 +92,16 @@ public class VideoService extends ServiceImpl<VideoMapper, Video> {
             } else {
                 wrapper.orderByDesc("view_count");
             }
-        } else {
+        } else if ("date".equals(sortBy) || sortBy == null || sortBy.isEmpty()) {
+            // 按发布时间排序（默认）
             if (isAsc) {
                 wrapper.orderByAsc("created_at");
             } else {
                 wrapper.orderByDesc("created_at");
             }
+        } else {
+            // 其他情况默认按时间倒序
+            wrapper.orderByDesc("created_at");
         }
         
         Page<Video> resultPage = videoMapper.selectPage(page, wrapper);
@@ -119,6 +123,18 @@ public class VideoService extends ServiceImpl<VideoMapper, Video> {
         incrementViewCount(id);
         video.setViewCount(video.getViewCount() + 1);
         
+        enrichVideo(video, currentUserId);
+        return video;
+    }
+    
+    /**
+     * 获取视频信息（不增加播放量，用于预览/推荐列表）
+     */
+    public Video getVideoInfo(Long id, Long currentUserId) {
+        Video video = videoMapper.selectById(id);
+        if (video == null) {
+            throw new BusinessException("视频不存在");
+        }
         enrichVideo(video, currentUserId);
         return video;
     }

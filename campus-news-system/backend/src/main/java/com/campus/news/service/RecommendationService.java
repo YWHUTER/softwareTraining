@@ -1,67 +1,47 @@
 package com.campus.news.service;
 
 import com.campus.news.entity.Article;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
+import com.campus.news.entity.Video;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
- * 推荐服务 - 调用Python推荐微服务
+ * 推荐服务 - 调用Python算法服务，失败时降级到数据库查询
  */
 @Slf4j
 @Service
 public class RecommendationService {
 
-    @Value("${recommendation.service.url:http://localhost:5000}")
-    private String recommendationServiceUrl;
-
-    private final RestTemplate restTemplate;
     private final ArticleService articleService;
+    private final VideoService videoService;
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
 
-    public RecommendationService(ArticleService articleService) {
-        this.restTemplate = new RestTemplate();
+    @Value("${algorithm.service.url:http://localhost:5000}")
+    private String algorithmServiceUrl;
+
+    @Value("${algorithm.service.timeout:3000}")
+    private int timeout;
+
+    public RecommendationService(ArticleService articleService, VideoService videoService) {
         this.articleService = articleService;
+        this.videoService = videoService;
+        this.restTemplate = new RestTemplate();
+        this.objectMapper = new ObjectMapper();
     }
 
     /**
      * 获取个性化推荐文章
      */
     public List<Article> getRecommendations(Long userId, int count, List<Long> excludeIds) {
-        try {
-            String url = recommendationServiceUrl + "/api/recommend";
-            
-            Map<String, Object> request = new HashMap<>();
-            request.put("user_id", userId);
-            request.put("top_n", count);
-            request.put("exclude_ids", excludeIds != null ? excludeIds : Collections.emptyList());
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
-
-            ResponseEntity<RecommendationResponse> response = restTemplate.exchange(
-                url, HttpMethod.POST, entity, RecommendationResponse.class
-            );
-
-            if (response.getBody() != null && response.getBody().isSuccess()) {
-                List<Long> articleIds = response.getBody().getData().stream()
-                    .map(RecommendationItem::getArticleId)
-                    .collect(Collectors.toList());
-                
-                return getArticlesByIds(articleIds);
-            }
-        } catch (Exception e) {
-            log.error("调用推荐服务失败: {}", e.getMessage());
-        }
-        
-        // 降级：返回热门文章
         return articleService.getHotArticles(count);
     }
 
@@ -69,49 +49,13 @@ public class RecommendationService {
      * 获取相似文章推荐
      */
     public List<Article> getSimilarArticles(Long articleId, int count) {
-        try {
-            String url = recommendationServiceUrl + "/api/similar/" + articleId + "?top_n=" + count;
-            
-            ResponseEntity<RecommendationResponse> response = restTemplate.getForEntity(
-                url, RecommendationResponse.class
-            );
-
-            if (response.getBody() != null && response.getBody().isSuccess()) {
-                List<Long> articleIds = response.getBody().getData().stream()
-                    .map(RecommendationItem::getArticleId)
-                    .collect(Collectors.toList());
-                
-                return getArticlesByIds(articleIds);
-            }
-        } catch (Exception e) {
-            log.error("获取相似文章失败: {}", e.getMessage());
-        }
-        
-        return Collections.emptyList();
+        return articleService.getHotArticles(count);
     }
 
     /**
-     * 获取热门推荐(未登录用户)
+     * 获取热门推荐
      */
     public List<Article> getHotRecommendations(int count) {
-        try {
-            String url = recommendationServiceUrl + "/api/recommend/hot?top_n=" + count;
-            
-            ResponseEntity<RecommendationResponse> response = restTemplate.getForEntity(
-                url, RecommendationResponse.class
-            );
-
-            if (response.getBody() != null && response.getBody().isSuccess()) {
-                List<Long> articleIds = response.getBody().getData().stream()
-                    .map(RecommendationItem::getArticleId)
-                    .collect(Collectors.toList());
-                
-                return getArticlesByIds(articleIds);
-            }
-        } catch (Exception e) {
-            log.error("获取热门推荐失败: {}", e.getMessage());
-        }
-        
         return articleService.getHotArticles(count);
     }
 
@@ -120,11 +64,11 @@ public class RecommendationService {
      */
     public boolean isServiceHealthy() {
         try {
-            String url = recommendationServiceUrl + "/health";
-            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            String url = algorithmServiceUrl + "/health";
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
             return response.getStatusCode() == HttpStatus.OK;
         } catch (Exception e) {
-            log.warn("推荐服务不可用: {}", e.getMessage());
+            log.warn("算法服务健康检查失败: {}", e.getMessage());
             return false;
         }
     }
@@ -134,8 +78,8 @@ public class RecommendationService {
      */
     public boolean retrainModel() {
         try {
-            String url = recommendationServiceUrl + "/api/retrain";
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, null, Map.class);
+            String url = algorithmServiceUrl + "/api/video/retrain";
+            ResponseEntity<String> response = restTemplate.postForEntity(url, null, String.class);
             return response.getStatusCode() == HttpStatus.OK;
         } catch (Exception e) {
             log.error("触发模型训练失败: {}", e.getMessage());
@@ -143,153 +87,119 @@ public class RecommendationService {
         }
     }
 
-    private List<Article> getArticlesByIds(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return Collections.emptyList();
-        }
-        
-        // 保持推荐顺序
-        Map<Long, Article> articleMap = articleService.getArticlesByIds(ids).stream()
-            .collect(Collectors.toMap(Article::getId, a -> a));
-        
-        return ids.stream()
-            .map(articleMap::get)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toList());
-    }
-
     // ==================== 视频推荐方法 ====================
 
     /**
-     * 获取个性化视频推荐
+     * 获取个性化视频推荐 - 调用算法服务
      */
     public List<Map<String, Object>> getVideoRecommendations(Long userId, int count, List<Long> excludeIds, Long categoryId) {
         try {
-            String url = recommendationServiceUrl + "/api/video/recommend";
+            String url = algorithmServiceUrl + "/api/video/recommend";
             
-            Map<String, Object> request = new HashMap<>();
-            request.put("user_id", userId);
-            request.put("top_n", count);
-            request.put("exclude_ids", excludeIds != null ? excludeIds : Collections.emptyList());
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("user_id", userId);
+            requestBody.put("top_n", count);
+            requestBody.put("exclude_ids", excludeIds != null ? excludeIds : List.of());
             if (categoryId != null) {
-                request.put("category_id", categoryId);
+                requestBody.put("category_id", categoryId);
             }
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-            ResponseEntity<VideoRecommendationResponse> response = restTemplate.exchange(
-                url, HttpMethod.POST, entity, VideoRecommendationResponse.class
-            );
-
-            if (response.getBody() != null && response.getBody().isSuccess()) {
-                return response.getBody().getData().stream()
-                    .map(item -> {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("videoId", item.getVideoId());
-                        map.put("score", item.getScore());
-                        map.put("reason", item.getReason());
-                        return map;
-                    })
-                    .collect(Collectors.toList());
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            
+            if (response.getStatusCode() == HttpStatus.OK) {
+                return parseVideoRecommendations(response.getBody());
             }
         } catch (Exception e) {
-            log.error("调用视频推荐服务失败: {}", e.getMessage());
+            log.warn("调用算法服务失败，降级到热门视频: {}", e.getMessage());
         }
         
-        return Collections.emptyList();
+        // 降级：返回热门视频
+        return getFallbackVideoRecommendations(count, "热门推荐");
     }
 
     /**
-     * 获取热门视频推荐
+     * 获取热门视频推荐 - 调用算法服务
      */
     public List<Map<String, Object>> getHotVideoRecommendations(int count, Long categoryId) {
         try {
-            StringBuilder urlBuilder = new StringBuilder(recommendationServiceUrl + "/api/video/recommend/hot?top_n=" + count);
+            StringBuilder urlBuilder = new StringBuilder(algorithmServiceUrl)
+                .append("/api/video/recommend/hot?top_n=").append(count);
             if (categoryId != null) {
                 urlBuilder.append("&category_id=").append(categoryId);
             }
-            
-            ResponseEntity<VideoRecommendationResponse> response = restTemplate.getForEntity(
-                urlBuilder.toString(), VideoRecommendationResponse.class
-            );
 
-            if (response.getBody() != null && response.getBody().isSuccess()) {
-                return response.getBody().getData().stream()
-                    .map(item -> {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("videoId", item.getVideoId());
-                        map.put("score", item.getScore());
-                        map.put("reason", item.getReason());
-                        return map;
-                    })
-                    .collect(Collectors.toList());
+            ResponseEntity<String> response = restTemplate.getForEntity(urlBuilder.toString(), String.class);
+            
+            if (response.getStatusCode() == HttpStatus.OK) {
+                return parseVideoRecommendations(response.getBody());
             }
         } catch (Exception e) {
-            log.error("获取热门视频推荐失败: {}", e.getMessage());
+            log.warn("调用热门视频算法失败，降级到数据库查询: {}", e.getMessage());
         }
         
-        return Collections.emptyList();
+        // 降级：从数据库获取热门视频
+        return getFallbackVideoRecommendations(count, "热门视频");
     }
 
     /**
-     * 获取相似视频推荐
+     * 获取相似视频推荐 - 调用算法服务
      */
     public List<Map<String, Object>> getSimilarVideoRecommendations(Long videoId, int count) {
         try {
-            String url = recommendationServiceUrl + "/api/video/similar/" + videoId + "?top_n=" + count;
+            String url = algorithmServiceUrl + "/api/video/similar/" + videoId + "?top_n=" + count;
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
             
-            ResponseEntity<VideoRecommendationResponse> response = restTemplate.getForEntity(
-                url, VideoRecommendationResponse.class
-            );
-
-            if (response.getBody() != null && response.getBody().isSuccess()) {
-                return response.getBody().getData().stream()
-                    .map(item -> {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("videoId", item.getVideoId());
-                        map.put("score", item.getScore());
-                        map.put("reason", item.getReason());
-                        return map;
-                    })
-                    .collect(Collectors.toList());
+            if (response.getStatusCode() == HttpStatus.OK) {
+                return parseVideoRecommendations(response.getBody());
             }
         } catch (Exception e) {
-            log.error("获取相似视频推荐失败: {}", e.getMessage());
+            log.warn("调用相似视频算法失败，降级到热门视频: {}", e.getMessage());
         }
         
-        return Collections.emptyList();
+        // 降级：返回热门视频
+        return getFallbackVideoRecommendations(count, "相关推荐");
     }
 
-    // 响应模型
-    @Data
-    public static class RecommendationResponse {
-        private boolean success;
-        private List<RecommendationItem> data;
-        private String message;
+    /**
+     * 解析算法服务返回的视频推荐结果
+     */
+    private List<Map<String, Object>> parseVideoRecommendations(String responseBody) {
+        List<Map<String, Object>> recommendations = new ArrayList<>();
+        try {
+            JsonNode root = objectMapper.readTree(responseBody);
+            if (root.has("success") && root.get("success").asBoolean() && root.has("data")) {
+                JsonNode dataArray = root.get("data");
+                for (JsonNode item : dataArray) {
+                    Map<String, Object> rec = new HashMap<>();
+                    rec.put("videoId", item.get("video_id").asLong());
+                    rec.put("score", item.get("score").asDouble());
+                    rec.put("reason", item.get("reason").asText());
+                    recommendations.add(rec);
+                }
+            }
+        } catch (Exception e) {
+            log.error("解析推荐结果失败: {}", e.getMessage());
+        }
+        return recommendations;
     }
 
-    @Data
-    public static class RecommendationItem {
-        @JsonProperty("article_id")
-        private Long articleId;
-        private Double score;
-        private String reason;
-    }
-
-    @Data
-    public static class VideoRecommendationResponse {
-        private boolean success;
-        private List<VideoRecommendationItem> data;
-        private String message;
-    }
-
-    @Data
-    public static class VideoRecommendationItem {
-        @JsonProperty("video_id")
-        private Long videoId;
-        private Double score;
-        private String reason;
+    /**
+     * 降级方案：从数据库获取热门视频
+     */
+    private List<Map<String, Object>> getFallbackVideoRecommendations(int count, String reason) {
+        List<Video> hotVideos = videoService.getHotVideos(count);
+        List<Map<String, Object>> recommendations = new ArrayList<>();
+        for (Video video : hotVideos) {
+            Map<String, Object> rec = new HashMap<>();
+            rec.put("videoId", video.getId());
+            rec.put("score", video.getViewCount() != null ? video.getViewCount().doubleValue() : 0.0);
+            rec.put("reason", reason);
+            recommendations.add(rec);
+        }
+        return recommendations;
     }
 }

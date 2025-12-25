@@ -54,6 +54,13 @@ public class VideoController {
         return Result.success(videoService.getVideoDetail(id, userId));
     }
     
+    @Operation(summary = "获取视频详情（不增加播放量，用于预览）")
+    @GetMapping("/info/{id}")
+    public Result<Video> getVideoInfo(@PathVariable Long id, Authentication authentication) {
+        Long userId = authentication != null ? getCurrentUserId(authentication) : null;
+        return Result.success(videoService.getVideoInfo(id, userId));
+    }
+    
     @Operation(summary = "更新视频信息")
     @PutMapping("/update/{id}")
     public Result<Boolean> updateVideo(@PathVariable Long id,
