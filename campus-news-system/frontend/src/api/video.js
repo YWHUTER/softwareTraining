@@ -17,10 +17,10 @@ export function getVideoDetail(id) {
   })
 }
 
-// 获取视频详情（静默模式，不显示错误消息）
+// 获取视频详情（静默模式，不增加播放量，用于预览/推荐列表）
 export function getVideoDetailSilent(id) {
   return request({
-    url: `/video/detail/${id}`,
+    url: `/video/info/${id}`,
     method: 'get',
     silent: true
   })
