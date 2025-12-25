@@ -4,6 +4,7 @@ from .collaborative_filter import CollaborativeFilterRecommender
 from .hybrid_recommender import HybridRecommender
 from .user_profile import UserProfileAnalyzer
 from .video_recommender import VideoRecommender
+from .hot_words import HotWordsAnalyzer
 
 __all__ = [
     "DataLoader",
@@ -11,5 +12,6 @@ __all__ = [
     "CollaborativeFilterRecommender",
     "HybridRecommender",
     "UserProfileAnalyzer",
-    "VideoRecommender"
+    "VideoRecommender",
+    "HotWordsAnalyzer"
 ]

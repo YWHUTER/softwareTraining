@@ -7,7 +7,7 @@ import logging
 import uvicorn
 
 from config import DATABASE_CONFIG, REDIS_CONFIG, RECOMMENDATION_CONFIG, SERVICE_CONFIG
-from models import DataLoader, HybridRecommender, UserProfileAnalyzer, VideoRecommender
+from models import DataLoader, HybridRecommender, UserProfileAnalyzer, VideoRecommender, HotWordsAnalyzer
 
 # 配置日志
 logging.basicConfig(
@@ -37,6 +37,7 @@ data_loader = None
 recommender = None
 user_profile_analyzer = None
 video_recommender = None
+hot_words_analyzer = None
 
 # 请求/响应模型
 class RecommendationItem(BaseModel):
@@ -61,7 +62,7 @@ class UserRecommendRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """应用启动时初始化推荐系统"""
-    global data_loader, recommender, user_profile_analyzer, video_recommender
+    global data_loader, recommender, user_profile_analyzer, video_recommender, hot_words_analyzer
     
     logger.info("正在初始化推荐系统...")
     try:
@@ -71,7 +72,8 @@ async def startup_event():
         user_profile_analyzer = UserProfileAnalyzer(data_loader)
         video_recommender = VideoRecommender(data_loader, RECOMMENDATION_CONFIG)
         video_recommender.train()
-        logger.info("推荐系统初始化完成（含视频推荐）")
+        hot_words_analyzer = HotWordsAnalyzer(data_loader)
+        logger.info("推荐系统初始化完成（含视频推荐、热词分析）")
     except Exception as e:
         logger.error(f"推荐系统初始化失败: {e}")
 
@@ -453,6 +455,82 @@ async def retrain_video_model():
         return {"success": True, "message": "视频推荐模型重新训练完成"}
     except Exception as e:
         logger.error(f"视频模型训练失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 热词分析 API ====================
+
+@app.get("/api/hotwords", tags=["热词分析"])
+async def get_hot_words(
+    top_n: int = Query(default=30, ge=1, le=100),
+    days: int = Query(default=7, ge=1, le=30)
+):
+    """
+    获取热门关键词
+    
+    - top_n: 返回数量，默认30
+    - days: 统计天数，默认7天
+    
+    返回：
+    - word: 关键词
+    - weight: 权重(1-100)
+    - count: 出现次数
+    - trend: 趋势(up/down/stable)
+    - category: 主要分类
+    """
+    if hot_words_analyzer is None:
+        raise HTTPException(status_code=503, detail="热词分析服务未就绪")
+    
+    try:
+        words = hot_words_analyzer.get_hot_words(top_n, days)
+        return {
+            "success": True,
+            "data": words,
+            "message": f"获取到{len(words)}个热词"
+        }
+    except Exception as e:
+        logger.error(f"获取热词失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/hotwords/trending", tags=["热词分析"])
+async def get_trending_words(
+    top_n: int = Query(default=10, ge=1, le=50)
+):
+    """获取上升趋势的热词"""
+    if hot_words_analyzer is None:
+        raise HTTPException(status_code=503, detail="热词分析服务未就绪")
+    
+    try:
+        words = hot_words_analyzer.get_trending_words(top_n)
+        return {
+            "success": True,
+            "data": words,
+            "message": f"获取到{len(words)}个上升热词"
+        }
+    except Exception as e:
+        logger.error(f"获取趋势热词失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/hotwords/category/{category}", tags=["热词分析"])
+async def get_category_hot_words(
+    category: str,
+    top_n: int = Query(default=20, ge=1, le=50)
+):
+    """获取指定分类的热词"""
+    if hot_words_analyzer is None:
+        raise HTTPException(status_code=503, detail="热词分析服务未就绪")
+    
+    try:
+        words = hot_words_analyzer.get_words_by_category(category, top_n)
+        return {
+            "success": True,
+            "data": words,
+            "message": f"获取到{len(words)}个{category}分类热词"
+        }
+    except Exception as e:
+        logger.error(f"获取分类热词失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
