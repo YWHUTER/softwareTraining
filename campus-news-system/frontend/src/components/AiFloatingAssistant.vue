@@ -1,4 +1,4 @@
-<template>
+0<template>
   <div class="ai-floating-assistant">
     <!-- 悬浮按钮 -->
     <div 
@@ -16,7 +16,23 @@
 
     <!-- 聊天窗口 -->
     <transition name="chat-popup">
-      <div v-if="isOpen" class="chat-window">
+      <div 
+        v-if="isOpen" 
+        class="chat-window"
+        :style="chatWindowStyle"
+        ref="chatWindow"
+      >
+        <!-- 缩放手柄 -->
+        <div class="resize-handle resize-n" @mousedown="startResize($event, 'n')"></div>
+        <div class="resize-handle resize-s" @mousedown="startResize($event, 's')"></div>
+        <div class="resize-handle resize-e" @mousedown="startResize($event, 'e')"></div>
+        <div class="resize-handle resize-w" @mousedown="startResize($event, 'w')"></div>
+        <div class="resize-handle resize-ne" @mousedown="startResize($event, 'ne')"></div>
+        <div class="resize-handle resize-nw" @mousedown="startResize($event, 'nw')"></div>
+        <div class="resize-handle resize-se" @mousedown="startResize($event, 'se')">
+          <div class="resize-icon">⤡</div>
+        </div>
+        <div class="resize-handle resize-sw" @mousedown="startResize($event, 'sw')"></div>
         <!-- 头部 -->
         <div class="chat-header">
           <div class="header-left">
@@ -120,13 +136,20 @@
             </template>
           </el-input>
         </div>
+        
+        <!-- 底部缩放提示条 -->
+        <div class="resize-bar" @mousedown="startResize($event, 'se')">
+          <div class="resize-bar-dots">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
       </div>
     </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted, computed } from 'vue'
 import { Close, Delete, Minus, User, Promotion } from '@element-plus/icons-vue'
 import { sendChatMessage } from '@/api/ai'
 import { ElMessage } from 'element-plus'
@@ -137,6 +160,106 @@ const messages = ref([])
 const isLoading = ref(false)
 const messagesContainer = ref(null)
 const sessionId = ref(null)
+const chatWindow = ref(null)
+
+// 窗口尺寸状态
+const windowWidth = ref(380)
+const windowHeight = ref(520)
+const minWidth = 300
+const maxWidth = 600
+const minHeight = 400
+const maxHeight = 800
+
+// 缩放相关状态
+const isResizing = ref(false)
+const resizeDirection = ref('')
+const startX = ref(0)
+const startY = ref(0)
+const startWidth = ref(0)
+const startHeight = ref(0)
+
+// 计算窗口样式
+const chatWindowStyle = computed(() => ({
+  width: `${windowWidth.value}px`,
+  height: `${windowHeight.value}px`
+}))
+
+// 开始缩放
+const startResize = (e, direction) => {
+  e.preventDefault()
+  isResizing.value = true
+  resizeDirection.value = direction
+  startX.value = e.clientX
+  startY.value = e.clientY
+  startWidth.value = windowWidth.value
+  startHeight.value = windowHeight.value
+  
+  document.addEventListener('mousemove', handleResize)
+  document.addEventListener('mouseup', stopResize)
+  document.body.style.cursor = getCursorStyle(direction)
+  document.body.style.userSelect = 'none'
+}
+
+// 获取光标样式
+const getCursorStyle = (direction) => {
+  const cursors = {
+    'n': 'ns-resize',
+    's': 'ns-resize',
+    'e': 'ew-resize',
+    'w': 'ew-resize',
+    'ne': 'nesw-resize',
+    'nw': 'nwse-resize',
+    'se': 'nwse-resize',
+    'sw': 'nesw-resize'
+  }
+  return cursors[direction] || 'default'
+}
+
+// 处理缩放
+const handleResize = (e) => {
+  if (!isResizing.value) return
+  
+  const deltaX = e.clientX - startX.value
+  const deltaY = e.clientY - startY.value
+  const dir = resizeDirection.value
+  
+  let newWidth = startWidth.value
+  let newHeight = startHeight.value
+  
+  // 根据方向计算新尺寸
+  if (dir.includes('e')) {
+    newWidth = startWidth.value + deltaX
+  }
+  if (dir.includes('w')) {
+    newWidth = startWidth.value - deltaX
+  }
+  if (dir.includes('s')) {
+    newHeight = startHeight.value + deltaY
+  }
+  if (dir.includes('n')) {
+    newHeight = startHeight.value - deltaY
+  }
+  
+  // 限制尺寸范围
+  windowWidth.value = Math.min(maxWidth, Math.max(minWidth, newWidth))
+  windowHeight.value = Math.min(maxHeight, Math.max(minHeight, newHeight))
+}
+
+// 停止缩放
+const stopResize = () => {
+  isResizing.value = false
+  resizeDirection.value = ''
+  document.removeEventListener('mousemove', handleResize)
+  document.removeEventListener('mouseup', stopResize)
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
+
+// 组件卸载时清理事件监听
+onUnmounted(() => {
+  document.removeEventListener('mousemove', handleResize)
+  document.removeEventListener('mouseup', stopResize)
+})
 
 // 快捷操作
 const quickActions = [
@@ -412,6 +535,95 @@ const formatTime = (time) => {
   flex-direction: column;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* 缩放手柄样式 */
+.resize-handle {
+  position: absolute;
+  z-index: 10;
+}
+
+.resize-n {
+  top: 0;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.resize-s {
+  bottom: 0;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.resize-e {
+  right: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.resize-w {
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.resize-ne {
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nesw-resize;
+}
+
+.resize-nw {
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+}
+
+.resize-se {
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resize-icon {
+  font-size: 14px;
+  color: #909399;
+  transform: rotate(90deg);
+  pointer-events: none;
+}
+
+.resize-se:hover .resize-icon {
+  color: #667eea;
+}
+
+.resize-sw {
+  bottom: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nesw-resize;
+}
+
+/* 悬停时显示缩放提示 */
+.resize-handle:hover {
+  background: rgba(102, 126, 234, 0.1);
 }
 
 /* 聊天窗口动画 */
@@ -785,6 +997,40 @@ const formatTime = (time) => {
 
 .chat-input :deep(.el-input__suffix) {
   padding-right: 4px;
+}
+
+/* 底部缩放提示条 */
+.resize-bar {
+  height: 16px;
+  background: linear-gradient(to top, rgba(102, 126, 234, 0.05), transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: nwse-resize;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+  transition: background 0.2s;
+}
+
+.resize-bar:hover {
+  background: linear-gradient(to top, rgba(102, 126, 234, 0.15), transparent);
+}
+
+.resize-bar-dots {
+  display: flex;
+  gap: 3px;
+}
+
+.resize-bar-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #c0c4cc;
+  transition: background 0.2s;
+}
+
+.resize-bar:hover .resize-bar-dots span {
+  background: #667eea;
 }
 
 /* 暗黑模式适配 */
