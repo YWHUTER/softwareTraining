@@ -100,6 +100,19 @@ public class ArticleController {
     public Result<java.util.Map<String, Object>> getPublicStats() {
         return Result.success(articleService.getPublicStats());
     }
+
+    @Operation(summary = "获取校园集市活跃用户")
+    @GetMapping("/marketplace/active-users")
+    public Result<java.util.List<java.util.Map<String, Object>>> getMarketplaceActiveUsers(
+            @RequestParam(defaultValue = "10") Integer limit) {
+        return Result.success(articleService.getMarketplaceActiveUsers(limit));
+    }
+
+    @Operation(summary = "获取校园集市分类统计")
+    @GetMapping("/marketplace/category-stats")
+    public Result<java.util.List<java.util.Map<String, Object>>> getMarketplaceCategoryStats() {
+        return Result.success(articleService.getMarketplaceCategoryStats());
+    }
     
     private Long getCurrentUserId(Authentication authentication) {
         String username = authentication.getName();

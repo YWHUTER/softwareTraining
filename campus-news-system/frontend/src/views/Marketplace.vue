@@ -10,7 +10,7 @@
       <div class="header-content">
         <div class="header-left">
           <div class="marketplace-icon">
-            <el-icon :size="32"><Shop /></el-icon>
+            <span>💬</span>
           </div>
           <div class="header-info">
             <h1 class="page-title">校园集市</h1>
@@ -236,7 +236,7 @@
 
       <!-- 右侧边栏 -->
       <div class="sidebar">
-        <!-- 热门话题 -->
+        <!-- 热门分类 -->
         <div 
           class="sidebar-card"
           v-motion
@@ -245,23 +245,23 @@
         >
           <h3 class="card-title">
             <el-icon><TrendCharts /></el-icon>
-            热门话题
+            热门分类
           </h3>
           <div class="hot-topics">
             <div 
               v-for="(topic, index) in hotTopics" 
-              :key="topic.id"
+              :key="topic.category"
               class="topic-item"
-              @click="searchByTag(topic.name)"
+              @click="selectCategory(topic.category)"
               v-motion
               :initial="{ opacity: 0, x: 10 }"
               :enter="{ opacity: 1, x: 0, transition: { delay: 250 + index * 50 } }"
             >
               <span class="topic-rank" :class="{ top: index < 3 }">{{ index + 1 }}</span>
-              <span class="topic-name"># {{ topic.name }}</span>
-              <span class="topic-count">{{ topic.useCount }}条</span>
+              <span class="topic-name"># {{ topic.label }}</span>
+              <span class="topic-count">{{ topic.count }}条</span>
             </div>
-            <div v-if="hotTopics.length === 0" class="empty-tip">暂无热门话题</div>
+            <div v-if="hotTopics.length === 0" class="empty-tip">暂无分类数据</div>
           </div>
         </div>
 
@@ -408,7 +408,7 @@ import {
   Clock, Search, Grid, Coffee, ShoppingCart, Service, Flag, 
   Ticket, Reading, Football
 } from '@element-plus/icons-vue'
-import { getArticleList, createArticle, toggleLike, toggleFavorite, deleteArticle } from '@/api/article'
+import { getArticleList, createArticle, toggleLike, toggleFavorite, deleteArticle, getMarketplaceActiveUsers, getMarketplaceCategoryStats } from '@/api/article'
 
 const router = useRouter()
 
@@ -487,33 +487,25 @@ const loadPosts = async () => {
   }
 }
 
-// 加载热门话题（从标签API获取）
+// 加载热门分类统计
 const loadHotTopics = async () => {
   try {
-    // 使用静态数据，实际项目中应该从API获取
-    hotTopics.value = [
-      { id: 1, name: '期末复习', useCount: 128 },
-      { id: 2, name: '二手书籍', useCount: 96 },
-      { id: 3, name: '校园美食', useCount: 85 },
-      { id: 4, name: '社团招新', useCount: 72 },
-      { id: 5, name: '考研交流', useCount: 68 }
-    ]
+    const res = await getMarketplaceCategoryStats()
+    hotTopics.value = res || []
   } catch (error) {
-    console.error('加载热门话题失败:', error)
+    console.error('加载热门分类失败:', error)
+    hotTopics.value = []
   }
 }
 
 // 加载活跃用户
 const loadActiveUsers = async () => {
   try {
-    // 使用静态数据，实际项目中应该从API获取
-    activeUsers.value = [
-      { id: 1, realName: '小明同学', avatar: '', postCount: 32 },
-      { id: 2, realName: '学霸君', avatar: '', postCount: 28 },
-      { id: 3, realName: '运动达人', avatar: '', postCount: 24 }
-    ]
+    const res = await getMarketplaceActiveUsers(10)
+    activeUsers.value = res || []
   } catch (error) {
     console.error('加载活跃用户失败:', error)
+    activeUsers.value = []
   }
 }
 
@@ -767,22 +759,23 @@ onMounted(() => {
   padding: 24px;
 }
 
-/* 头部区域 */
+/* ============ 漫画风格样式 ============ */
+
+/* 头部区域 - 漫画风格 */
 .marketplace-header {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
-  border-radius: 20px;
+  background: #fff;
+  border-radius: 16px;
   padding: 24px 28px;
   margin-bottom: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s ease;
+  border: 4px solid #1a1a2e;
+  box-shadow: 8px 8px 0 #1a1a2e;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
 .marketplace-header:hover {
-  background: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+  transform: translate(-2px, -2px);
+  box-shadow: 10px 10px 0 #1a1a2e;
 }
 
 .header-content {
@@ -799,83 +792,89 @@ onMounted(() => {
 }
 
 .marketplace-icon {
-  width: 60px;
-  height: 60px;
-  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
-  border-radius: 16px;
+  width: 70px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.35);
-  transform: rotate(-5deg);
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-size: 48px;
+  background: #fff;
+  border: 3px solid #1a1a2e;
+  border-radius: 50%;
+  box-shadow: 4px 4px 0 #1a1a2e;
+  transition: all 0.2s ease;
 }
 
 .marketplace-header:hover .marketplace-icon {
-  transform: rotate(0deg) scale(1.05);
+  transform: rotate(10deg) scale(1.1);
+  box-shadow: 5px 5px 0 #1a1a2e;
 }
 
 .page-title {
-  font-size: 26px;
-  font-weight: 800;
-  color: #1f2937;
+  font-size: 32px;
+  font-weight: 900;
+  color: #1a1a2e;
   margin: 0 0 4px;
-  background: linear-gradient(90deg, #a855f7, #7c3aed);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  text-shadow: 2px 2px 0 #a855f7;
+  letter-spacing: -1px;
 }
 
 .page-desc {
   font-size: 14px;
-  color: #6b7280;
+  color: #666;
   margin: 0;
+  font-weight: 600;
 }
 
 .publish-btn {
-  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%) !important;
-  border: none !important;
-  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.4);
-  transition: all 0.3s ease;
+  background: #ff6b6b !important;
+  border: 3px solid #1a1a2e !important;
+  box-shadow: 4px 4px 0 #1a1a2e;
+  font-weight: 700;
+  transition: all 0.2s ease;
 }
 
 .publish-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.5);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #1a1a2e;
 }
 
-/* 分类标签 */
+/* 分类标签 - 漫画风格 */
 .category-tabs {
   display: flex;
-  gap: 8px;
+  justify-content: flex-start;
   flex-wrap: wrap;
+  gap: 12px;
 }
 
 .tab-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 16px;
-  border-radius: 20px;
-  background: rgba(243, 244, 246, 0.8);
-  color: #4b5563;
+  padding: 10px 20px;
+  border-radius: 25px;
+  background: #fff;
+  color: #1a1a2e;
   font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  border: 3px solid #1a1a2e;
+  box-shadow: 3px 3px 0 #1a1a2e;
 }
 
 .tab-item:hover {
-  background: rgba(168, 85, 247, 0.1);
-  color: #a855f7;
-  border-color: rgba(168, 85, 247, 0.2);
-  transform: translateY(-2px);
+  background: #ffeaa7;
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 #1a1a2e;
 }
 
 .tab-item.active {
-  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  background: #a855f7;
   color: white;
-  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 #1a1a2e;
 }
 
 /* 内容区域 */
@@ -891,12 +890,12 @@ onMounted(() => {
 }
 
 .sort-bar {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(20px);
-  border-radius: 14px;
+  background: #fff;
+  border-radius: 12px;
   padding: 12px 20px;
   margin-bottom: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 3px solid #1a1a2e;
+  box-shadow: 4px 4px 0 #1a1a2e;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -904,7 +903,7 @@ onMounted(() => {
 
 .sort-tabs {
   display: flex;
-  gap: 20px;
+  gap: 16px;
 }
 
 .sort-tab {
@@ -912,39 +911,44 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: #6b7280;
+  color: #1a1a2e;
+  font-weight: 600;
   cursor: pointer;
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-radius: 8px;
+  border: 2px solid transparent;
   transition: all 0.2s;
 }
 
 .sort-tab:hover {
   color: #a855f7;
-  background: rgba(168, 85, 247, 0.1);
+  background: #f8f4ff;
+  border-color: #a855f7;
 }
 
 .sort-tab.active {
-  color: #a855f7;
-  font-weight: 600;
-  background: rgba(168, 85, 247, 0.15);
+  color: #fff;
+  font-weight: 700;
+  background: #a855f7;
+  border-color: #1a1a2e;
+  box-shadow: 2px 2px 0 #1a1a2e;
 }
 
-/* 帖子卡片 */
+/* 帖子卡片 - 漫画风格 */
 .posts-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .post-card {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(20px) saturate(150%);
-  border-radius: 18px;
+  background: #fff;
+  border-radius: 16px;
   padding: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 3px solid #1a1a2e;
+  box-shadow: 6px 6px 0 #1a1a2e;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
 }
@@ -955,16 +959,15 @@ onMounted(() => {
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #a855f7, #7c3aed, #ec4899);
+  height: 4px;
+  background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #a855f7);
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity 0.2s;
 }
 
 .post-card:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.7);
+  transform: translate(-4px, -4px);
+  box-shadow: 10px 10px 0 #1a1a2e;
 }
 
 .post-card:hover::before {
@@ -988,12 +991,13 @@ onMounted(() => {
 .author-avatar {
   background: linear-gradient(135deg, #a855f7, #7c3aed);
   color: white;
-  font-weight: 600;
-  transition: transform 0.3s;
+  font-weight: 700;
+  border: 2px solid #1a1a2e;
+  transition: transform 0.2s;
 }
 
 .author-info:hover .author-avatar {
-  transform: scale(1.1);
+  transform: scale(1.15) rotate(5deg);
 }
 
 .author-detail {
@@ -1147,35 +1151,38 @@ onMounted(() => {
   gap: 16px;
 }
 
+/* 侧边栏卡片 - 漫画风格 */
 .sidebar-card {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(20px) saturate(150%);
-  border-radius: 18px;
+  background: #fff;
+  border-radius: 14px;
   padding: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  transition: all 0.3s ease;
+  border: 3px solid #1a1a2e;
+  box-shadow: 5px 5px 0 #1a1a2e;
+  transition: all 0.2s ease;
 }
 
 .sidebar-card:hover {
-  background: rgba(255, 255, 255, 0.65);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 #1a1a2e;
 }
 
 .card-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #1f2937;
+  font-size: 18px;
+  font-weight: 800;
+  color: #1a1a2e;
   margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 3px dashed #e5e7eb;
 }
 
 .card-title .el-icon {
   color: #a855f7;
 }
 
-/* 热门话题 */
+/* 热门话题 - 漫画风格 */
 .hot-topics {
   display: flex;
   flex-direction: column;
@@ -1188,47 +1195,54 @@ onMounted(() => {
   gap: 12px;
   cursor: pointer;
   padding: 10px 12px;
-  border-radius: 10px;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
 }
 
 .topic-item:hover {
-  background: rgba(168, 85, 247, 0.1);
+  background: #ffeaa7;
+  border-color: #1a1a2e;
   transform: translateX(4px);
 }
 
 .topic-rank {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
   background: #e5e7eb;
-  color: #6b7280;
+  color: #1a1a2e;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 2px solid #1a1a2e;
 }
 
 .topic-rank.top {
-  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  background: #ff6b6b;
   color: white;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+  box-shadow: 2px 2px 0 #1a1a2e;
 }
 
 .topic-name {
   flex: 1;
   font-size: 14px;
-  color: #374151;
-  font-weight: 500;
+  color: #1a1a2e;
+  font-weight: 600;
 }
 
 .topic-count {
   font-size: 12px;
-  color: #9ca3af;
+  color: #666;
+  font-weight: 600;
+  background: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
-/* 活跃用户 */
+/* 活跃用户 - 漫画风格 */
 .active-users {
   display: flex;
   flex-direction: column;
@@ -1239,21 +1253,24 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px;
+  padding: 10px;
   border-radius: 10px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
 }
 
 .user-item:hover {
-  background: rgba(168, 85, 247, 0.1);
+  background: #e8f4fd;
+  border-color: #1a1a2e;
   transform: translateX(4px);
 }
 
 .user-avatar {
-  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  background: linear-gradient(135deg, #48dbfb, #0abde3);
   color: white;
-  font-weight: 600;
+  font-weight: 700;
+  border: 2px solid #1a1a2e;
 }
 
 .user-info {
@@ -1263,26 +1280,28 @@ onMounted(() => {
 
 .user-name {
   font-size: 14px;
-  font-weight: 600;
-  color: #1f2937;
+  font-weight: 700;
+  color: #1a1a2e;
 }
 
 .user-posts {
   font-size: 12px;
-  color: #9ca3af;
+  color: #666;
+  font-weight: 500;
 }
 
 .empty-tip {
   text-align: center;
-  color: #9ca3af;
+  color: #666;
   font-size: 13px;
   padding: 20px 0;
+  font-weight: 600;
 }
 
-/* 发布提示卡片 */
+/* 发布提示卡片 - 漫画风格 */
 .publish-tip-card {
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%) !important;
-  border-color: rgba(168, 85, 247, 0.2) !important;
+  background: #ffeaa7 !important;
+  border-color: #1a1a2e !important;
 }
 
 .tip-content {
@@ -1296,9 +1315,10 @@ onMounted(() => {
 }
 
 .tip-content p {
-  color: #6b7280;
+  color: #1a1a2e;
   margin: 0 0 12px;
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 /* 空状态 */
@@ -1368,26 +1388,121 @@ onMounted(() => {
   padding: 24px 0;
 }
 
-/* 发布对话框 */
+/* 发布对话框 - 漫画风格 */
 :deep(.publish-dialog) {
   border-radius: 16px;
+  border: 4px solid #1a1a2e !important;
+  box-shadow: 10px 10px 0 #1a1a2e !important;
 }
 
 :deep(.publish-dialog .el-dialog__header) {
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 3px dashed #e5e7eb;
   padding-bottom: 16px;
 }
 
+:deep(.publish-dialog .el-dialog__title) {
+  font-weight: 800;
+  font-size: 20px;
+  color: #1a1a2e;
+}
+
+:deep(.publish-dialog .el-dialog__headerbtn) {
+  width: 32px;
+  height: 32px;
+  border: 2px solid #1a1a2e;
+  border-radius: 50%;
+  background: #fff;
+  transition: all 0.2s;
+}
+
+:deep(.publish-dialog .el-dialog__headerbtn:hover) {
+  background: #ff6b6b;
+  transform: rotate(90deg);
+}
+
+:deep(.publish-dialog .el-dialog__headerbtn .el-icon) {
+  color: #1a1a2e;
+  font-weight: bold;
+}
+
+:deep(.publish-dialog .el-form-item__label) {
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+:deep(.publish-dialog .el-input__wrapper),
+:deep(.publish-dialog .el-textarea__inner) {
+  border: 2px solid #1a1a2e !important;
+  border-radius: 10px !important;
+  box-shadow: 3px 3px 0 #1a1a2e !important;
+  transition: all 0.2s !important;
+}
+
+:deep(.publish-dialog .el-input__wrapper:focus-within),
+:deep(.publish-dialog .el-textarea__inner:focus) {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 #1a1a2e !important;
+}
+
+:deep(.publish-dialog .el-dialog__footer) {
+  border-top: 3px dashed #e5e7eb;
+  padding-top: 16px;
+}
+
+:deep(.publish-dialog .el-dialog__footer .el-button) {
+  border: 2px solid #1a1a2e;
+  border-radius: 20px;
+  font-weight: 700;
+  box-shadow: 3px 3px 0 #1a1a2e;
+  transition: all 0.2s;
+}
+
+:deep(.publish-dialog .el-dialog__footer .el-button:hover) {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 #1a1a2e;
+}
+
+:deep(.publish-dialog .el-dialog__footer .el-button--primary) {
+  background: #a855f7;
+  border-color: #1a1a2e;
+}
+
+/* 分类选择 - 漫画风格 */
 .category-radio-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
-.category-radio-group .el-radio-button {
-  --el-radio-button-checked-bg-color: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+.category-radio-group :deep(.el-radio-button__inner) {
+  border: 2px solid #1a1a2e !important;
+  border-radius: 20px !important;
+  box-shadow: 3px 3px 0 #1a1a2e;
+  font-weight: 600;
+  padding: 8px 16px;
+  transition: all 0.2s;
 }
 
+.category-radio-group :deep(.el-radio-button__inner:hover) {
+  background: #ffeaa7;
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 #1a1a2e;
+}
+
+.category-radio-group :deep(.el-radio-button.is-active .el-radio-button__inner) {
+  background: #a855f7 !important;
+  color: #fff !important;
+  border-color: #1a1a2e !important;
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 #1a1a2e;
+}
+
+.category-radio-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background: #a855f7 !important;
+  color: #fff !important;
+}
+
+/* 图片上传 - 漫画风格 */
 .image-uploader {
   width: 100%;
 }
@@ -1395,22 +1510,24 @@ onMounted(() => {
 .upload-placeholder {
   width: 100%;
   height: 160px;
-  border: 2px dashed #d1d5db;
+  border: 3px dashed #1a1a2e;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #9ca3af;
+  color: #1a1a2e;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
+  background: #fff;
 }
 
 .upload-placeholder:hover {
-  border-color: #a855f7;
-  color: #a855f7;
-  background: rgba(168, 85, 247, 0.05);
+  background: #ffeaa7;
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 #1a1a2e;
 }
 
 .upload-placeholder .el-icon {
@@ -1419,7 +1536,8 @@ onMounted(() => {
 
 .upload-tip {
   font-size: 12px;
-  color: #9ca3af;
+  color: #666;
+  font-weight: 500;
 }
 
 .upload-progress {
@@ -1428,9 +1546,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px dashed #a855f7;
+  border: 3px dashed #a855f7;
   border-radius: 12px;
-  background: rgba(168, 85, 247, 0.05);
+  background: #f8f4ff;
 }
 
 .uploaded-image {
@@ -1439,6 +1557,8 @@ onMounted(() => {
   border-radius: 12px;
   overflow: hidden;
   position: relative;
+  border: 3px solid #1a1a2e;
+  box-shadow: 5px 5px 0 #1a1a2e;
 }
 
 .uploaded-image .el-image {
@@ -1449,16 +1569,17 @@ onMounted(() => {
 .image-mask {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(26, 26, 46, 0.8);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity 0.2s;
   cursor: pointer;
   color: white;
+  font-weight: 700;
 }
 
 .uploaded-image:hover .image-mask {

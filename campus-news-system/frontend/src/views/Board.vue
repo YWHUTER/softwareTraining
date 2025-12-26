@@ -1,17 +1,19 @@
 <template>
-  <div class="board-page">
+  <div class="board-page-wrapper" :class="`board-bg-${boardType}`">
+    <div class="board-page">
     <!-- 顶部功能栏 -->
     <div 
       class="board-header-bar"
+      :class="boardType"
       v-motion
       :initial="{ opacity: 0, y: -20 }"
       :enter="{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 250, damping: 25 } }"
     >
       <div class="header-left">
         <div class="board-icon" :class="boardType">
-          <el-icon v-if="boardType === 'OFFICIAL'"><Document /></el-icon>
-          <el-icon v-else-if="boardType === 'CAMPUS'"><School /></el-icon>
-          <el-icon v-else><OfficeBuilding /></el-icon>
+          <span v-if="boardType === 'OFFICIAL'">🏛️</span>
+          <span v-else-if="boardType === 'CAMPUS'">🏫</span>
+          <span v-else>🎓</span>
         </div>
         <div class="header-info">
           <h2 class="board-title">{{ boardTitle }}</h2>
@@ -232,6 +234,7 @@
     <!-- 回到顶部 -->
     <el-backtop :right="40" :bottom="40" />
   </div>
+  </div>
 </template>
 
 <script setup>
@@ -293,13 +296,18 @@ const fetchArticles = async () => {
       sortOrder: sortOrder,
       _t: Date.now() // Add timestamp to prevent caching
     })
-    articles.value = (data.records || []).map(item => ({
+    const records = data.records || []
+    articles.value = records.map(item => ({
       ...item,
       imageLoadError: false // 初始化图片加载状态
     }))
-    total.value = data.total
+    // 确保 total 正确更新，优先使用后端返回的 total，否则使用实际记录数
+    total.value = data.total ?? records.length
   } catch (error) {
     console.error(error)
+    // 出错时重置
+    articles.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -371,18 +379,61 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 全屏背景容器 */
+.board-page-wrapper {
+  min-height: 100vh;
+  width: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+}
+
+/* 背景图片遮罩层 - 无模糊效果 */
+.board-page-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.3);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 官方新闻背景 */
+.board-bg-OFFICIAL {
+  background-image: url('@/assets/board-official-bg.jpg');
+}
+
+/* 全校新闻背景 */
+.board-bg-CAMPUS {
+  background-image: url('@/assets/board-campus-bg.jpg');
+}
+
+/* 学院新闻背景 */
+.board-bg-COLLEGE {
+  background-image: url('@/assets/board-college-bg.jpg');
+}
+
+/* 内容区域 */
 .board-page {
   max-width: 1400px;
   margin: 0 auto;
+  padding: 24px;
+  position: relative;
+  z-index: 1;
 }
 
 /* Header Bar */
 .board-header-bar {
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(20px) saturate(150%);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   border-radius: 20px;
   padding: 24px 32px;
+  padding-left: 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -393,12 +444,41 @@ onMounted(() => {
   position: relative;
   z-index: 10;
   transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+/* 左侧彩色装饰条 */
+.board-header-bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  border-radius: 20px 0 0 20px;
+  transition: width 0.3s ease;
+}
+
+.board-header-bar.OFFICIAL::before {
+  background: linear-gradient(180deg, #409eff 0%, #66b1ff 100%);
+}
+
+.board-header-bar.CAMPUS::before {
+  background: linear-gradient(180deg, #e6a23c 0%, #f5c77e 100%);
+}
+
+.board-header-bar.COLLEGE::before {
+  background: linear-gradient(180deg, #8B7355 0%, #A0926D 100%);
 }
 
 .board-header-bar:hover {
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.65);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08), 
               0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+}
+
+.board-header-bar:hover::before {
+  width: 8px;
 }
 
 .header-left {
@@ -408,26 +488,18 @@ onMounted(() => {
 }
 
 .board-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
-  color: white;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-  transform: rotate(-5deg);
+  font-size: 40px;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .board-header-bar:hover .board-icon {
-  transform: rotate(0deg) scale(1.05);
+  transform: rotate(0deg) scale(1.1);
 }
-
-.board-icon.OFFICIAL { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); }
-.board-icon.CAMPUS { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
-.board-icon.COLLEGE { background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); }
 
 .header-info {
   display: flex;

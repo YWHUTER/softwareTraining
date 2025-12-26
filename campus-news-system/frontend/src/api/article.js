@@ -74,3 +74,18 @@ export const getPublicStats = () => {
     method: 'get'
   })
 }
+
+export const getMarketplaceActiveUsers = (limit = 10) => {
+  return request({
+    url: '/article/marketplace/active-users',
+    method: 'get',
+    params: { limit }
+  })
+}
+
+export const getMarketplaceCategoryStats = () => {
+  return request({
+    url: '/article/marketplace/category-stats',
+    method: 'get'
+  })
+}

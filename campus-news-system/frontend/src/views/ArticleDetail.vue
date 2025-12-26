@@ -1,5 +1,20 @@
 <template>
   <div class="article-detail-page" v-loading="loading" element-loading-text="加载中...">
+    <!-- 返回导航栏 -->
+    <div class="back-nav-bar" v-motion :initial="{ opacity: 0, y: -10 }" :enter="{ opacity: 1, y: 0 }">
+      <el-button class="back-btn" @click="goBack" round>
+        <el-icon><ArrowLeft /></el-icon>
+        <span>返回</span>
+      </el-button>
+      <div class="nav-breadcrumb">
+        <span class="breadcrumb-item" @click="goHome">首页</span>
+        <el-icon class="breadcrumb-separator"><ArrowRight /></el-icon>
+        <span class="breadcrumb-item" @click="goToBoard">{{ getBoardTypeName(article?.boardType) }}</span>
+        <el-icon class="breadcrumb-separator"><ArrowRight /></el-icon>
+        <span class="breadcrumb-current">文章详情</span>
+      </div>
+    </div>
+
     <el-row :gutter="24">
       <!-- 左侧主内容区 -->
       <el-col :xs="24" :sm="24" :md="17" :lg="17">
@@ -575,7 +590,7 @@ import { getCommentList, createComment, deleteComment } from '@/api/comment'
 import { toggleFollow, checkFollow, getFollowStats } from '@/api/follow'
 import { searchUsers } from '@/api/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Download, Link, Histogram, Document, Reading } from '@element-plus/icons-vue'
+import { Download, Link, Histogram, Document, Reading, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import { htmlToText } from '@/utils/htmlParser'
 import QRCode from 'qrcode'
 import BackToTop from '@/components/BackToTop.vue'
@@ -1184,11 +1199,38 @@ const exportToPDF = () => {
   exportLoading.value = false
 }
 
+// 返回上一页
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/')
+  }
+}
+
+// 返回首页
+const goHome = () => {
+  router.push('/')
+}
+
+// 返回对应板块
+const goToBoard = () => {
+  const boardType = article.value?.boardType
+  if (boardType === 'MARKETPLACE') {
+    router.push('/marketplace')
+  } else if (boardType) {
+    router.push(`/board/${boardType}`)
+  } else {
+    router.push('/')
+  }
+}
+
 const getBoardTypeName = (type) => {
   const types = {
     OFFICIAL: '官方新闻',
     CAMPUS: '全校新闻',
-    COLLEGE: '学院新闻'
+    COLLEGE: '学院新闻',
+    MARKETPLACE: '校园集市'
   }
   return types[type] || type
 }
@@ -1252,6 +1294,61 @@ onMounted(() => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 20px;
+}
+
+/* 返回导航栏 */
+.back-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 0;
+  margin-bottom: 16px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  color: #4b5563;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+  transform: translateX(-4px);
+}
+
+.nav-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.breadcrumb-item {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.breadcrumb-item:hover {
+  color: #667eea;
+}
+
+.breadcrumb-separator {
+  font-size: 12px;
+  color: #d1d5db;
+}
+
+.breadcrumb-current {
+  color: #374151;
+  font-weight: 500;
 }
 
 .main-content {

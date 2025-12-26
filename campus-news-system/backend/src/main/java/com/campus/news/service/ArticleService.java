@@ -332,4 +332,118 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
         
         return stats;
     }
+
+    /**
+     * 获取校园集市活跃用户（按发布动态数量排序）
+     */
+    public java.util.List<java.util.Map<String, Object>> getMarketplaceActiveUsers(int limit) {
+        java.util.List<java.util.Map<String, Object>> activeUsers = new java.util.ArrayList<>();
+        
+        try {
+            // 查询 MARKETPLACE 板块已审核通过的文章，按作者分组统计数量
+            QueryWrapper<Article> wrapper = new QueryWrapper<>();
+            wrapper.select("author_id", "COUNT(*) as post_count")
+                   .eq("board_type", "MARKETPLACE")
+                   .eq("is_approved", 1)
+                   .eq("status", 1)
+                   .groupBy("author_id")
+                   .orderByDesc("post_count")
+                   .last("LIMIT " + limit);
+            
+            java.util.List<java.util.Map<String, Object>> results = articleMapper.selectMaps(wrapper);
+            
+            if (results == null || results.isEmpty()) {
+                return activeUsers;
+            }
+            
+            for (java.util.Map<String, Object> row : results) {
+                Object authorIdObj = row.get("author_id");
+                Object postCountObj = row.get("post_count");
+                
+                if (authorIdObj == null || postCountObj == null) {
+                    continue;
+                }
+                
+                Long authorId = ((Number) authorIdObj).longValue();
+                Long postCount = ((Number) postCountObj).longValue();
+                
+                try {
+                    User user = userService.getUserInfo(authorId);
+                    if (user != null) {
+                        java.util.Map<String, Object> userInfo = new java.util.HashMap<>();
+                        userInfo.put("id", user.getId());
+                        userInfo.put("realName", user.getRealName());
+                        userInfo.put("avatar", user.getAvatar());
+                        userInfo.put("postCount", postCount);
+                        activeUsers.add(userInfo);
+                    }
+                } catch (Exception e) {
+                    // 用户不存在，跳过
+                }
+            }
+        } catch (Exception e) {
+            // 查询失败返回空列表
+        }
+        
+        return activeUsers;
+    }
+
+    /**
+     * 获取校园集市分类统计（按动态数量排序）
+     */
+    public java.util.List<java.util.Map<String, Object>> getMarketplaceCategoryStats() {
+        java.util.List<java.util.Map<String, Object>> categoryStats = new java.util.ArrayList<>();
+        
+        // 分类名称映射
+        java.util.Map<String, String> categoryLabels = new java.util.HashMap<>();
+        categoryLabels.put("daily", "日常");
+        categoryLabels.put("trade", "交易");
+        categoryLabels.put("help", "互助");
+        categoryLabels.put("activity", "组队");
+        categoryLabels.put("lost", "失物");
+        categoryLabels.put("study", "学习");
+        categoryLabels.put("sports", "运动");
+        
+        try {
+            // 查询 MARKETPLACE 板块已审核通过的文章，按分类分组统计数量
+            QueryWrapper<Article> wrapper = new QueryWrapper<>();
+            wrapper.select("category", "COUNT(*) as count")
+                   .eq("board_type", "MARKETPLACE")
+                   .eq("is_approved", 1)
+                   .eq("status", 1)
+                   .isNotNull("category")
+                   .ne("category", "")
+                   .groupBy("category")
+                   .orderByDesc("count");
+            
+            java.util.List<java.util.Map<String, Object>> results = articleMapper.selectMaps(wrapper);
+            
+            if (results == null || results.isEmpty()) {
+                return categoryStats;
+            }
+            
+            for (java.util.Map<String, Object> row : results) {
+                Object categoryObj = row.get("category");
+                Object countObj = row.get("count");
+                
+                if (categoryObj == null || countObj == null) {
+                    continue;
+                }
+                
+                String category = categoryObj.toString();
+                Long count = ((Number) countObj).longValue();
+                String label = categoryLabels.getOrDefault(category, category);
+                
+                java.util.Map<String, Object> stat = new java.util.HashMap<>();
+                stat.put("category", category);
+                stat.put("label", label);
+                stat.put("count", count);
+                categoryStats.add(stat);
+            }
+        } catch (Exception e) {
+            // 查询失败返回空列表
+        }
+        
+        return categoryStats;
+    }
 }
