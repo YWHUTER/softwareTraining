@@ -227,6 +227,9 @@
         </div>
       </el-footer>
     </el-container>
+    
+    <!-- AI 悬浮助手 -->
+    <AiFloatingAssistant />
   </div>
 </template>
 
@@ -242,6 +245,7 @@ import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '@/a
 import bgImage from '@/assets/main-bg.jpg'
 import notificationWS from '@/utils/websocket'
 import ParticleBackground from '@/components/ParticleBackground.vue'
+import AiFloatingAssistant from '@/components/AiFloatingAssistant.vue'
 
 const router = useRouter()
 const route = useRoute()
