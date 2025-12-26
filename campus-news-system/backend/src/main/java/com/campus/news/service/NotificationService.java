@@ -70,7 +70,7 @@ public class NotificationService {
                 Article article = articleMapper.selectById(articleId);
                 String articleTitle = article != null ? article.getTitle() : "某篇文章";
                 
-                // 获取发送者信息
+                // 获取发送者消息
                 User fromUser = userMapper.selectById(fromUserId);
                 String fromName = fromUser != null ? fromUser.getRealName() : "某用户";
                 

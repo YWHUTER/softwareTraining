@@ -13,7 +13,7 @@ import java.util.List;
 public class RoleService extends ServiceImpl<RoleMapper, Role> {
     
     private final RoleMapper roleMapper;
-    
+    // 根据用户id获取角色列表
     public List<Role> getRolesByUserId(Long userId) {
         return roleMapper.findByUserId(userId);
     }

@@ -75,7 +75,7 @@ public class ChatHistoryService {
     }
     
     /**
-     * 获取会话的所有消息
+     * 获取会话的所有消息.
      */
     public List<ChatMessage> getSessionMessages(Long sessionId) {
         LambdaQueryWrapper<ChatMessage> wrapper = new LambdaQueryWrapper<>();

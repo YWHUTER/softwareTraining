@@ -50,21 +50,21 @@
           
           <!-- 普通模式快捷功能 -->
           <div v-if="!agentMode">
-            <div class="nav-item" @click="sendQuickQuestion('帮我搜索关于讲座的新闻')">
-              <el-icon><Search /></el-icon>
-              <span>智能搜索</span>
-            </div>
             <div class="nav-item" @click="sendQuickQuestion('请帮我写一篇校园活动的新闻稿，包含标题、摘要和正文框架')">
               <el-icon><Edit /></el-icon>
-              <span>写作辅助</span>
+              <span>写作助手</span>
+            </div>
+            <div class="nav-item" @click="sendQuickQuestion('我想提高学习效率，有什么好的学习方法推荐吗？')">
+              <el-icon><Reading /></el-icon>
+              <span>学习指导</span>
             </div>
             <div class="nav-item" @click="sendQuickQuestion('帮我看看浏览量最高的热门文章有哪些')">
               <el-icon><TrendCharts /></el-icon>
               <span>热门排行</span>
             </div>
-            <div class="nav-item" @click="sendQuickQuestion('统计一下系统目前有多少文章、用户和总浏览量')">
-              <el-icon><DataAnalysis /></el-icon>
-              <span>数据统计</span>
+            <div class="nav-item" @click="sendQuickQuestion('请介绍一下校园新闻系统的功能和使用方法')">
+              <el-icon><InfoFilled /></el-icon>
+              <span>系统指南</span>
             </div>
           </div>
           
@@ -92,7 +92,7 @@
               v-for="(topic, index) in hotTopics" 
               :key="index" 
               class="nav-item"
-              @click="sendQuickQuestion(`搜索关于${topic}的新闻`)"
+              @click="sendQuickQuestion(topic)"
             >
               <span class="topic-badge" :class="{ hot: index < 3 }">{{ index + 1 }}</span>
               <span>{{ topic }}</span>
@@ -222,7 +222,19 @@
           </el-dropdown>
         </div>
         
-        <div class="header-right"></div>
+        <div class="header-right">
+          <!-- 导出PDF按钮 -->
+          <el-tooltip content="导出对话为PDF" placement="bottom">
+            <button 
+              class="export-pdf-btn" 
+              @click="exportToPdf"
+              :disabled="messages.length === 0"
+            >
+              <el-icon><Download /></el-icon>
+              <span>导出PDF</span>
+            </button>
+          </el-tooltip>
+        </div>
       </header>
 
       <!-- 聊天消息区域 -->
@@ -351,8 +363,10 @@ import {
   QuestionFilled, Search, Edit, TrendCharts, DataAnalysis, 
   Plus, Fold, Expand, ArrowDown, Top, Loading,
   Document, Compass, EditPen, ChatLineRound, ChatDotRound, Check,
-  User, Setting, SwitchButton, Delete, Moon, Lightning, Coordinate, Clock
+  User, Setting, SwitchButton, Delete, Moon, Lightning, Coordinate, Clock,
+  Reading, InfoFilled, Notebook, Bell, Calendar, Download
 } from '@element-plus/icons-vue'
+import html2pdf from 'html2pdf.js'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import logoUrl from '@/assets/whut-logo.png'
@@ -443,30 +457,38 @@ const todayStats = ref({
   views: 0
 })
 
-// 热门话题
+// 热门话题 - Chat模式丰富话题
 const hotTopics = ref([
-  '校园活动',
-  '讲座信息',
-  '比赛通知',
-  '就业招聘',
-  '社团纳新'
+  '帮我写一篇新闻稿',
+  '期末复习攻略',
+  '英语学习方法',
+  '考研备考建议',
+  '求职面试技巧',
+  '校园活动策划',
+  '演讲稿怎么写',
+  '论文写作指导'
 ])
 
-// Agent模式专属快捷功能
+// Agent模式专属快捷功能 - 突出自动化能力
 const agentShortcuts = [
-  { icon: 'Search', text: '智能搜评', prompt: '帮我搜索关于AI的文章并评论"写得真好"' },
-  { icon: 'Pointer', text: '批量点赞', prompt: '给所有关于计算机的文章点赞' },
-  { icon: 'Edit', text: '写作发布', prompt: '帮我写一篇关于校园歌手大赛的新闻稿' },
-  { icon: 'User', text: '社交互动', prompt: '关注用户admin并查看他的文章' }
+  { icon: 'Document', text: '一键发布', prompt: '智能发布一篇关于校园活动的文章' },
+  { icon: 'Bell', text: '发布通知', prompt: '发布紧急通知：明天图书馆闭馆维护，通知所有用户' },
+  { icon: 'Notebook', text: '批量发布', prompt: '批量发布系列"编程入门"，主题：Java基础、Python入门、前端开发' },
+  { icon: 'Calendar', text: '内容计划', prompt: '执行迎新内容计划' }
 ]
 
-// Agent模式热门指令
+// Agent模式热门指令 - 突出自动化发布和运维
 const agentHotCommands = [
-  '分析今日热点趋势',
-  '评论关于宿舍的文章',
-  '收藏计算机相关文章',
-  '搜索用户张三',
-  '批量点赞最新新闻'
+  // 发布类
+  '智能发布一篇关于期末考试的文章',
+  '发布重要通知：学校放假安排，通知所有用户',
+  '批量发布系列"校园指南"，主题：食堂、宿舍、图书馆',
+  '执行考试季内容计划',
+  // 运维类
+  '执行系统健康检查',
+  '生成今日运营日报',
+  '执行热门内容推广',
+  '批量优化10篇文章'
 ]
 
 // 根据模式过滤会话列表
@@ -556,6 +578,99 @@ const handleModeChange = (value) => {
   agentSteps.value = []
   currentSessionId.value = null
   sessionId.value = ''
+}
+
+// 导出对话为PDF
+const exportToPdf = async () => {
+  if (messages.value.length === 0) {
+    ElMessage.warning('暂无对话内容可导出')
+    return
+  }
+  
+  ElMessage.info('正在生成PDF，请稍候...')
+  
+  try {
+    // 创建用于导出的HTML内容
+    const exportContent = document.createElement('div')
+    exportContent.style.padding = '20px'
+    exportContent.style.fontFamily = 'Arial, sans-serif'
+    exportContent.style.backgroundColor = '#ffffff'
+    exportContent.style.color = '#333333'
+    
+    // 添加标题
+    const title = document.createElement('h1')
+    title.textContent = `WHUTGPT ${agentMode.value ? 'Agent' : '对话'}记录`
+    title.style.textAlign = 'center'
+    title.style.color = '#10a37f'
+    title.style.marginBottom = '10px'
+    exportContent.appendChild(title)
+    
+    // 添加导出时间
+    const timeInfo = document.createElement('p')
+    timeInfo.textContent = `导出时间：${new Date().toLocaleString('zh-CN')}`
+    timeInfo.style.textAlign = 'center'
+    timeInfo.style.color = '#666666'
+    timeInfo.style.marginBottom = '30px'
+    exportContent.appendChild(timeInfo)
+    
+    // 添加分隔线
+    const hr = document.createElement('hr')
+    hr.style.border = 'none'
+    hr.style.borderTop = '1px solid #e5e7eb'
+    hr.style.marginBottom = '20px'
+    exportContent.appendChild(hr)
+    
+    // 遍历消息添加到内容
+    messages.value.forEach((msg, index) => {
+      const msgDiv = document.createElement('div')
+      msgDiv.style.marginBottom = '20px'
+      msgDiv.style.padding = '15px'
+      msgDiv.style.borderRadius = '8px'
+      msgDiv.style.backgroundColor = msg.role === 'user' ? '#f0f9ff' : '#f0fdf4'
+      
+      // 角色标签
+      const roleLabel = document.createElement('div')
+      roleLabel.textContent = msg.role === 'user' ? '👤 用户' : '🤖 WHUTGPT'
+      roleLabel.style.fontWeight = 'bold'
+      roleLabel.style.marginBottom = '10px'
+      roleLabel.style.color = msg.role === 'user' ? '#0369a1' : '#10a37f'
+      msgDiv.appendChild(roleLabel)
+      
+      // 消息内容
+      const content = document.createElement('div')
+      content.textContent = msg.content
+      content.style.whiteSpace = 'pre-wrap'
+      content.style.lineHeight = '1.6'
+      msgDiv.appendChild(content)
+      
+      exportContent.appendChild(msgDiv)
+    })
+    
+    // 添加页脚
+    const footer = document.createElement('div')
+    footer.style.marginTop = '30px'
+    footer.style.textAlign = 'center'
+    footer.style.color = '#999999'
+    footer.style.fontSize = '12px'
+    footer.textContent = '— 由 WHUTGPT 校园新闻智能助手生成 —'
+    exportContent.appendChild(footer)
+    
+    // 生成PDF
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: `WHUTGPT_${agentMode.value ? 'Agent' : 'Chat'}_${new Date().toISOString().slice(0,10)}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }
+    
+    await html2pdf().set(opt).from(exportContent).save()
+    
+    ElMessage.success('PDF导出成功！')
+  } catch (error) {
+    console.error('导出PDF失败:', error)
+    ElMessage.error('导出PDF失败，请重试')
+  }
 }
 
 // 发送消息 - 支持普通对话和Agent模式
@@ -1837,6 +1952,50 @@ onMounted(() => {
 .header-left {
   display: flex;
   align-items: center;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 导出PDF按钮样式 */
+.export-pdf-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #10a37f 0%, #0d8a6a 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(16, 163, 127, 0.3);
+}
+
+.export-pdf-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0d8a6a 0%, #0a7558 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 163, 127, 0.4);
+}
+
+.export-pdf-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.export-pdf-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.6;
+}
+
+.export-pdf-btn .el-icon {
+  font-size: 16px;
 }
 
 /* 响应式设计 */
