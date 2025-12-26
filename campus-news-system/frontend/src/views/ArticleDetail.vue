@@ -307,6 +307,16 @@
           <div class="comment-content">
             <div class="comment-user-info">
               <span class="comment-user">{{ comment.user?.realName }}</span>
+              <!-- AI 机器人标识 -->
+              <el-tag 
+                v-if="comment.user?.username === 'WHUTGPT'" 
+                type="primary" 
+                size="small" 
+                effect="dark"
+                class="ai-robot-tag"
+              >
+                🤖 AI
+              </el-tag>
               <span class="comment-time">{{ formatTime(comment.createdAt) }}</span>
             </div>
             
@@ -338,6 +348,16 @@
                 <div class="reply-content">
                   <div class="reply-user-info">
                     <span class="reply-user">{{ reply.user?.realName }}</span>
+                    <!-- AI 机器人标识 -->
+                    <el-tag 
+                      v-if="reply.user?.username === 'WHUTGPT'" 
+                      type="primary" 
+                      size="small" 
+                      effect="dark"
+                      class="ai-robot-tag"
+                    >
+                      🤖 AI
+                    </el-tag>
                     <span v-if="reply.replyToUser" class="reply-to">
                       回复 <span class="reply-to-name">@{{ reply.replyToUser.realName }}</span>
                     </span>
@@ -1854,6 +1874,18 @@ onMounted(() => {
   font-weight: 600;
   color: #2c3e50;
   font-size: 15px;
+}
+
+/* AI 机器人标签样式 */
+.ai-robot-tag {
+  margin-left: 6px;
+  font-size: 11px;
+  padding: 0 6px;
+  height: 18px;
+  line-height: 16px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
 }
 
 .comment-time {

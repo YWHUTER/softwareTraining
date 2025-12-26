@@ -15,6 +15,7 @@ import com.campus.news.mapper.CommentMapper;
 import com.campus.news.exception.BusinessException;
 import com.campus.news.mapper.ArticleMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,9 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
     private final ArticleFavoriteService articleFavoriteService;
     private final CommentMapper commentMapper;
     private final TagService tagService;
+    
+    @Lazy
+    private final AiCommentRobotService aiCommentRobotService;
     
     @Transactional
     public Article createArticle(ArticleCreateRequest request, Long userId) {
@@ -62,6 +66,13 @@ public class ArticleService extends ServiceImpl<ArticleMapper, Article> {
         // 处理标签
         if (request.getTags() != null && !request.getTags().isEmpty()) {
             tagService.addTagsToArticle(article.getId(), request.getTags());
+        }
+        
+        // 🤖 触发 AI 评论机器人（异步）
+        try {
+            aiCommentRobotService.generateCommentForArticle(article.getId());
+        } catch (Exception e) {
+            // AI评论失败不影响文章发布
         }
         
         return article;

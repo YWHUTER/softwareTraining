@@ -333,6 +333,10 @@ INSERT INTO `user` (`id`, `username`, `password`, `email`, `real_name`, `status`
 
 INSERT INTO `user_role` (`user_id`, `role_id`) VALUES (1, 1);
 
+-- 初始化 AI 评论机器人用户 (WHUTGPT)
+INSERT INTO `user` (`id`, `username`, `password`, `email`, `real_name`, `avatar`, `status`) VALUES
+(2, 'WHUTGPT', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'ai-robot@whut.edu.cn', 'WHUTGPT', '/avatars/ai-robot.png', 1);
+
 -- 初始化热门标签
 INSERT INTO `tag` (`name`, `use_count`) VALUES
 ('校园活动', 15),

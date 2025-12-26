@@ -116,6 +116,9 @@ public class NewsAgentTools {
     private final VideoCategoryMapper videoCategoryMapper;
     private final CollegeMapper collegeMapper;
     
+    // AI 评论机器人服务
+    private final com.campus.news.service.AiCommentRobotService aiCommentRobotService;
+    
     // 推荐服务配置
     @Value("${recommendation.service.url:http://localhost:5000}")
     private String recommendationServiceUrl;
@@ -289,6 +292,13 @@ public class NewsAgentTools {
             
             articleMapper.insert(article);
             
+            // 🤖 触发 AI 评论机器人（异步）
+            try {
+                aiCommentRobotService.generateCommentForArticle(article.getId());
+            } catch (Exception e) {
+                log.warn("AI评论触发失败，不影响文章创建", e);
+            }
+            
             return "✅ 文章草稿创建成功！\n" +
                    "标题：《" + title + "》\n" +
                    "版块：" + getBoardTypeName(boardType) + "\n" +
@@ -337,6 +347,13 @@ public class NewsAgentTools {
             article.setUpdatedAt(LocalDateTime.now());
             
             articleMapper.insert(article);
+            
+            // 🤖 触发 AI 评论机器人（异步）
+            try {
+                aiCommentRobotService.generateCommentForArticle(article.getId());
+            } catch (Exception e) {
+                log.warn("AI评论触发失败，不影响文章发布", e);
+            }
             
             StringBuilder result = new StringBuilder();
             if (isAdmin) {
@@ -528,6 +545,13 @@ public class NewsAgentTools {
             article.setUpdatedAt(LocalDateTime.now());
             
             articleMapper.insert(article);
+            
+            // 🤖 触发 AI 评论机器人（异步）
+            try {
+                aiCommentRobotService.generateCommentForArticle(article.getId());
+            } catch (Exception e) {
+                log.warn("AI评论触发失败，不影响文章发布", e);
+            }
             
             // 自动添加标签
             List<String> addedTags = new ArrayList<>();

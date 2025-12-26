@@ -193,6 +193,7 @@
             <div class="comment-content">
               <div class="comment-header">
                 <span class="comment-author">{{ comment.user?.realName || '匿名用户' }}</span>
+                <span v-if="comment.user?.username === 'WHUTGPT'" class="ai-robot-badge">🤖 AI</span>
                 <span class="comment-time">{{ formatTime(comment.createdAt) }}</span>
               </div>
               <p class="comment-text">{{ comment.content }}</p>
@@ -226,6 +227,7 @@
                   <div class="reply-content">
                     <div class="reply-header">
                       <span class="reply-author">{{ reply.user?.realName || '匿名用户' }}</span>
+                      <span v-if="reply.user?.username === 'WHUTGPT'" class="ai-robot-badge">🤖 AI</span>
                       <span v-if="reply.replyToUser" class="reply-to">
                         回复 <span class="reply-to-name">@{{ reply.replyToUser.realName }}</span>
                       </span>
@@ -1392,6 +1394,18 @@ onBeforeUnmount(() => {
   font-size: 13px;
   font-weight: 500;
   color: #0f0f0f;
+}
+
+/* AI 机器人标识 */
+.ai-robot-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
 }
 
 .comment-time {
