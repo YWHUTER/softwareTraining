@@ -8,34 +8,116 @@
         <h3>热门话题</h3>
         <span class="update-time" v-if="lastUpdate">{{ formatUpdateTime }}</span>
       </div>
-      <button class="refresh-btn" @click="fetchHotWords" :disabled="loading">
-        <el-icon :class="{ 'is-loading': loading }"><Refresh /></el-icon>
-      </button>
+      <div class="header-actions">
+        <!-- 视图切换 -->
+        <el-button-group size="small" class="view-toggle">
+          <el-button 
+            :type="viewMode === 'cloud' ? 'primary' : 'default'"
+            @click="viewMode = 'cloud'"
+          >
+            <el-icon><Grid /></el-icon>
+          </el-button>
+          <el-button 
+            :type="viewMode === 'list' ? 'primary' : 'default'"
+            @click="viewMode = 'list'"
+          >
+            <el-icon><List /></el-icon>
+          </el-button>
+        </el-button-group>
+        <button class="refresh-btn" @click="fetchHotWords" :disabled="loading">
+          <el-icon :class="{ 'is-loading': loading }"><Refresh /></el-icon>
+        </button>
+      </div>
+    </div>
+    
+    <!-- 分析维度选择 -->
+    <div class="dimension-tabs">
+      <span 
+        v-for="dim in dimensions" 
+        :key="dim.value"
+        class="dimension-tab"
+        :class="{ active: activeDimension === dim.value }"
+        @click="switchDimension(dim.value)"
+      >
+        {{ dim.label }}
+      </span>
     </div>
     
     <div class="cloud-body" v-loading="loading">
-      <!-- 词云展示 -->
-      <div class="word-cloud" v-if="words.length > 0">
+      <!-- 词云展示模式 -->
+      <div class="word-cloud" v-if="viewMode === 'cloud' && words.length > 0">
         <TransitionGroup name="word-pop">
           <span
             v-for="(word, index) in words"
             :key="word.word"
             class="word-item"
-            :class="[getTrendClass(word), getSizeClass(word)]"
+            :class="[getTrendClass(word), getSizeClass(word), getSentimentClass(word)]"
             :style="getWordStyle(word, index)"
             @click="handleWordClick(word)"
+            @mouseenter="showWordDetail(word, $event)"
+            @mouseleave="hideWordDetail"
           >
             <span class="word-text">{{ word.word }}</span>
             <span class="trend-icon" v-if="word.trend === 'up'">🔥</span>
             <span class="trend-icon new" v-else-if="word.trend === 'new'">✨</span>
+            <span class="sentiment-dot" :class="word.sentiment" v-if="showSentiment"></span>
           </span>
         </TransitionGroup>
+      </div>
+      
+      <!-- 列表展示模式 -->
+      <div class="word-list" v-else-if="viewMode === 'list' && words.length > 0">
+        <div 
+          v-for="(word, index) in words.slice(0, 20)" 
+          :key="word.word"
+          class="word-list-item"
+          @click="handleWordClick(word)"
+        >
+          <span class="rank" :class="{ top3: index < 3 }">{{ index + 1 }}</span>
+          <span class="word-name">{{ word.word }}</span>
+          <span class="word-category">{{ word.category || '综合' }}</span>
+          <div class="word-bar">
+            <div class="bar-fill" :style="{ width: word.weight + '%' }"></div>
+          </div>
+          <span class="word-weight">{{ word.weight }}</span>
+          <span class="trend-badge" :class="word.trend">
+            <el-icon v-if="word.trend === 'up'"><Top /></el-icon>
+            <el-icon v-else-if="word.trend === 'down'"><Bottom /></el-icon>
+            <span v-else>-</span>
+          </span>
+        </div>
       </div>
       
       <!-- 空状态 -->
       <div class="empty-state" v-else-if="!loading">
         <el-icon :size="48"><TrendCharts /></el-icon>
         <p>暂无热词数据</p>
+      </div>
+    </div>
+    
+    <!-- 新兴话题区域 -->
+    <div class="emerging-section" v-if="emergingTopics.length > 0">
+      <div class="section-title">
+        <el-icon><Promotion /></el-icon>
+        <span>新兴话题</span>
+        <el-tag size="small" type="danger">HOT</el-tag>
+      </div>
+      <div class="emerging-list">
+        <div 
+          v-for="topic in emergingTopics.slice(0, 5)" 
+          :key="topic.word"
+          class="emerging-item"
+          @click="handleWordClick(topic)"
+        >
+          <span class="topic-word">{{ topic.word }}</span>
+          <span class="growth-rate">+{{ (topic.growth_rate * 100).toFixed(0) }}%</span>
+          <el-progress 
+            :percentage="Math.min(topic.confidence * 100, 100)" 
+            :show-text="false"
+            :stroke-width="4"
+            color="#22c55e"
+          />
+        </div>
       </div>
     </div>
     
@@ -57,20 +139,98 @@
         </span>
       </div>
     </div>
+    
+    <!-- 情感分布统计 -->
+    <div class="sentiment-stats" v-if="sentimentData.distribution">
+      <div class="stats-title">情感分布</div>
+      <div class="stats-bars">
+        <div class="stat-bar positive">
+          <span class="label">积极</span>
+          <div class="bar">
+            <div class="fill" :style="{ width: sentimentData.distribution.positive_ratio + '%' }"></div>
+          </div>
+          <span class="value">{{ sentimentData.distribution.positive_ratio }}%</span>
+        </div>
+        <div class="stat-bar neutral">
+          <span class="label">中性</span>
+          <div class="bar">
+            <div class="fill" :style="{ width: sentimentData.distribution.neutral_ratio + '%' }"></div>
+          </div>
+          <span class="value">{{ sentimentData.distribution.neutral_ratio }}%</span>
+        </div>
+        <div class="stat-bar negative">
+          <span class="label">消极</span>
+          <div class="bar">
+            <div class="fill" :style="{ width: sentimentData.distribution.negative_ratio + '%' }"></div>
+          </div>
+          <span class="value">{{ sentimentData.distribution.negative_ratio }}%</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 词汇详情悬浮框 -->
+    <Teleport to="body">
+      <div 
+        class="word-detail-popup" 
+        v-if="hoveredWord"
+        :style="popupStyle"
+      >
+        <div class="popup-header">
+          <span class="popup-word">{{ hoveredWord.word }}</span>
+          <span class="popup-trend" :class="hoveredWord.trend">
+            {{ getTrendLabel(hoveredWord.trend) }}
+          </span>
+        </div>
+        <div class="popup-stats">
+          <div class="stat-item">
+            <span class="stat-label">热度权重</span>
+            <span class="stat-value">{{ hoveredWord.weight }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">出现次数</span>
+            <span class="stat-value">{{ hoveredWord.count || '-' }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">分类</span>
+            <span class="stat-value">{{ hoveredWord.category || '综合' }}</span>
+          </div>
+          <div class="stat-item" v-if="hoveredWord.tfidf_score">
+            <span class="stat-label">TF-IDF</span>
+            <span class="stat-value">{{ hoveredWord.tfidf_score.toFixed(3) }}</span>
+          </div>
+        </div>
+        <div class="popup-tip">点击查看相关内容</div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { TrendCharts, Refresh, Top } from '@element-plus/icons-vue'
+import { TrendCharts, Refresh, Top, Bottom, Grid, List, Promotion } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const router = useRouter()
 const words = ref([])
 const trendingWords = ref([])
+const emergingTopics = ref([])
+const sentimentData = ref({})
 const loading = ref(false)
 const lastUpdate = ref(null)
+const viewMode = ref('cloud')
+const activeDimension = ref('all')
+const showSentiment = ref(false)
+const hoveredWord = ref(null)
+const popupStyle = reactive({ top: '0px', left: '0px' })
+
+// 分析维度
+const dimensions = [
+  { label: '全部', value: 'all' },
+  { label: '今日', value: 'today' },
+  { label: '本周', value: 'week' },
+  { label: '本月', value: 'month' }
+]
 
 // 颜色方案
 const colorSchemes = [
@@ -96,6 +256,7 @@ const formatUpdateTime = computed(() => {
 const getTrendClass = (word) => {
   if (word.trend === 'up') return 'trend-up'
   if (word.trend === 'new') return 'trend-new'
+  if (word.trend === 'down') return 'trend-down'
   return ''
 }
 
@@ -104,6 +265,11 @@ const getSizeClass = (word) => {
   if (word.weight >= 60) return 'size-lg'
   if (word.weight >= 40) return 'size-md'
   return 'size-sm'
+}
+
+const getSentimentClass = (word) => {
+  if (!showSentiment.value) return ''
+  return `sentiment-${word.sentiment || 'neutral'}`
 }
 
 const getWordStyle = (word, index) => {
@@ -118,6 +284,16 @@ const getWordStyle = (word, index) => {
   }
 }
 
+const getTrendLabel = (trend) => {
+  const labels = {
+    'up': '↑ 上升',
+    'down': '↓ 下降',
+    'stable': '→ 稳定',
+    'new': '✨ 新词'
+  }
+  return labels[trend] || '→ 稳定'
+}
+
 const handleWordClick = (word) => {
   router.push({
     path: '/search',
@@ -125,14 +301,36 @@ const handleWordClick = (word) => {
   })
 }
 
+const showWordDetail = (word, event) => {
+  hoveredWord.value = word
+  const rect = event.target.getBoundingClientRect()
+  popupStyle.top = `${rect.bottom + 10}px`
+  popupStyle.left = `${rect.left}px`
+}
+
+const hideWordDetail = () => {
+  hoveredWord.value = null
+}
+
+const switchDimension = async (dimension) => {
+  activeDimension.value = dimension
+  await fetchHotWords()
+}
+
 const fetchHotWords = async () => {
   loading.value = true
   try {
+    // 根据维度获取热词
+    let days = 7
+    if (activeDimension.value === 'today') days = 1
+    else if (activeDimension.value === 'week') days = 7
+    else if (activeDimension.value === 'month') days = 30
+    
     // 尝试从算法服务获取
     const res = await request({
       url: '/analysis/hotwords',
       method: 'get',
-      params: { top_n: 30 },
+      params: { top_n: 30, days },
       timeout: 5000
     })
     
@@ -143,12 +341,57 @@ const fetchHotWords = async () => {
       // 降级：使用标签数据
       await fetchFallbackTags()
     }
+    
+    // 获取新兴话题
+    await fetchEmergingTopics()
+    
+    // 获取情感分布
+    await fetchSentimentData()
+    
     lastUpdate.value = new Date()
   } catch (error) {
     console.log('热词服务不可用，使用标签数据')
     await fetchFallbackTags()
   } finally {
     loading.value = false
+  }
+}
+
+const fetchEmergingTopics = async () => {
+  try {
+    const res = await request({
+      url: '/analysis/hotwords/emerging',
+      method: 'get',
+      params: { window_days: 3, threshold: 1.5 },
+      timeout: 5000
+    })
+    
+    if (res && res.length > 0) {
+      emergingTopics.value = res
+    }
+  } catch (error) {
+    console.log('新兴话题服务不可用')
+    emergingTopics.value = []
+  }
+}
+
+const fetchSentimentData = async () => {
+  try {
+    const res = await request({
+      url: '/analysis/hotwords/sentiment',
+      method: 'get',
+      params: { top_n: 50 },
+      timeout: 5000
+    })
+    
+    if (res && res.distribution) {
+      sentimentData.value = res
+      showSentiment.value = true
+    }
+  } catch (error) {
+    console.log('情感分析服务不可用')
+    sentimentData.value = {}
+    showSentiment.value = false
   }
 }
 
@@ -498,5 +741,443 @@ onMounted(() => {
 :global(.light) .empty-state,
 :global([data-theme="light"]) .empty-state {
   color: #94a3b8;
+}
+
+/* 新增样式 */
+
+/* 头部操作区 */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.view-toggle {
+  opacity: 0.8;
+}
+
+.view-toggle .el-button {
+  padding: 6px 10px;
+}
+
+/* 维度选择标签 */
+.dimension-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dimension-tab {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.3s;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dimension-tab:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dimension-tab.active {
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+/* 列表视图 */
+.word-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.word-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.word-list-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(4px);
+}
+
+.word-list-item .rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.word-list-item .rank.top3 {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: #fff;
+}
+
+.word-list-item .word-name {
+  flex: 1;
+  font-weight: 500;
+  color: #fff;
+}
+
+.word-list-item .word-category {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.word-list-item .word-bar {
+  width: 80px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.word-list-item .bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.word-list-item .word-weight {
+  width: 30px;
+  text-align: right;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.word-list-item .trend-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.trend-badge.up {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.trend-badge.down {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.trend-badge.stable {
+  background: rgba(107, 114, 128, 0.2);
+  color: #6b7280;
+}
+
+/* 新兴话题区域 */
+.emerging-section {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #22c55e;
+  margin-bottom: 12px;
+}
+
+.emerging-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emerging-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.emerging-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.emerging-item .topic-word {
+  flex: 1;
+  font-size: 13px;
+  color: #fff;
+}
+
+.emerging-item .growth-rate {
+  font-size: 12px;
+  font-weight: 600;
+  color: #22c55e;
+}
+
+.emerging-item .el-progress {
+  width: 60px;
+}
+
+/* 情感分布统计 */
+.sentiment-stats {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.stats-title {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 10px;
+}
+
+.stats-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-bar .label {
+  width: 32px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.stat-bar .bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.stat-bar .fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.stat-bar.positive .fill {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+
+.stat-bar.neutral .fill {
+  background: linear-gradient(90deg, #6b7280, #9ca3af);
+}
+
+.stat-bar.negative .fill {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.stat-bar .value {
+  width: 36px;
+  text-align: right;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 情感标记点 */
+.sentiment-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-left: 4px;
+}
+
+.sentiment-dot.positive {
+  background: #22c55e;
+}
+
+.sentiment-dot.neutral {
+  background: #6b7280;
+}
+
+.sentiment-dot.negative {
+  background: #ef4444;
+}
+
+/* 词汇详情悬浮框 */
+.word-detail-popup {
+  position: fixed;
+  z-index: 9999;
+  min-width: 200px;
+  padding: 12px;
+  background: rgba(26, 26, 46, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.popup-word {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.popup-trend {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+.popup-trend.up {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.popup-trend.down {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.popup-trend.stable {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+}
+
+.popup-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.stat-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.popup-tip {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}
+
+/* 下降趋势样式 */
+.trend-down {
+  opacity: 0.7;
+}
+
+/* 亮色模式适配 - 新增样式 */
+:global(.light) .dimension-tabs,
+:global([data-theme="light"]) .dimension-tabs {
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+
+:global(.light) .dimension-tab,
+:global([data-theme="light"]) .dimension-tab {
+  color: #64748b;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+:global(.light) .dimension-tab:hover,
+:global([data-theme="light"]) .dimension-tab:hover {
+  color: #1e293b;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+:global(.light) .word-list-item,
+:global([data-theme="light"]) .word-list-item {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+:global(.light) .word-list-item:hover,
+:global([data-theme="light"]) .word-list-item:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+:global(.light) .word-list-item .word-name,
+:global([data-theme="light"]) .word-list-item .word-name {
+  color: #1e293b;
+}
+
+:global(.light) .emerging-section,
+:global([data-theme="light"]) .emerging-section {
+  background: rgba(34, 197, 94, 0.05);
+}
+
+:global(.light) .emerging-item .topic-word,
+:global([data-theme="light"]) .emerging-item .topic-word {
+  color: #1e293b;
+}
+
+:global(.light) .sentiment-stats,
+:global([data-theme="light"]) .sentiment-stats {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+:global(.light) .word-detail-popup,
+:global([data-theme="light"]) .word-detail-popup {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+:global(.light) .popup-word,
+:global([data-theme="light"]) .popup-word {
+  color: #1e293b;
+}
+
+:global(.light) .stat-value,
+:global([data-theme="light"]) .stat-value {
+  color: #1e293b;
 }
 </style>
