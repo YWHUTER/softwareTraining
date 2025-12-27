@@ -1,13 +1,50 @@
-"""视频推荐系统 - 增强版"""
+"""视频推荐系统 - 增强版
+
+核心算法说明：
+1. Wilson Score - 基于置信区间的评分算法，避免少量高赞视频排名过高
+2. TF-IDF相似度 - 基于标题和描述的文本相似度计算
+3. 协同过滤 - 基于用户行为的相似推荐
+4. 时间衰减 - 新视频获得更高权重
+5. 多样性优化 - 避免推荐结果过于集中
+
+答辩要点：
+Q: 什么是Wilson Score？
+A: 一种考虑样本量的评分算法，使用置信区间下界作为评分，避免少量高赞内容排名过高
+
+Q: 为什么使用TF-IDF？
+A: TF-IDF能够提取文本的关键特征，计算视频之间的内容相似度
+
+Q: 如何处理冷启动问题？
+A: 对于新用户，使用热门推荐+分类偏好的混合策略
+"""
 import pandas as pd
 import numpy as np
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from .data_loader import DataLoader
 import logging
 import time
 import jieba
+import sys
+import os
+
+# 添加父目录到路径以支持utils导入
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from utils.cache_manager import cached
+    from utils.performance_monitor import monitor_performance
+except ImportError:
+    # 如果导入失败，提供空装饰器
+    def cached(ttl=3600, prefix="default"):
+        def decorator(func):
+            return func
+        return decorator
+    
+    def monitor_performance(name=None):
+        def decorator(func):
+            return func
+        return decorator
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +62,12 @@ class VideoRecommender:
     """
     
     def __init__(self, data_loader: DataLoader, config: dict):
+        """初始化视频推荐器
+        
+        Args:
+            data_loader: 数据加载器实例
+            config: 推荐配置参数
+        """
         self.data_loader = data_loader
         self.config = config
         self.videos_df = None
@@ -35,9 +78,46 @@ class VideoRecommender:
         self.idx_to_video_id = {}
         self.last_train_time = 0
         self.train_interval = 3600
+        
+        # 推荐策略权重配置
+        self.strategy_weights = {
+            'content_similarity': 0.4,  # 内容相似度权重
+            'category_preference': 0.3,  # 分类偏好权重
+            'hot_supplement': 0.3        # 热门补充权重
+        }
+        
+        # 评分参数配置
+        self.scoring_params = {
+            'wilson_weight': 0.4,        # Wilson Score权重
+            'view_weight': 0.3,          # 播放量权重
+            'time_decay_weight': 0.3,    # 时间衰减权重
+            'half_life_days': 7          # 时间衰减半衰期（天）
+        }
+        
+        # 多样性配置
+        self.diversity_config = {
+            'max_per_category_ratio': 0.33,  # 每个分类最大占比
+            'min_categories': 2               # 最少分类数
+        }
+        
+        # 性能统计
+        self.recommendation_stats = {
+            'total_requests': 0,
+            'hot_recommendations': 0,
+            'personalized_recommendations': 0,
+            'cold_start_recommendations': 0
+        }
     
+    @monitor_performance("video_recommender.train")
     def train(self):
-        """训练视频推荐模型"""
+        """训练视频推荐模型
+        
+        训练流程：
+        1. 加载视频数据
+        2. 计算Wilson Score
+        3. 计算热门视频排行
+        4. 构建内容相似度矩阵
+        """
         logger.info("=" * 50)
         logger.info("开始训练视频推荐模型...")
         start_time = time.time()
@@ -156,18 +236,33 @@ class VideoRecommender:
     def _should_retrain(self) -> bool:
         return time.time() - self.last_train_time > self.train_interval
     
+    @monitor_performance("video_recommender.recommend")
     def recommend(self, user_id: Optional[int] = None, top_n: int = 10,
                   exclude_ids: List[int] = None, category_id: Optional[int] = None) -> List[Dict]:
-        """视频推荐主入口"""
+        """视频推荐主入口
+        
+        Args:
+            user_id: 用户ID，None表示未登录用户
+            top_n: 推荐数量
+            exclude_ids: 需要排除的视频ID列表
+            category_id: 指定分类ID
+            
+        Returns:
+            推荐结果列表，每项包含video_id, score, reason
+        """
         if self._should_retrain():
             self.train()
         
         exclude_ids = exclude_ids or []
         
+        # 更新统计
+        self.recommendation_stats['total_requests'] += 1
+        
         logger.info(f"=== 视频推荐请求 === user_id={user_id}, top_n={top_n}")
         
         if user_id is None:
             logger.info("推荐策略: 热门推荐（未登录用户）")
+            self.recommendation_stats['hot_recommendations'] += 1
             results = self._get_hot_recommendations(top_n * 2, exclude_ids, category_id)
         else:
             user_history = self.data_loader.get_user_video_history(user_id)
@@ -177,9 +272,11 @@ class VideoRecommender:
             
             if len(user_history) < 3:
                 logger.info("推荐策略: 冷启动推荐")
+                self.recommendation_stats['cold_start_recommendations'] += 1
                 results = self._get_cold_start_recommendations(user_id, top_n * 2, exclude_ids, category_id)
             else:
                 logger.info("推荐策略: 个性化混合推荐")
+                self.recommendation_stats['personalized_recommendations'] += 1
                 results = self._get_personalized_recommendations(user_id, user_history, user_profile, top_n * 2, exclude_ids, category_id)
         
         # 多样性优化
@@ -447,3 +544,105 @@ class VideoRecommender:
                         })
         
         return results[:top_n]
+
+    # ==================== 统计和配置方法 ====================
+    
+    def get_recommendation_stats(self) -> Dict:
+        """获取推荐统计信息
+        
+        Returns:
+            推荐统计数据
+        """
+        return {
+            'stats': self.recommendation_stats.copy(),
+            'last_train_time': self.last_train_time,
+            'video_count': len(self.videos_df) if self.videos_df is not None else 0,
+            'hot_videos_count': len(self.hot_videos),
+            'similarity_matrix_size': self.content_similarity.shape if self.content_similarity is not None else (0, 0)
+        }
+    
+    def update_strategy_weights(self, new_weights: Dict[str, float]):
+        """更新推荐策略权重
+        
+        Args:
+            new_weights: 新的权重配置
+        """
+        for key, value in new_weights.items():
+            if key in self.strategy_weights:
+                self.strategy_weights[key] = value
+                logger.info(f"更新策略权重: {key} = {value}")
+    
+    def update_scoring_params(self, new_params: Dict[str, float]):
+        """更新评分参数
+        
+        Args:
+            new_params: 新的评分参数
+        """
+        for key, value in new_params.items():
+            if key in self.scoring_params:
+                self.scoring_params[key] = value
+                logger.info(f"更新评分参数: {key} = {value}")
+    
+    def get_video_score_breakdown(self, video_id: int) -> Dict:
+        """获取视频评分分解
+        
+        Args:
+            video_id: 视频ID
+            
+        Returns:
+            评分各组成部分的详细信息
+        """
+        if self.videos_df is None:
+            return {'error': '模型未训练'}
+        
+        video_row = self.videos_df[self.videos_df['id'] == video_id]
+        if video_row.empty:
+            return {'error': '视频不存在'}
+        
+        row = video_row.iloc[0]
+        wilson = self.wilson_scores.get(video_id, 0)
+        
+        # 计算各项得分
+        views = row.get('view_count', 0) or 0
+        max_views = self.videos_df['view_count'].max() or 1
+        view_norm = views / max_views
+        
+        created_at = pd.to_datetime(row.get('created_at'))
+        days_ago = (pd.Timestamp.now() - created_at).total_seconds() / 86400
+        time_decay = np.power(0.5, days_ago / self.scoring_params['half_life_days'])
+        
+        final_score = (
+            wilson * self.scoring_params['wilson_weight'] +
+            view_norm * self.scoring_params['view_weight'] +
+            time_decay * self.scoring_params['time_decay_weight']
+        ) * 100
+        
+        return {
+            'video_id': video_id,
+            'wilson_score': round(wilson, 4),
+            'view_normalized': round(view_norm, 4),
+            'time_decay': round(time_decay, 4),
+            'final_score': round(final_score, 2),
+            'breakdown': {
+                'wilson_contribution': round(wilson * self.scoring_params['wilson_weight'] * 100, 2),
+                'view_contribution': round(view_norm * self.scoring_params['view_weight'] * 100, 2),
+                'time_contribution': round(time_decay * self.scoring_params['time_decay_weight'] * 100, 2)
+            },
+            'raw_data': {
+                'view_count': int(views),
+                'days_since_publish': round(days_ago, 1)
+            }
+        }
+    
+    def clear_cache(self):
+        """清空推荐缓存"""
+        self.hot_videos = []
+        self.wilson_scores = {}
+        self.content_similarity = None
+        logger.info("视频推荐缓存已清空")
+    
+    def force_retrain(self):
+        """强制重新训练模型"""
+        self.last_train_time = 0
+        self.train()
+        logger.info("视频推荐模型已强制重新训练")

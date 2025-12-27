@@ -155,27 +155,33 @@
 
       <!-- 结果列表 -->
       <div class="article-list">
-        <!-- 骨架屏加载状态 -->
-        <div v-if="loading" class="skeleton-list">
-          <el-card v-for="i in 5" :key="i" class="article-card skeleton-card">
-            <div class="skeleton-content">
-              <div class="skeleton-main">
-                <el-skeleton animated>
-                  <template #template>
-                    <el-skeleton-item variant="text" style="width: 60px; margin-bottom: 10px" />
-                    <el-skeleton-item variant="h3" style="width: 60%; margin-bottom: 15px" />
-                    <el-skeleton-item variant="p" style="width: 100%; margin-bottom: 5px" />
-                    <el-skeleton-item variant="p" style="width: 80%; margin-bottom: 15px" />
-                    <div style="display: flex; align-items: center; gap: 10px">
-                      <el-skeleton-item variant="circle" style="width: 24px; height: 24px" />
-                      <el-skeleton-item variant="text" style="width: 100px" />
-                    </div>
-                  </template>
-                </el-skeleton>
+        <!-- 搜索加载状态 -->
+        <div v-if="loading" class="search-loading">
+          <div class="loading-header">
+            <div class="loading-spinner"></div>
+            <span class="loading-text">正在搜索 "{{ searchedKeyword }}"...</span>
+          </div>
+          <div class="skeleton-list">
+            <el-card v-for="i in 5" :key="i" class="article-card skeleton-card">
+              <div class="skeleton-content">
+                <div class="skeleton-main">
+                  <el-skeleton animated>
+                    <template #template>
+                      <el-skeleton-item variant="text" style="width: 60px; margin-bottom: 10px" />
+                      <el-skeleton-item variant="h3" style="width: 60%; margin-bottom: 15px" />
+                      <el-skeleton-item variant="p" style="width: 100%; margin-bottom: 5px" />
+                      <el-skeleton-item variant="p" style="width: 80%; margin-bottom: 15px" />
+                      <div style="display: flex; align-items: center; gap: 10px">
+                        <el-skeleton-item variant="circle" style="width: 24px; height: 24px" />
+                        <el-skeleton-item variant="text" style="width: 100px" />
+                      </div>
+                    </template>
+                  </el-skeleton>
+                </div>
+                <el-skeleton-item variant="image" style="width: 200px; height: 150px; border-radius: 8px" />
               </div>
-              <el-skeleton-item variant="image" style="width: 200px; height: 150px; border-radius: 8px" />
-            </div>
-          </el-card>
+            </el-card>
+          </div>
         </div>
 
         <template v-else>
@@ -451,6 +457,7 @@ const handleSearch = async () => {
   saveHistory(searchedKeyword.value)
   currentPage.value = 1
   hasSearched.value = true
+  loading.value = true
   
   // 更新URL
   router.replace({
@@ -458,7 +465,19 @@ const handleSearch = async () => {
     query: { keyword: searchedKeyword.value }
   })
   
+  // 添加最小加载时间，让用户感知到搜索过程
+  const minLoadTime = 800
+  const startTime = Date.now()
+  
   await fetchResults()
+  
+  // 确保加载动画至少显示一段时间
+  const elapsed = Date.now() - startTime
+  if (elapsed < minLoadTime) {
+    await new Promise(resolve => setTimeout(resolve, minLoadTime - elapsed))
+  }
+  
+  loading.value = false
 }
 
 const quickSearch = (tag) => {
@@ -474,7 +493,6 @@ const quickSearch = (tag) => {
 const fetchResults = async () => {
   if (!searchedKeyword.value) return
   
-  loading.value = true
   try {
     // 解析排序参数
     let sortField = 'date'
@@ -506,19 +524,37 @@ const fetchResults = async () => {
     total.value = data.total
   } catch (error) {
     console.error(error)
-  } finally {
-    loading.value = false
   }
 }
 
-const handleSortChange = () => {
+const handleSortChange = async () => {
   currentPage.value = 1
-  fetchResults()
+  loading.value = true
+  const minLoadTime = 500
+  const startTime = Date.now()
+  
+  await fetchResults()
+  
+  const elapsed = Date.now() - startTime
+  if (elapsed < minLoadTime) {
+    await new Promise(resolve => setTimeout(resolve, minLoadTime - elapsed))
+  }
+  loading.value = false
 }
 
-const handleBoardChange = () => {
+const handleBoardChange = async () => {
   currentPage.value = 1
-  fetchResults()
+  loading.value = true
+  const minLoadTime = 500
+  const startTime = Date.now()
+  
+  await fetchResults()
+  
+  const elapsed = Date.now() - startTime
+  if (elapsed < minLoadTime) {
+    await new Promise(resolve => setTimeout(resolve, minLoadTime - elapsed))
+  }
+  loading.value = false
 }
 
 const loadHistory = () => {
@@ -1359,6 +1395,63 @@ const formatTime = (time) => {
 
 .skeleton-main {
   flex: 1;
+}
+
+/* 搜索加载状态 */
+.search-loading {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.loading-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 30px;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(102, 126, 234, 0.2);
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #667eea;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 /* 分页 */

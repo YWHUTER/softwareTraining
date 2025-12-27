@@ -127,20 +127,60 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+/**
+ * 算法分析仪表板组件
+ * 
+ * 功能说明：
+ * 1. 用户画像展示 - 基于K-Means聚类的用户类型分析
+ * 2. 用户分布统计 - 展示各类型用户的占比
+ * 3. 平台趋势统计 - 基于线性回归的热度预测
+ * 4. 热度上升内容 - 展示增长率最高的内容
+ * 
+ * 技术要点：
+ * - 并行请求优化加载速度
+ * - 错误处理和降级方案
+ * - 数据格式化和可视化
+ */
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, PieChart, TrendCharts, Top, Right, Loading, WarningFilled } from '@element-plus/icons-vue'
+import { User, PieChart, TrendCharts, Top, Right, Loading, WarningFilled, Refresh } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
+// ==================== 路由和状态 ====================
 const router = useRouter()
 const loading = ref(false)
 const error = ref(null)
+const lastUpdateTime = ref(null)
+const autoRefreshTimer = ref(null)
 
+// ==================== 数据状态 ====================
 const userType = ref(null)
 const distribution = ref({})
 const platformStats = ref(null)
 const trendingContent = ref([])
+const serviceStatus = ref('unknown') // unknown, online, offline
 
+// ==================== 计算属性 ====================
+const formattedUpdateTime = computed(() => {
+  if (!lastUpdateTime.value) return ''
+  const now = new Date()
+  const diff = Math.floor((now - lastUpdateTime.value) / 1000 / 60)
+  if (diff < 1) return '刚刚更新'
+  if (diff < 60) return `${diff}分钟前更新`
+  return `${Math.floor(diff / 60)}小时前更新`
+})
+
+const hasData = computed(() => {
+  return userType.value || distribution.value.distribution || platformStats.value || trendingContent.value.length > 0
+})
+
+// ==================== 工具方法 ====================
+
+/**
+ * 格式化数字显示
+ * @param {number} num - 原始数字
+ * @returns {string} 格式化后的字符串
+ */
 const formatNumber = (num) => {
   if (!num) return '0'
   if (num >= 10000) return (num / 10000).toFixed(1) + '万'
@@ -148,6 +188,20 @@ const formatNumber = (num) => {
   return num.toString()
 }
 
+/**
+ * 格式化百分比
+ * @param {number} value - 百分比值
+ * @returns {string} 格式化后的百分比
+ */
+const formatPercent = (value) => {
+  if (!value) return '0%'
+  return value.toFixed(1) + '%'
+}
+
+/**
+ * 跳转到内容详情页
+ * @param {Object} item - 内容项
+ */
 const goToContent = (item) => {
   if (item.type === 'article') {
     router.push(`/article/${item.id}`)
@@ -156,6 +210,42 @@ const goToContent = (item) => {
   }
 }
 
+/**
+ * 获取趋势图标
+ * @param {string} trend - 趋势类型
+ * @returns {string} 图标
+ */
+const getTrendIcon = (trend) => {
+  const icons = {
+    'rising': '📈',
+    'stable': '📊',
+    'declining': '📉'
+  }
+  return icons[trend] || '📊'
+}
+
+// ==================== 数据加载方法 ====================
+
+/**
+ * 检查算法服务状态
+ */
+const checkServiceStatus = async () => {
+  try {
+    const res = await request({
+      url: '/analysis/health',
+      method: 'get',
+      timeout: 3000
+    })
+    serviceStatus.value = res ? 'online' : 'offline'
+  } catch (e) {
+    serviceStatus.value = 'offline'
+    console.log('算法服务状态检查失败:', e.message)
+  }
+}
+
+/**
+ * 加载用户类型数据
+ */
 const loadUserType = async () => {
   try {
     const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -167,13 +257,17 @@ const loadUserType = async () => {
       })
       if (res) {
         userType.value = res
+        console.log('用户类型加载成功:', res.name)
       }
     }
   } catch (e) {
-    console.log('获取用户类型失败:', e)
+    console.log('获取用户类型失败:', e.message)
   }
 }
 
+/**
+ * 加载用户分布数据
+ */
 const loadDistribution = async () => {
   try {
     const res = await request({
@@ -183,12 +277,16 @@ const loadDistribution = async () => {
     })
     if (res) {
       distribution.value = res
+      console.log('用户分布加载成功，总用户数:', res.total)
     }
   } catch (e) {
-    console.log('获取用户分布失败:', e)
+    console.log('获取用户分布失败:', e.message)
   }
 }
 
+/**
+ * 加载平台统计数据
+ */
 const loadPlatformStats = async () => {
   try {
     const res = await request({
@@ -198,12 +296,16 @@ const loadPlatformStats = async () => {
     })
     if (res) {
       platformStats.value = res
+      console.log('平台统计加载成功，趋势:', res.platform_trend)
     }
   } catch (e) {
-    console.log('获取平台统计失败:', e)
+    console.log('获取平台统计失败:', e.message)
   }
 }
 
+/**
+ * 加载热度上升内容
+ */
 const loadTrendingContent = async () => {
   try {
     const res = await request({
@@ -214,32 +316,89 @@ const loadTrendingContent = async () => {
     })
     if (res && Array.isArray(res)) {
       trendingContent.value = res
+      console.log('趋势内容加载成功，数量:', res.length)
     }
   } catch (e) {
-    console.log('获取趋势内容失败:', e)
+    console.log('获取趋势内容失败:', e.message)
   }
 }
 
+/**
+ * 加载所有数据（并行请求）
+ */
 const loadData = async () => {
   loading.value = true
   error.value = null
   
   try {
+    // 先检查服务状态
+    await checkServiceStatus()
+    
+    if (serviceStatus.value === 'offline') {
+      error.value = '算法服务未启动，请先启动算法服务'
+      return
+    }
+    
+    // 并行加载所有数据
     await Promise.all([
       loadUserType(),
       loadDistribution(),
       loadPlatformStats(),
       loadTrendingContent()
     ])
+    
+    lastUpdateTime.value = new Date()
+    
+    if (!hasData.value) {
+      error.value = '暂无分析数据'
+    }
   } catch (e) {
     error.value = '加载数据失败，请确保算法服务已启动'
+    console.error('数据加载失败:', e)
   } finally {
     loading.value = false
   }
 }
 
+/**
+ * 手动刷新数据
+ */
+const refreshData = () => {
+  console.log('手动刷新数据')
+  loadData()
+}
+
+/**
+ * 启动自动刷新
+ * @param {number} interval - 刷新间隔（毫秒）
+ */
+const startAutoRefresh = (interval = 60000) => {
+  stopAutoRefresh()
+  autoRefreshTimer.value = setInterval(() => {
+    console.log('自动刷新数据')
+    loadData()
+  }, interval)
+}
+
+/**
+ * 停止自动刷新
+ */
+const stopAutoRefresh = () => {
+  if (autoRefreshTimer.value) {
+    clearInterval(autoRefreshTimer.value)
+    autoRefreshTimer.value = null
+  }
+}
+
+// ==================== 生命周期 ====================
 onMounted(() => {
   loadData()
+  // 启动自动刷新（每5分钟）
+  startAutoRefresh(300000)
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
 })
 </script>
 

@@ -11,6 +11,7 @@ public class VideoQueryRequest {
     private Long authorId;
     private String keyword;
     private Integer isApproved;
+    private Boolean showAll = false; // 管理后台使用，显示所有状态的视频
     private String sortBy; // views, date
     private String sortOrder; // asc, desc
 }

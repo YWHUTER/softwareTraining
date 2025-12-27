@@ -46,7 +46,7 @@ public class VideoService extends ServiceImpl<VideoMapper, Video> {
         video.setViewCount(0);
         video.setLikeCount(0);
         video.setCommentCount(0);
-        video.setIsApproved(1); // 自动审核通过
+        video.setIsApproved(0); // 默认待审核，需要管理员审核后才能展示
         video.setStatus(1);
         
         videoMapper.insert(video);
@@ -77,6 +77,8 @@ public class VideoService extends ServiceImpl<VideoMapper, Video> {
         }
         if (request.getIsApproved() != null) {
             wrapper.eq("is_approved", request.getIsApproved());
+        } else if (Boolean.TRUE.equals(request.getShowAll())) {
+            // 管理后台：显示所有状态的视频，不添加审核条件
         } else {
             // 默认只显示已审核通过的视频
             wrapper.eq("is_approved", 1);

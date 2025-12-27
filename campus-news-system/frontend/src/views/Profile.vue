@@ -36,12 +36,12 @@
             </div>
             <!-- 关注数据 -->
             <div class="follow-stats">
-              <div class="follow-item" @click="$router.push('/follow')">
+              <div class="follow-item" @click="$router.push('/follow?tab=following')">
                 <span class="count">{{ userStore.user?.followingCount || 0 }}</span>
                 <span class="label">关注</span>
               </div>
               <div class="divider"></div>
-              <div class="follow-item" @click="$router.push('/follow')">
+              <div class="follow-item" @click="$router.push('/follow?tab=followers')">
                 <span class="count">{{ userStore.user?.followerCount || 0 }}</span>
                 <span class="label">粉丝</span>
               </div>
@@ -65,7 +65,11 @@
             <div class="info-item">
               <el-icon><Phone /></el-icon>
               <span class="label">手机</span>
-              <span class="value">{{ userStore.user?.phone || '未设置' }}</span>
+              <span class="value" v-if="userStore.user?.phone">{{ userStore.user.phone }}</span>
+              <span class="value bind-phone" v-else @click="showBindPhoneDialog">
+                未设置
+                <el-icon class="bind-icon"><Plus /></el-icon>
+              </span>
             </div>
             <div class="info-item" v-if="userStore.user?.college">
               <el-icon><School /></el-icon>
@@ -285,6 +289,24 @@
         <el-button type="primary" @click="handleUpdateName" :loading="editNameLoading">确定</el-button>
       </template>
     </el-dialog>
+    
+    <!-- 绑定手机号对话框 -->
+    <el-dialog
+      v-model="bindPhoneDialogVisible"
+      title="绑定手机号"
+      width="400px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="bindPhoneForm" :rules="bindPhoneRules" ref="bindPhoneFormRef" label-width="80px">
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="bindPhoneForm.phone" placeholder="请输入手机号" maxlength="11" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="bindPhoneDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleBindPhone" :loading="bindPhoneLoading">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -316,10 +338,57 @@ const editNameRules = {
   ]
 }
 
+// 绑定手机号相关
+const bindPhoneDialogVisible = ref(false)
+const bindPhoneLoading = ref(false)
+const bindPhoneFormRef = ref(null)
+const bindPhoneForm = ref({
+  phone: ''
+})
+const bindPhoneRules = {
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式', trigger: 'blur' }
+  ]
+}
+
 // 显示修改用户名对话框
 const showEditNameDialog = () => {
   editNameForm.value.realName = userStore.user?.realName || ''
   editNameDialogVisible.value = true
+}
+
+// 显示绑定手机号对话框
+const showBindPhoneDialog = () => {
+  bindPhoneForm.value.phone = ''
+  bindPhoneDialogVisible.value = true
+}
+
+// 提交绑定手机号
+const handleBindPhone = async () => {
+  if (!bindPhoneFormRef.value) return
+  
+  await bindPhoneFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    bindPhoneLoading.value = true
+    try {
+      const updatedUser = await updateUserInfo({
+        phone: bindPhoneForm.value.phone
+      })
+      
+      // 更新 store 中的用户信息
+      userStore.setUser(updatedUser)
+      
+      ElMessage.success('手机号绑定成功')
+      bindPhoneDialogVisible.value = false
+    } catch (error) {
+      console.error('绑定手机号失败:', error)
+      ElMessage.error(error.message || '绑定手机号失败')
+    } finally {
+      bindPhoneLoading.value = false
+    }
+  })
 }
 
 // 提交修改用户名
@@ -775,6 +844,23 @@ onMounted(async () => {
 
 .user-info .info-item .value {
   color: #303133;
+}
+
+.user-info .info-item .value.bind-phone {
+  color: #909399;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.3s ease;
+}
+
+.user-info .info-item .value.bind-phone:hover {
+  color: #667eea;
+}
+
+.user-info .info-item .value.bind-phone .bind-icon {
+  font-size: 14px;
 }
 
 /* 统计卡片 */

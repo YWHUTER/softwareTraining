@@ -2,20 +2,16 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
 export const useThemeStore = defineStore('theme', () => {
-  // 主题模式: 'light' | 'dark' | 'system'
-  const mode = ref(localStorage.getItem('theme-mode') || 'system')
+  // 主题模式: 'light' | 'dark'
+  const savedMode = localStorage.getItem('theme-mode')
+  // 如果之前是 system 模式，默认改为 light
+  const mode = ref(savedMode === 'system' ? 'light' : (savedMode || 'light'))
   // 实际应用的主题
   const isDark = ref(false)
 
-  // 获取系统主题偏好
-  const getSystemTheme = () => {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-
   // 更新实际主题
   const updateTheme = () => {
-    const actualTheme = mode.value === 'system' ? getSystemTheme() : mode.value
-    isDark.value = actualTheme === 'dark'
+    isDark.value = mode.value === 'dark'
     
     // 更新 DOM
     if (isDark.value) {
@@ -27,15 +23,9 @@ export const useThemeStore = defineStore('theme', () => {
     }
   }
 
-  // 切换主题
+  // 切换主题（只在 light 和 dark 之间切换）
   const toggleTheme = () => {
-    if (mode.value === 'light') {
-      mode.value = 'dark'
-    } else if (mode.value === 'dark') {
-      mode.value = 'system'
-    } else {
-      mode.value = 'light'
-    }
+    mode.value = mode.value === 'light' ? 'dark' : 'light'
   }
 
   // 设置主题模式
@@ -48,15 +38,6 @@ export const useThemeStore = defineStore('theme', () => {
     localStorage.setItem('theme-mode', newMode)
     updateTheme()
   }, { immediate: true })
-
-  // 监听系统主题变化
-  if (typeof window !== 'undefined') {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      if (mode.value === 'system') {
-        updateTheme()
-      }
-    })
-  }
 
   return {
     mode,

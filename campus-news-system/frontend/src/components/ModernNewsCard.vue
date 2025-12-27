@@ -32,14 +32,6 @@
 
     <!-- 内容区域 -->
     <div class="p-5 flex-1 flex flex-col">
-      <div class="card-meta flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400 mb-3">
-        <el-icon><Calendar /></el-icon>
-        <span>{{ formatDate(date) }}</span>
-        <span class="meta-dot w-1 h-1 bg-gray-300 dark:bg-slate-600 rounded-full"></span>
-        <el-icon><View /></el-icon>
-        <span>{{ views }} 阅读</span>
-      </div>
-
       <h3 class="card-title text-lg font-bold text-gray-800 dark:text-slate-200 mb-2 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-indigo-400 transition-colors">
         {{ title }}
       </h3>
@@ -55,6 +47,14 @@
         </div>
         
         <div class="card-stats flex items-center gap-3 text-gray-400 dark:text-slate-500">
+          <div class="flex items-center gap-1">
+            <el-icon><Calendar /></el-icon>
+            <span class="text-xs">{{ formatDate(date) }}</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <el-icon><View /></el-icon>
+            <span class="text-xs">{{ views }}</span>
+          </div>
           <div class="flex items-center gap-1 hover:text-red-500 transition-colors">
             <el-icon><Star /></el-icon>
             <span class="text-xs">{{ likes }}</span>
@@ -111,12 +111,12 @@ const cardRef = ref(null)
 // 根据boardType计算分类标签颜色
 const categoryColorClass = computed(() => {
   const colorMap = {
-    OFFICIAL: 'bg-blue-600/90',      // 官方新闻 - 蓝色（与导航栏首页颜色一致）
-    CAMPUS: 'bg-orange-500/90',      // 全校新闻 - 橙色（与武理视界颜色一致）
-    COLLEGE: 'bg-green-600/90',      // 学院新闻 - 绿色
-    MARKETPLACE: 'bg-purple-600/90'  // 校园集市 - 紫色（与导航栏校园集市颜色一致）
+    OFFICIAL: 'bg-blue-600/70',      // 官方新闻 - 蓝色（与导航栏首页颜色一致）
+    CAMPUS: 'bg-orange-500/70',      // 全校新闻 - 橙色（与武理视界颜色一致）
+    COLLEGE: 'bg-green-600/70',      // 学院新闻 - 绿色
+    MARKETPLACE: 'bg-purple-600/70'  // 校园集市 - 紫色（与导航栏校园集市颜色一致）
   }
-  return colorMap[props.boardType] || 'bg-blue-600/90'
+  return colorMap[props.boardType] || 'bg-blue-600/70'
 })
 
 // 简单的3D视差效果

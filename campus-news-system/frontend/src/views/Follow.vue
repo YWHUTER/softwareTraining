@@ -214,7 +214,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { View, ChatDotRound, Refresh, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
@@ -227,6 +227,7 @@ import {
 } from '@/api/follow'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 
 const activeTab = ref('feed')
@@ -338,13 +339,27 @@ const handleRecommendFollow = async (user) => {
     // 如果已关注，需要确认取消
     if (user.isFollowed) {
       await ElMessageBox.confirm(
-        `确定要取消关注 "${user.realName}" 吗？`,
+        `<div style="text-align: center; padding: 10px 0;">
+          <p style="margin: 0 0 20px 0; font-size: 15px; color: #606266;">确定要取消关注该用户吗？</p>
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <img src="${user.avatar || ''}" 
+                 style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            />
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: ${user.avatar ? 'none' : 'flex'}; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold;">
+              ${user.realName?.[0] || ''}
+            </div>
+            <p style="margin: 12px 0 0 0; font-size: 16px; font-weight: 600; color: #303133;">${user.realName}</p>
+          </div>
+        </div>`,
         '取消关注',
         {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning',
+          dangerouslyUseHTMLString: true,
           distinguishCancelAndClose: true,
+          customClass: 'unfollow-confirm-dialog',
           confirmButtonClass: 'el-button--primary',
           cancelButtonClass: 'el-button--default'
         }
@@ -396,13 +411,27 @@ const handleRecommendFollow = async (user) => {
 const handleUnfollowConfirm = async (user) => {
   try {
     await ElMessageBox.confirm(
-      `确定要取消关注 "${user.realName}" 吗？`,
+      `<div style="text-align: center; padding: 10px 0;">
+        <p style="margin: 0 0 20px 0; font-size: 15px; color: #606266;">确定要取消关注该用户吗？</p>
+        <div style="display: flex; flex-direction: column; align-items: center;">
+          <img src="${user.avatar || ''}" 
+               style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: ${user.avatar ? 'none' : 'flex'}; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold;">
+            ${user.realName?.[0] || ''}
+          </div>
+          <p style="margin: 12px 0 0 0; font-size: 16px; font-weight: 600; color: #303133;">${user.realName}</p>
+        </div>
+      </div>`,
       '取消关注',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
+        dangerouslyUseHTMLString: true,
         distinguishCancelAndClose: true,
+        customClass: 'unfollow-confirm-dialog',
         confirmButtonClass: 'el-button--primary',
         cancelButtonClass: 'el-button--default'
       }
@@ -482,7 +511,17 @@ const getBoardTagType = (type) => {
 }
 
 onMounted(() => {
-  loadFeed()
+  // 根据URL参数切换到对应的tab
+  const tab = route.query.tab
+  if (tab === 'following') {
+    activeTab.value = 'following'
+    loadFollowing()
+  } else if (tab === 'followers') {
+    activeTab.value = 'followers'
+    loadFollowers()
+  } else {
+    loadFeed()
+  }
   loadRecommend()
 })
 </script>
@@ -845,5 +884,26 @@ onMounted(() => {
   flex-direction: row-reverse;
   justify-content: flex-start;
   gap: 12px;
+}
+
+/* 取消关注弹窗 - 按钮居中 */
+.unfollow-confirm-dialog .el-message-box__btns {
+  justify-content: center;
+}
+
+/* 隐藏取消关注弹窗的警告图标 */
+.unfollow-confirm-dialog .el-message-box__status {
+  display: none;
+}
+
+/* 调整取消关注弹窗内容区域 */
+.unfollow-confirm-dialog .el-message-box__container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.unfollow-confirm-dialog .el-message-box__message {
+  padding-left: 0;
 }
 </style>

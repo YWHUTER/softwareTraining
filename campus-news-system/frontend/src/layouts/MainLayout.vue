@@ -98,8 +98,8 @@
               >
                 <el-icon :size="18">
                   <Moon v-if="isDark" />
-                  <Sunny v-else-if="themeMode === 'light'" />
-                  <Monitor v-else />
+                  <Sunny v-else />
+
                 </el-icon>
               </el-button>
             </el-tooltip>
@@ -241,7 +241,7 @@ import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'
 import { storeToRefs } from 'pinia'
 import { ElMessage, ElNotification } from 'element-plus'
-import { Search, Bell, Cpu, Histogram, QuestionFilled, Sunny, Moon, Monitor, DataAnalysis } from '@element-plus/icons-vue'
+import { Search, Bell, Cpu, Histogram, QuestionFilled, Sunny, Moon, DataAnalysis } from '@element-plus/icons-vue'
 import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '@/api/notification'
 import bgImage from '@/assets/main-bg.jpg'
 import notificationWS from '@/utils/websocket'
@@ -256,9 +256,7 @@ const themeStore = useThemeStore()
 const { isDark, mode: themeMode } = storeToRefs(themeStore)
 
 const themeTooltip = computed(() => {
-  if (themeMode.value === 'light') return '当前：浅色模式（点击切换到深色）'
-  if (themeMode.value === 'dark') return '当前：深色模式（点击切换到跟随系统）'
-  return '当前：跟随系统（点击切换到浅色）'
+  return isDark.value ? '当前：深色模式（点击切换到浅色）' : '当前：浅色模式（点击切换到深色）'
 })
 
 const isVideoPage = computed(() => route.path === '/video')
