@@ -1,8 +1,9 @@
 package com.campus.news.service;
 
-import com.campus.news.config.VideoStorageConfig;
+import com.aliyun.oss.OSS;
+import com.aliyun.oss.model.ObjectMetadata;
+import com.campus.news.config.OssConfig;
 import com.campus.news.exception.BusinessException;
-import com.jcraft.jsch.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,158 +19,80 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class VideoStorageService {
     
-    private final VideoStorageConfig config;
+    private final OssConfig ossConfig;
+    private final OSS ossClient;
     
     /**
-     * 上传视频到远程服务器
-     * @param file 视频文件
-     * @return 视频访问URL
+     * 上传视频到阿里云OSS
      */
     public String uploadVideo(MultipartFile file) {
         validateFile(file);
         
-        String originalFilename = file.getOriginalFilename();
-        String extension = getFileExtension(originalFilename);
+        String extension = getFileExtension(file.getOriginalFilename());
         String newFilename = UUID.randomUUID().toString() + "." + extension;
         String dateDir = LocalDate.now().toString();
-        String remotePath = config.getRemotePath() + "/" + dateDir;
-        String remoteFile = remotePath + "/" + newFilename;
+        String objectKey = ossConfig.getVideoDir() + "/" + dateDir + "/" + newFilename;
         
-        Session session = null;
-        ChannelSftp channelSftp = null;
-        
-        try {
-            session = createSession();
-            channelSftp = (ChannelSftp) session.openChannel("sftp");
-            channelSftp.connect();
+        try (InputStream inputStream = file.getInputStream()) {
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(file.getSize());
+            metadata.setContentType(file.getContentType());
             
-            // 确保远程目录存在
-            createRemoteDirectory(channelSftp, remotePath);
+            ossClient.putObject(ossConfig.getBucketName(), objectKey, inputStream, metadata);
             
-            // 上传文件
-            try (InputStream inputStream = file.getInputStream()) {
-                channelSftp.put(inputStream, remoteFile);
-            }
-            
-            log.info("视频上传成功: {}", remoteFile);
-            return config.getBaseUrl() + "/" + dateDir + "/" + newFilename;
-            
+            String url = ossConfig.getBaseUrl() + "/" + objectKey;
+            log.info("视频上传成功: {}", url);
+            return url;
         } catch (Exception e) {
             log.error("视频上传失败", e);
             throw new BusinessException("视频上传失败: " + e.getMessage());
-        } finally {
-            if (channelSftp != null) {
-                channelSftp.disconnect();
-            }
-            if (session != null) {
-                session.disconnect();
-            }
         }
     }
     
     /**
-     * 上传缩略图到远程服务器
+     * 上传缩略图到阿里云OSS
      */
     public String uploadThumbnail(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             return null;
         }
         
-        String originalFilename = file.getOriginalFilename();
-        String extension = getFileExtension(originalFilename);
+        String extension = getFileExtension(file.getOriginalFilename());
         String newFilename = "thumb_" + UUID.randomUUID().toString() + "." + extension;
         String dateDir = LocalDate.now().toString();
-        String remotePath = config.getRemotePath() + "/thumbnails/" + dateDir;
-        String remoteFile = remotePath + "/" + newFilename;
+        String objectKey = ossConfig.getThumbnailDir() + "/" + dateDir + "/" + newFilename;
         
-        Session session = null;
-        ChannelSftp channelSftp = null;
-        
-        try {
-            session = createSession();
-            channelSftp = (ChannelSftp) session.openChannel("sftp");
-            channelSftp.connect();
+        try (InputStream inputStream = file.getInputStream()) {
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(file.getSize());
+            metadata.setContentType(file.getContentType());
             
-            createRemoteDirectory(channelSftp, remotePath);
+            ossClient.putObject(ossConfig.getBucketName(), objectKey, inputStream, metadata);
             
-            try (InputStream inputStream = file.getInputStream()) {
-                channelSftp.put(inputStream, remoteFile);
-            }
-            
-            log.info("缩略图上传成功: {}", remoteFile);
-            return config.getBaseUrl() + "/thumbnails/" + dateDir + "/" + newFilename;
-            
+            String url = ossConfig.getBaseUrl() + "/" + objectKey;
+            log.info("缩略图上传成功: {}", url);
+            return url;
         } catch (Exception e) {
             log.error("缩略图上传失败", e);
             throw new BusinessException("缩略图上传失败: " + e.getMessage());
-        } finally {
-            if (channelSftp != null) {
-                channelSftp.disconnect();
-            }
-            if (session != null) {
-                session.disconnect();
-            }
         }
     }
     
     /**
-     * 删除远程文件
+     * 删除OSS文件
      */
     public void deleteFile(String fileUrl) {
-        if (fileUrl == null || !fileUrl.startsWith(config.getBaseUrl())) {
+        if (fileUrl == null || !fileUrl.startsWith(ossConfig.getBaseUrl())) {
             return;
         }
         
-        String relativePath = fileUrl.replace(config.getBaseUrl(), "");
-        String remoteFile = config.getRemotePath() + relativePath;
-        
-        Session session = null;
-        ChannelSftp channelSftp = null;
+        String objectKey = fileUrl.replace(ossConfig.getBaseUrl() + "/", "");
         
         try {
-            session = createSession();
-            channelSftp = (ChannelSftp) session.openChannel("sftp");
-            channelSftp.connect();
-            channelSftp.rm(remoteFile);
-            log.info("文件删除成功: {}", remoteFile);
+            ossClient.deleteObject(ossConfig.getBucketName(), objectKey);
+            log.info("文件删除成功: {}", objectKey);
         } catch (Exception e) {
             log.warn("文件删除失败: {}", e.getMessage());
-        } finally {
-            if (channelSftp != null) {
-                channelSftp.disconnect();
-            }
-            if (session != null) {
-                session.disconnect();
-            }
-        }
-    }
-    
-    private Session createSession() throws JSchException {
-        JSch jsch = new JSch();
-        Session session = jsch.getSession(config.getUsername(), config.getHost(), config.getPort());
-        session.setPassword(config.getPassword());
-        session.setConfig("StrictHostKeyChecking", "no");
-        session.connect(30000);
-        return session;
-    }
-    
-    private void createRemoteDirectory(ChannelSftp channelSftp, String remotePath) {
-        String[] folders = remotePath.split("/");
-        StringBuilder currentPath = new StringBuilder();
-        
-        for (String folder : folders) {
-            if (folder.isEmpty()) continue;
-            currentPath.append("/").append(folder);
-            try {
-                channelSftp.cd(currentPath.toString());
-            } catch (SftpException e) {
-                try {
-                    channelSftp.mkdir(currentPath.toString());
-                    channelSftp.cd(currentPath.toString());
-                } catch (SftpException ex) {
-                    log.warn("创建目录失败: {}", currentPath);
-                }
-            }
         }
     }
     
@@ -178,16 +101,16 @@ public class VideoStorageService {
             throw new BusinessException("请选择要上传的视频文件");
         }
         
-        if (file.getSize() > config.getMaxFileSize()) {
-            throw new BusinessException("视频文件大小不能超过 " + (config.getMaxFileSize() / 1024 / 1024) + "MB");
+        if (file.getSize() > ossConfig.getMaxFileSize()) {
+            throw new BusinessException("视频文件大小不能超过 " + (ossConfig.getMaxFileSize() / 1024 / 1024) + "MB");
         }
         
         String extension = getFileExtension(file.getOriginalFilename());
-        boolean isAllowed = Arrays.stream(config.getAllowedFormats())
+        boolean isAllowed = Arrays.stream(ossConfig.getAllowedFormats())
                 .anyMatch(format -> format.equalsIgnoreCase(extension));
         
         if (!isAllowed) {
-            throw new BusinessException("不支持的视频格式，支持的格式: " + String.join(", ", config.getAllowedFormats()));
+            throw new BusinessException("不支持的视频格式，支持的格式: " + String.join(", ", ossConfig.getAllowedFormats()));
         }
     }
     

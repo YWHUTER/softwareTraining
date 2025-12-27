@@ -52,6 +52,7 @@ export function uploadVideoFile(file, onProgress) {
     url: '/video/upload/file',
     method: 'post',
     data: formData,
+    timeout: 300000, // 5分钟超时，视频上传需要更长时间
     headers: {
       'Content-Type': 'multipart/form-data'
     },
@@ -68,6 +69,7 @@ export function uploadThumbnail(file) {
     url: '/video/upload/thumbnail',
     method: 'post',
     data: formData,
+    timeout: 60000, // 1分钟超时
     headers: {
       'Content-Type': 'multipart/form-data'
     }
@@ -102,6 +104,7 @@ export function uploadVideoComplete(data, onProgress) {
     url: '/video/upload/complete',
     method: 'post',
     data: formData,
+    timeout: 300000, // 5分钟超时，视频上传需要更长时间
     headers: {
       'Content-Type': 'multipart/form-data'
     },
@@ -114,6 +117,7 @@ export function createVideo(data) {
   return request({
     url: '/video/create',
     method: 'post',
+    timeout: 60000, // 1分钟超时
     data
   })
 }
