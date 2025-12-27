@@ -1484,13 +1484,19 @@ watch(() => route.path, (newPath) => {
 
 :global(.dark) .sidebar-card,
 :global([data-theme="dark"]) .sidebar-card {
-  background: var(--bg-card);
-  border-color: var(--border-color);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 :global(.dark) .card-title span,
 :global([data-theme="dark"]) .card-title span {
-  color: var(--text-primary);
+  color: #ffffff !important;
+}
+
+:global(.dark) .card-title,
+:global([data-theme="dark"]) .card-title {
+  color: #ffffff !important;
 }
 
 :global(.dark) .hot-item,
@@ -1505,24 +1511,24 @@ watch(() => route.path, (newPath) => {
 
 :global(.dark) .hot-title,
 :global([data-theme="dark"]) .hot-title {
-  color: var(--text-primary);
+  color: #ffffff;
 }
 
 :global(.dark) .hot-meta,
 :global(.dark) .hot-stat,
 :global([data-theme="dark"]) .hot-meta,
 :global([data-theme="dark"]) .hot-stat {
-  color: var(--text-tertiary);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 :global(.dark) .quick-link span,
 :global([data-theme="dark"]) .quick-link span {
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 :global(.dark) .quick-link:hover span,
 :global([data-theme="dark"]) .quick-link:hover span {
-  color: var(--primary-color);
+  color: #ffffff;
 }
 
 :global(.dark) .comment-author,
@@ -1539,7 +1545,84 @@ watch(() => route.path, (newPath) => {
 
 :global(.dark) .pagination-wrapper,
 :global([data-theme="dark"]) .pagination-wrapper {
-  background: var(--bg-card);
-  border-color: var(--border-color);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+:global(.dark) .pagination-wrapper .el-pagination,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination {
+  --el-pagination-bg-color: #ffffff;
+  --el-pagination-text-color: #1a1a2e;
+  --el-pagination-button-color: #1a1a2e;
+  --el-pagination-button-bg-color: #ffffff;
+  --el-pagination-button-disabled-color: #cccccc;
+  --el-pagination-button-disabled-bg-color: #f5f5f5;
+  --el-pagination-hover-color: #667eea;
+}
+
+:global(.dark) .pagination-wrapper .el-pagination .el-pager li,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination .el-pager li {
+  background: #ffffff !important;
+  color: #1a1a2e !important;
+  border-radius: 6px;
+}
+
+:global(.dark) .pagination-wrapper .el-pagination .el-pager li:hover,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination .el-pager li:hover {
+  background: #f0f0f0 !important;
+  color: #667eea !important;
+}
+
+:global(.dark) .pagination-wrapper .el-pagination .el-pager li.is-active,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination .el-pager li.is-active {
+  background: #667eea !important;
+  color: #ffffff !important;
+}
+
+:global(.dark) .pagination-wrapper .el-pagination .btn-prev,
+:global(.dark) .pagination-wrapper .el-pagination .btn-next,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination .btn-prev,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination .btn-next {
+  background: #ffffff !important;
+  color: #1a1a2e !important;
+  border-radius: 6px;
+}
+
+:global(.dark) .pagination-wrapper .el-pagination .btn-prev:hover,
+:global(.dark) .pagination-wrapper .el-pagination .btn-next:hover,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination .btn-prev:hover,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination .btn-next:hover {
+  background: #f0f0f0 !important;
+  color: #667eea !important;
+}
+
+:global(.dark) .pagination-wrapper .el-pagination .el-pagination__total,
+:global(.dark) .pagination-wrapper .el-pagination .el-pagination__jump,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination .el-pagination__total,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination .el-pagination__jump {
+  color: #ffffff !important;
+}
+
+:global(.dark) .pagination-wrapper .el-pagination .el-select .el-input__wrapper,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination .el-select .el-input__wrapper {
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+:global(.dark) .pagination-wrapper .el-pagination .el-select .el-input__inner,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination .el-select .el-input__inner {
+  color: #1a1a2e !important;
+}
+
+:global(.dark) .pagination-wrapper .el-pagination .el-input__wrapper,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination .el-input__wrapper {
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+:global(.dark) .pagination-wrapper .el-pagination .el-input__inner,
+:global([data-theme="dark"]) .pagination-wrapper .el-pagination .el-input__inner {
+  color: #1a1a2e !important;
 }
 </style>

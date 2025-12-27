@@ -338,12 +338,25 @@ const handleRecommendFollow = async (user) => {
     // 如果已关注，需要确认取消
     if (user.isFollowed) {
       await ElMessageBox.confirm(
-        `确定要取消关注 "${user.realName}" 吗？`,
+        `<div style="text-align: center; padding: 10px 0;">
+          <p style="margin: 0 0 20px 0; font-size: 15px; color: #606266;">确定要取消关注该用户吗？</p>
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <img src="${user.avatar || ''}" 
+                 style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            />
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: ${user.avatar ? 'none' : 'flex'}; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold;">
+              ${user.realName?.[0] || ''}
+            </div>
+            <p style="margin: 12px 0 0 0; font-size: 16px; font-weight: 600; color: #303133;">${user.realName}</p>
+          </div>
+        </div>`,
         '取消关注',
         {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning',
+          dangerouslyUseHTMLString: true,
           distinguishCancelAndClose: true,
           confirmButtonClass: 'el-button--primary',
           cancelButtonClass: 'el-button--default'
@@ -396,12 +409,25 @@ const handleRecommendFollow = async (user) => {
 const handleUnfollowConfirm = async (user) => {
   try {
     await ElMessageBox.confirm(
-      `确定要取消关注 "${user.realName}" 吗？`,
+      `<div style="text-align: center; padding: 10px 0;">
+        <p style="margin: 0 0 20px 0; font-size: 15px; color: #606266;">确定要取消关注该用户吗？</p>
+        <div style="display: flex; flex-direction: column; align-items: center;">
+          <img src="${user.avatar || ''}" 
+               style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          />
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: ${user.avatar ? 'none' : 'flex'}; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold;">
+            ${user.realName?.[0] || ''}
+          </div>
+          <p style="margin: 12px 0 0 0; font-size: 16px; font-weight: 600; color: #303133;">${user.realName}</p>
+        </div>
+      </div>`,
       '取消关注',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
+        dangerouslyUseHTMLString: true,
         distinguishCancelAndClose: true,
         confirmButtonClass: 'el-button--primary',
         cancelButtonClass: 'el-button--default'
