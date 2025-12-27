@@ -1,8 +1,5 @@
 <template>
   <div class="main-layout" :class="{ 'dark-mode': isDark }" :style="{ backgroundImage: `url(${bgImage})` }">
-    <!-- 粒子背景 -->
-    <ParticleBackground />
-    
     <el-container class="main-container" style="position: relative; z-index: 1;">
       <!-- 顶部导航栏 -->
       <el-header class="header">
@@ -248,7 +245,6 @@ import { Search, Bell, Cpu, Histogram, QuestionFilled, Sunny, Moon, Monitor, Dat
 import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '@/api/notification'
 import bgImage from '@/assets/main-bg.jpg'
 import notificationWS from '@/utils/websocket'
-import ParticleBackground from '@/components/ParticleBackground.vue'
 import AiFloatingAssistant from '@/components/AiFloatingAssistant.vue'
 
 const router = useRouter()
