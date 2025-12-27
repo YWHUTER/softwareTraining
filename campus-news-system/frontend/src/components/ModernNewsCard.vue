@@ -21,7 +21,10 @@
       
       <!-- 分类标签 -->
       <div class="absolute top-4 left-4 z-10">
-        <span class="px-3 py-1 text-xs font-semibold text-white dark:text-slate-200 bg-blue-600/90 dark:bg-indigo-600/90 backdrop-blur-sm rounded-full shadow-lg">
+        <span 
+          class="px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm rounded-full shadow-lg"
+          :class="categoryColorClass"
+        >
           {{ category }}
         </span>
       </div>
@@ -67,7 +70,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Calendar, View, Star, ChatDotRound } from '@element-plus/icons-vue'
 import defaultImage from '@/assets/nailong.jpg'
 
@@ -78,6 +81,10 @@ const props = defineProps({
   category: {
     type: String,
     default: '校园新闻'
+  },
+  boardType: {
+    type: String,
+    default: ''
   },
   date: [String, Number, Date],
   views: {
@@ -100,6 +107,17 @@ const props = defineProps({
 defineEmits(['click'])
 
 const cardRef = ref(null)
+
+// 根据boardType计算分类标签颜色
+const categoryColorClass = computed(() => {
+  const colorMap = {
+    OFFICIAL: 'bg-blue-600/90',      // 官方新闻 - 蓝色（与导航栏首页颜色一致）
+    CAMPUS: 'bg-orange-500/90',      // 全校新闻 - 橙色（与武理视界颜色一致）
+    COLLEGE: 'bg-green-600/90',      // 学院新闻 - 绿色
+    MARKETPLACE: 'bg-purple-600/90'  // 校园集市 - 紫色（与导航栏校园集市颜色一致）
+  }
+  return colorMap[props.boardType] || 'bg-blue-600/90'
+})
 
 // 简单的3D视差效果
 const handleMouseMove = (e) => {

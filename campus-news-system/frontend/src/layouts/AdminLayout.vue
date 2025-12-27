@@ -16,6 +16,10 @@
           @select="handleMenuSelect"
           class="glass-menu"
         >
+          <el-menu-item index="/" class="back-home-item" @click="$router.push('/')">
+            <el-icon><HomeFilled /></el-icon>
+            <span>返回首页</span>
+          </el-menu-item>
           <el-menu-item index="/admin">
             <el-icon><Odometer /></el-icon>
             <span>数据概览</span>
@@ -31,10 +35,6 @@
           <el-menu-item index="/admin/colleges">
             <el-icon><School /></el-icon>
             <span>学院管理</span>
-          </el-menu-item>
-          <el-menu-item index="/" @click="$router.push('/')">
-            <el-icon><HomeFilled /></el-icon>
-            <span>返回首页</span>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -153,6 +153,9 @@ const handleMenuSelect = (index) => {
   background: transparent !important;
   border-right: none;
   padding: 10px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 :deep(.el-menu-item) {
@@ -175,6 +178,19 @@ const handleMenuSelect = (index) => {
   font-weight: bold;
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 返回首页按钮特殊样式 */
+:deep(.back-home-item) {
+  background: linear-gradient(135deg, rgba(64, 158, 255, 0.3) 0%, rgba(102, 126, 234, 0.3) 100%);
+  border: 1px solid rgba(64, 158, 255, 0.4) !important;
+  margin-bottom: 16px !important;
+}
+
+:deep(.back-home-item:hover) {
+  background: linear-gradient(135deg, rgba(64, 158, 255, 0.5) 0%, rgba(102, 126, 234, 0.5) 100%);
+  border-color: rgba(64, 158, 255, 0.6) !important;
+  transform: translateX(4px);
 }
 
 :deep(.el-icon) {

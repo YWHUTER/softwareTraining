@@ -100,8 +100,8 @@
                 @click="toggleTheme"
               >
                 <el-icon :size="18">
-                  <Sunny v-if="isDark" />
-                  <Moon v-else-if="themeMode === 'light'" />
+                  <Moon v-if="isDark" />
+                  <Sunny v-else-if="themeMode === 'light'" />
                   <Monitor v-else />
                 </el-icon>
               </el-button>
@@ -577,7 +577,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   height: 100%;
-  padding: 0 30px;
+  padding: 0 40px 0 30px;
   gap: 30px;
 }
 
@@ -1136,48 +1136,56 @@ onUnmounted(() => {
 }
 
 .dark-mode .main-menu .menu-item {
-  color: var(--text-secondary);
+  color: #ffffff;
 }
 
 .dark-mode .main-menu .menu-item:hover {
   background: var(--primary-light);
-  color: var(--primary-color);
+  color: #ffffff;
 }
 
 .dark-mode .main-menu .is-active {
-  color: var(--primary-color);
+  color: #ffffff;
   background: var(--primary-light);
   border-bottom-color: var(--primary-color);
 }
 
 .dark-mode .main-menu .news-menu-item {
   background: rgba(33, 150, 243, 0.15);
-  color: #4fc3f7;
+  color: #ffffff;
+}
+
+.dark-mode .main-menu .news-menu-item :deep(.el-sub-menu__title) {
+  color: #ffffff !important;
 }
 
 .dark-mode .main-menu .ai-menu-item {
   background: var(--primary-light);
-  color: var(--primary-color);
+  color: #ffffff;
+}
+
+.dark-mode .main-menu .ai-menu-item :deep(.el-sub-menu__title) {
+  color: #ffffff !important;
 }
 
 .dark-mode .main-menu .video-menu-item {
   background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
+  color: #ffffff;
 }
 
 .dark-mode .main-menu .marketplace-menu-item {
   background: rgba(168, 85, 247, 0.15);
-  color: #c084fc;
+  color: #ffffff;
 }
 
 .dark-mode .main-menu .follow-menu-item {
   background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
+  color: #ffffff;
 }
 
 .dark-mode .main-menu .search-menu-item {
   background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
+  color: #ffffff;
 }
 
 .dark-mode .notification-btn {
@@ -1266,16 +1274,16 @@ onUnmounted(() => {
 }
 
 .dark-mode :deep(.el-menu--popup .el-menu-item) {
-  color: var(--text-secondary);
+  color: #ffffff;
 }
 
 .dark-mode :deep(.el-menu--popup .el-menu-item:hover) {
   background: var(--primary-light) !important;
-  color: var(--primary-color) !important;
+  color: #ffffff !important;
 }
 
 .dark-mode :deep(.el-menu--popup .el-menu-item .el-icon) {
-  color: var(--text-tertiary);
+  color: #ffffff;
 }
 
 .dark-mode :deep(.el-dropdown-menu__item) {

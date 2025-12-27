@@ -22,7 +22,12 @@
               style="display: none;" 
               @change="handleAvatarChange"
             />
-            <h3>{{ userStore.user?.realName }}</h3>
+            <h3 class="user-realname">
+              {{ userStore.user?.realName }}
+              <el-tooltip content="修改用户名" placement="top">
+                <el-icon class="edit-name-btn" @click="showEditNameDialog"><EditPen /></el-icon>
+              </el-tooltip>
+            </h3>
             <p class="username">@{{ userStore.user?.username }}</p>
             <div class="role-tags">
               <el-tag v-for="role in userStore.user?.roles" :key="role.id" effect="dark" size="small">
@@ -262,6 +267,24 @@
         </el-card>
       </el-col>
     </el-row>
+    
+    <!-- 修改用户名对话框 -->
+    <el-dialog
+      v-model="editNameDialogVisible"
+      title="修改用户名"
+      width="400px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="editNameForm" :rules="editNameRules" ref="editNameFormRef" label-width="80px">
+        <el-form-item label="新用户名" prop="realName">
+          <el-input v-model="editNameForm.realName" placeholder="请输入新用户名" maxlength="20" show-word-limit />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editNameDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleUpdateName" :loading="editNameLoading">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -270,14 +293,61 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { getArticleList, deleteArticle } from '@/api/article'
-import { uploadFile, updateAvatar } from '@/api/user'
+import { uploadFile, updateAvatar, updateUserInfo } from '@/api/user'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
-import { User, Message, Phone, School, Postcard, Document, View, Star, ChatDotRound, PieChart, TrendCharts, List, Plus, Camera } from '@element-plus/icons-vue'
+import { User, Message, Phone, School, Postcard, Document, View, Star, ChatDotRound, PieChart, TrendCharts, List, Plus, Camera, EditPen } from '@element-plus/icons-vue'
 import UserProfileCard from '@/components/UserProfileCard.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 const avatarInput = ref(null)
+
+// 修改用户名相关
+const editNameDialogVisible = ref(false)
+const editNameLoading = ref(false)
+const editNameFormRef = ref(null)
+const editNameForm = ref({
+  realName: ''
+})
+const editNameRules = {
+  realName: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 2, max: 20, message: '用户名长度为2-20个字符', trigger: 'blur' }
+  ]
+}
+
+// 显示修改用户名对话框
+const showEditNameDialog = () => {
+  editNameForm.value.realName = userStore.user?.realName || ''
+  editNameDialogVisible.value = true
+}
+
+// 提交修改用户名
+const handleUpdateName = async () => {
+  if (!editNameFormRef.value) return
+  
+  await editNameFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    editNameLoading.value = true
+    try {
+      const updatedUser = await updateUserInfo({
+        realName: editNameForm.value.realName
+      })
+      
+      // 更新 store 中的用户信息
+      userStore.setUser(updatedUser)
+      
+      ElMessage.success('用户名修改成功')
+      editNameDialogVisible.value = false
+    } catch (error) {
+      console.error('修改用户名失败:', error)
+      ElMessage.error(error.message || '修改用户名失败')
+    } finally {
+      editNameLoading.value = false
+    }
+  })
+}
 
 // 触发头像上传
 const triggerAvatarUpload = () => {
@@ -452,7 +522,8 @@ const getBoardTypeName = (type) => {
   const types = {
     OFFICIAL: '官方新闻',
     CAMPUS: '全校新闻',
-    COLLEGE: '学院新闻'
+    COLLEGE: '学院新闻',
+    MARKETPLACE: '校园集市'
   }
   return types[type] || type
 }
@@ -461,7 +532,8 @@ const getBoardTypeTag = (type) => {
   const tags = {
     OFFICIAL: 'danger',
     CAMPUS: 'primary',
-    COLLEGE: 'success'
+    COLLEGE: 'success',
+    MARKETPLACE: 'warning'
   }
   return tags[type] || ''
 }
@@ -574,6 +646,28 @@ onMounted(async () => {
   margin: 15px 0 5px;
   font-size: 20px;
   color: #303133;
+  display: flex;
+  justify-content: center;
+}
+
+.user-realname {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.edit-name-btn {
+  font-size: 16px;
+  color: #909399;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  transform: rotate(-10deg);
+}
+
+.edit-name-btn:hover {
+  color: #667eea;
+  transform: rotate(0deg) scale(1.1);
 }
 
 .user-card .username {
