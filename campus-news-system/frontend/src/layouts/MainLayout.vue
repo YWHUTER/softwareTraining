@@ -177,6 +177,10 @@
                       <el-icon><User /></el-icon>
                       <span>个人中心</span>
                     </el-dropdown-item>
+                    <el-dropdown-item command="analytics">
+                      <el-icon><DataAnalysis /></el-icon>
+                      <span>算法分析</span>
+                    </el-dropdown-item>
                     <el-dropdown-item command="admin" v-if="userStore.isAdmin">
                       <el-icon><Setting /></el-icon>
                       <span>管理后台</span>
@@ -240,7 +244,7 @@ import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'
 import { storeToRefs } from 'pinia'
 import { ElMessage, ElNotification } from 'element-plus'
-import { Search, Bell, Cpu, Histogram, QuestionFilled, Sunny, Moon, Monitor } from '@element-plus/icons-vue'
+import { Search, Bell, Cpu, Histogram, QuestionFilled, Sunny, Moon, Monitor, DataAnalysis } from '@element-plus/icons-vue'
 import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '@/api/notification'
 import bgImage from '@/assets/main-bg.jpg'
 import notificationWS from '@/utils/websocket'
@@ -283,6 +287,9 @@ const handleUserCommand = (command) => {
   switch (command) {
     case 'profile':
       router.push('/profile')
+      break
+    case 'analytics':
+      router.push('/analytics')
       break
     case 'admin':
       router.push('/admin')

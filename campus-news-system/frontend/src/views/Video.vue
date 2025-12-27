@@ -1253,13 +1253,67 @@ const handleUpload = async () => {
     
     ElMessage.success('视频上传成功')
     
-    // 上传成功后刷新视频列表
+    // 上传成功后刷新视频列表并关闭对话框
     await loadVideos()
+    showUploadDialog.value = false
+    resetUploadForm()
   } catch (error) {
-    ElMessage.error('上传失败: ' + (error.message || '未知错误'))
-    uploadStep.value = 2
+    console.error('上传请求失败:', error)
+    
+    // 智能错误处理：检查视频是否实际上传成功
+    await handleUploadError(error)
   } finally {
     uploading.value = false
+  }
+}
+
+// 智能错误处理函数
+const handleUploadError = async (error) => {
+  try {
+    console.log('检查视频是否实际上传成功...')
+    
+    // 等待一小段时间，让服务器处理完成
+    await new Promise(resolve => setTimeout(resolve, 3000))
+    
+    // 临时切换到我的视频视图来检查
+    const originalView = currentView.value
+    currentView.value = 'myVideos'
+    
+    // 刷新我的视频列表
+    await loadVideos()
+    
+    // 检查是否有新视频（按标题和时间匹配）
+    const now = new Date()
+    const recentVideos = videos.value.filter(video => {
+      const videoTime = new Date(video.createdAt)
+      const timeDiff = (now - videoTime) / 1000 / 60 // 分钟差
+      return video.title === uploadForm.value.title && 
+             video.authorId === userStore.user?.id &&
+             timeDiff < 10 // 10分钟内上传的视频
+    })
+    
+    if (recentVideos.length > 0) {
+      // 视频实际上传成功了
+      ElMessage.success('视频上传成功！')
+      console.log('视频上传实际成功，忽略网络超时错误')
+      
+      // 关闭上传对话框并重置表单
+      showUploadDialog.value = false
+      resetUploadForm()
+      
+      // 保持在我的视频页面
+      currentView.value = 'myVideos'
+    } else {
+      // 视频确实上传失败，恢复原视图
+      currentView.value = originalView
+      ElMessage.error('上传失败: ' + (error.message || '网络错误，请重试'))
+      uploadStep.value = 2
+    }
+  } catch (checkError) {
+    console.error('检查上传状态失败:', checkError)
+    // 检查过程出错，显示原始错误
+    ElMessage.error('上传失败: ' + (error.message || '网络错误，请重试'))
+    uploadStep.value = 2
   }
 }
 
