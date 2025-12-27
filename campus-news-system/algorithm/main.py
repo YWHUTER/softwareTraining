@@ -7,7 +7,8 @@ import logging
 import uvicorn
 
 from config import DATABASE_CONFIG, REDIS_CONFIG, RECOMMENDATION_CONFIG, SERVICE_CONFIG
-from models import DataLoader, HybridRecommender, UserProfileAnalyzer, VideoRecommender, HotWordsAnalyzer
+from models import (DataLoader, HybridRecommender, UserProfileAnalyzer, 
+                   VideoRecommender, HotWordsAnalyzer, UserClusteringAnalyzer, TrendPredictor)
 
 # 配置日志
 logging.basicConfig(
@@ -38,6 +39,8 @@ recommender = None
 user_profile_analyzer = None
 video_recommender = None
 hot_words_analyzer = None
+user_clustering = None
+trend_predictor = None
 
 # 请求/响应模型
 class RecommendationItem(BaseModel):
@@ -62,7 +65,8 @@ class UserRecommendRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """应用启动时初始化推荐系统"""
-    global data_loader, recommender, user_profile_analyzer, video_recommender, hot_words_analyzer
+    global data_loader, recommender, user_profile_analyzer, video_recommender
+    global hot_words_analyzer, user_clustering, trend_predictor
     
     logger.info("正在初始化推荐系统...")
     try:
@@ -73,7 +77,11 @@ async def startup_event():
         video_recommender = VideoRecommender(data_loader, RECOMMENDATION_CONFIG)
         video_recommender.train()
         hot_words_analyzer = HotWordsAnalyzer(data_loader)
-        logger.info("推荐系统初始化完成（含视频推荐、热词分析）")
+        user_clustering = UserClusteringAnalyzer(data_loader)
+        user_clustering.train()
+        trend_predictor = TrendPredictor(data_loader)
+        trend_predictor.train()
+        logger.info("推荐系统初始化完成（含视频推荐、热词分析、用户聚类、热度预测）")
     except Exception as e:
         logger.error(f"推荐系统初始化失败: {e}")
 
@@ -531,6 +539,168 @@ async def get_category_hot_words(
         }
     except Exception as e:
         logger.error(f"获取分类热词失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 用户聚类分析 API ====================
+
+@app.get("/api/user/clustering/type/{user_id}", tags=["用户聚类"])
+async def get_user_type(user_id: int):
+    """
+    获取单个用户的类型
+    
+    基于K-Means聚类算法，将用户分为：
+    - 活跃创作者 ✍️
+    - 深度阅读者 📚
+    - 社交达人 💬
+    - 视频爱好者 🎬
+    - 潜水用户 👀
+    """
+    if user_clustering is None:
+        raise HTTPException(status_code=503, detail="用户聚类服务未就绪")
+    
+    try:
+        result = user_clustering.get_user_type(user_id)
+        return {
+            "success": True,
+            "data": result,
+            "message": "获取用户类型成功"
+        }
+    except Exception as e:
+        logger.error(f"获取用户类型失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/user/clustering/all", tags=["用户聚类"])
+async def get_all_user_types():
+    """获取所有用户的类型"""
+    if user_clustering is None:
+        raise HTTPException(status_code=503, detail="用户聚类服务未就绪")
+    
+    try:
+        results = user_clustering.get_all_user_types()
+        return {
+            "success": True,
+            "data": results,
+            "message": f"获取到{len(results)}个用户的类型"
+        }
+    except Exception as e:
+        logger.error(f"获取用户类型失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/user/clustering/distribution", tags=["用户聚类"])
+async def get_user_distribution():
+    """
+    获取用户类型分布统计
+    
+    返回各类型用户的数量和占比
+    """
+    if user_clustering is None:
+        raise HTTPException(status_code=503, detail="用户聚类服务未就绪")
+    
+    try:
+        result = user_clustering.get_cluster_distribution()
+        return {
+            "success": True,
+            "data": result,
+            "message": "获取用户分布成功"
+        }
+    except Exception as e:
+        logger.error(f"获取用户分布失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 热度预测 API ====================
+
+@app.get("/api/predict/article/{article_id}", tags=["热度预测"])
+async def predict_article_trend(article_id: int):
+    """
+    预测文章热度趋势
+    
+    基于线性回归模型，预测文章未来7天和30天的浏览量
+    """
+    if trend_predictor is None:
+        raise HTTPException(status_code=503, detail="热度预测服务未就绪")
+    
+    try:
+        result = trend_predictor.predict_article_trend(article_id)
+        return {
+            "success": True,
+            "data": result,
+            "message": "文章热度预测成功"
+        }
+    except Exception as e:
+        logger.error(f"文章热度预测失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/predict/video/{video_id}", tags=["热度预测"])
+async def predict_video_trend(video_id: int):
+    """
+    预测视频热度趋势
+    
+    基于线性回归模型，预测视频未来7天和30天的播放量
+    """
+    if trend_predictor is None:
+        raise HTTPException(status_code=503, detail="热度预测服务未就绪")
+    
+    try:
+        result = trend_predictor.predict_video_trend(video_id)
+        return {
+            "success": True,
+            "data": result,
+            "message": "视频热度预测成功"
+        }
+    except Exception as e:
+        logger.error(f"视频热度预测失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/predict/trending", tags=["热度预测"])
+async def get_trending_content(
+    content_type: str = Query(default="all", description="内容类型: all/article/video"),
+    top_n: int = Query(default=10, ge=1, le=50)
+):
+    """
+    获取热度上升的内容
+    
+    返回预测热度将上升的文章和视频
+    """
+    if trend_predictor is None:
+        raise HTTPException(status_code=503, detail="热度预测服务未就绪")
+    
+    try:
+        results = trend_predictor.get_trending_content(content_type, top_n)
+        return {
+            "success": True,
+            "data": results,
+            "message": f"获取到{len(results)}条上升趋势内容"
+        }
+    except Exception as e:
+        logger.error(f"获取趋势内容失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/predict/platform-stats", tags=["热度预测"])
+async def get_platform_stats():
+    """
+    获取平台整体趋势统计
+    
+    返回平台文章和视频的整体增长趋势
+    """
+    if trend_predictor is None:
+        raise HTTPException(status_code=503, detail="热度预测服务未就绪")
+    
+    try:
+        result = trend_predictor.get_platform_stats()
+        return {
+            "success": True,
+            "data": result,
+            "message": "获取平台统计成功"
+        }
+    except Exception as e:
+        logger.error(f"获取平台统计失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

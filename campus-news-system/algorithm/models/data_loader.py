@@ -51,6 +51,22 @@ class DataLoader:
             logger.error(f"获取文章数据失败: {e}")
             return pd.DataFrame()
     
+    def get_users(self) -> pd.DataFrame:
+        """获取用户数据"""
+        query = """
+        SELECT u.id, u.username, u.real_name, u.email, u.college_id,
+               u.created_at, u.status,
+               c.name as college_name
+        FROM user u
+        LEFT JOIN college c ON u.college_id = c.id
+        WHERE u.status = 1
+        """
+        try:
+            return pd.read_sql(query, self.engine)
+        except Exception as e:
+            logger.error(f"获取用户数据失败: {e}")
+            return pd.DataFrame()
+    
     def get_user_profile(self, user_id: int) -> Dict:
         """获取用户画像数据"""
         query = text("""

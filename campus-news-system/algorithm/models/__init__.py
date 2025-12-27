@@ -5,6 +5,8 @@ from .hybrid_recommender import HybridRecommender
 from .user_profile import UserProfileAnalyzer
 from .video_recommender import VideoRecommender
 from .hot_words import HotWordsAnalyzer
+from .user_clustering import UserClusteringAnalyzer
+from .trend_predictor import TrendPredictor
 
 __all__ = [
     "DataLoader",
@@ -13,5 +15,7 @@ __all__ = [
     "HybridRecommender",
     "UserProfileAnalyzer",
     "VideoRecommender",
-    "HotWordsAnalyzer"
+    "HotWordsAnalyzer",
+    "UserClusteringAnalyzer",
+    "TrendPredictor"
 ]
