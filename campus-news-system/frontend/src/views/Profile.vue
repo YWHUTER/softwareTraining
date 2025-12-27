@@ -36,12 +36,12 @@
             </div>
             <!-- 关注数据 -->
             <div class="follow-stats">
-              <div class="follow-item" @click="$router.push('/follow')">
+              <div class="follow-item" @click="$router.push('/follow?tab=following')">
                 <span class="count">{{ userStore.user?.followingCount || 0 }}</span>
                 <span class="label">关注</span>
               </div>
               <div class="divider"></div>
-              <div class="follow-item" @click="$router.push('/follow')">
+              <div class="follow-item" @click="$router.push('/follow?tab=followers')">
                 <span class="count">{{ userStore.user?.followerCount || 0 }}</span>
                 <span class="label">粉丝</span>
               </div>

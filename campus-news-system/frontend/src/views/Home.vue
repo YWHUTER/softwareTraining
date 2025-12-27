@@ -602,12 +602,12 @@ watch(() => route.path, (newPath) => {
   width: 40px;
   height: 4px;
   border-radius: 2px;
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: rgba(80, 80, 80, 0.6);
   transition: all 0.3s;
 }
 
 .banner-carousel :deep(.is-active .el-carousel__button) {
-  background-color: #fff;
+  background-color: #333333;
   width: 60px;
 }
 

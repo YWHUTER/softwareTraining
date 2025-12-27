@@ -214,7 +214,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { View, ChatDotRound, Refresh, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
@@ -227,6 +227,7 @@ import {
 } from '@/api/follow'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 
 const activeTab = ref('feed')
@@ -358,6 +359,7 @@ const handleRecommendFollow = async (user) => {
           type: 'warning',
           dangerouslyUseHTMLString: true,
           distinguishCancelAndClose: true,
+          customClass: 'unfollow-confirm-dialog',
           confirmButtonClass: 'el-button--primary',
           cancelButtonClass: 'el-button--default'
         }
@@ -429,6 +431,7 @@ const handleUnfollowConfirm = async (user) => {
         type: 'warning',
         dangerouslyUseHTMLString: true,
         distinguishCancelAndClose: true,
+        customClass: 'unfollow-confirm-dialog',
         confirmButtonClass: 'el-button--primary',
         cancelButtonClass: 'el-button--default'
       }
@@ -508,7 +511,17 @@ const getBoardTagType = (type) => {
 }
 
 onMounted(() => {
-  loadFeed()
+  // 根据URL参数切换到对应的tab
+  const tab = route.query.tab
+  if (tab === 'following') {
+    activeTab.value = 'following'
+    loadFollowing()
+  } else if (tab === 'followers') {
+    activeTab.value = 'followers'
+    loadFollowers()
+  } else {
+    loadFeed()
+  }
   loadRecommend()
 })
 </script>
@@ -871,5 +884,26 @@ onMounted(() => {
   flex-direction: row-reverse;
   justify-content: flex-start;
   gap: 12px;
+}
+
+/* 取消关注弹窗 - 按钮居中 */
+.unfollow-confirm-dialog .el-message-box__btns {
+  justify-content: center;
+}
+
+/* 隐藏取消关注弹窗的警告图标 */
+.unfollow-confirm-dialog .el-message-box__status {
+  display: none;
+}
+
+/* 调整取消关注弹窗内容区域 */
+.unfollow-confirm-dialog .el-message-box__container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.unfollow-confirm-dialog .el-message-box__message {
+  padding-left: 0;
 }
 </style>
