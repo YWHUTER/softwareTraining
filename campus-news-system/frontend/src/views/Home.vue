@@ -84,6 +84,7 @@
           <!-- 分类筛选栏 -->
           <div 
             class="filter-section"
+            ref="filterSectionRef"
             v-motion
             :initial="{ opacity: 0, y: 20 }"
             :enter="{ opacity: 1, y: 0, transition: { delay: 200 } }"
@@ -201,6 +202,7 @@
                   :summary="article.summary || article.content?.substring(0, 80) + '...'"
                   :image="article.coverImage"
                   :category="getBoardTypeName(article.boardType)"
+                  :board-type="article.boardType"
                   :date="article.createdAt"
                   :views="article.viewCount"
                   :likes="article.likeCount || 0"
@@ -221,8 +223,8 @@
               :total="total"
               :page-sizes="[10, 20, 30, 50]"
               layout="total, sizes, prev, pager, next, jumper"
-              @current-change="fetchArticles"
-              @size-change="fetchArticles"
+              @current-change="handlePageChange"
+              @size-change="handlePageChange"
               background
             />
           </div>
@@ -356,6 +358,7 @@ const pageSize = ref(10)
 const total = ref(0)
 const sortBy = ref('date_desc') // 默认按日期降序
 const selectedDate = ref(null) // 按日期筛选
+const filterSectionRef = ref(null) // 筛选栏ref，用于翻页后滚动定位
 
 // 轮播图数据
 const carouselItems = ref([
@@ -447,6 +450,17 @@ const fetchArticles = async () => {
   }
 }
 
+// 翻页处理，加载数据后滚动到筛选栏位置
+const handlePageChange = async () => {
+  await fetchArticles()
+  if (filterSectionRef.value) {
+    // 获取筛选栏的位置，向上偏移90px让整个板块完整显示
+    const rect = filterSectionRef.value.getBoundingClientRect()
+    const scrollTop = window.pageYOffset + rect.top - 90
+    window.scrollTo({ top: scrollTop, behavior: 'smooth' })
+  }
+}
+
 const handleDateChange = () => {
   currentPage.value = 1
   fetchArticles()
@@ -491,7 +505,8 @@ const getBoardTypeName = (type) => {
   const types = {
     OFFICIAL: '官方新闻',
     CAMPUS: '全校新闻',
-    COLLEGE: '学院新闻'
+    COLLEGE: '学院新闻',
+    MARKETPLACE: '校园集市'
   }
   return types[type] || type
 }
@@ -610,7 +625,6 @@ watch(() => route.path, (newPath) => {
 
 .banner-carousel :deep(.el-carousel__arrow:hover) {
   background-color: rgba(0, 0, 0, 0.5);
-  transform: scale(1.1);
 }
 
 /* 横幅样式 */
@@ -649,8 +663,8 @@ watch(() => route.path, (newPath) => {
   font-weight: 800;
   margin: 0 0 20px;
   letter-spacing: -1px;
-  color: #fff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  color: #ffffff !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 0, 0, 0.3);
 }
 
 .banner-subtitle {

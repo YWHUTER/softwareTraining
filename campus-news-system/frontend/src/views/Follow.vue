@@ -85,11 +85,12 @@
                     </div>
                   </div>
                   <el-button 
-                    :type="user.isFollowed ? 'default' : 'primary'"
+                    type="default"
                     size="small"
-                    @click.stop="handleToggleFollow(user)"
+                    class="followed-btn"
+                    @click.stop="handleUnfollowConfirm(user)"
                   >
-                    {{ user.isFollowed ? '已关注' : '关注' }}
+                    已关注
                   </el-button>
                 </div>
                 
@@ -177,12 +178,18 @@
                 <p>粉丝 {{ user.followerCount || 0 }}</p>
               </div>
               <el-button 
-                type="primary" 
+                :type="user.isFollowed ? 'default' : 'primary'" 
                 size="small" 
-                plain
-                @click="handleToggleFollow(user)"
+                :plain="!user.isFollowed"
+                :class="{ 'followed-btn': user.isFollowed }"
+                @click="handleRecommendFollow(user)"
               >
-                <el-icon><Plus /></el-icon> 关注
+                <template v-if="user.isFollowed">
+                  已关注
+                </template>
+                <template v-else>
+                  <el-icon><Plus /></el-icon> 关注
+                </template>
               </el-button>
             </div>
           </div>
@@ -209,7 +216,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { View, ChatDotRound, Refresh, Plus } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { 
   getFollowFeed, 
@@ -325,6 +332,112 @@ const handleToggleFollow = async (user) => {
   }
 }
 
+// 推荐关注的关注/取消关注（保留用户信息）
+const handleRecommendFollow = async (user) => {
+  try {
+    // 如果已关注，需要确认取消
+    if (user.isFollowed) {
+      await ElMessageBox.confirm(
+        `确定要取消关注 "${user.realName}" 吗？`,
+        '取消关注',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning',
+          distinguishCancelAndClose: true,
+          confirmButtonClass: 'el-button--primary',
+          cancelButtonClass: 'el-button--default'
+        }
+      )
+    }
+    
+    const result = await toggleFollow(user.id)
+    user.isFollowed = result.isFollowing
+    // 更新粉丝数
+    if (result.isFollowing) {
+      user.followerCount = (user.followerCount || 0) + 1
+      
+      // 同步添加到"我的关注"列表
+      const existsInFollowing = followingList.value.find(u => u.id === user.id)
+      if (!existsInFollowing) {
+        // 添加到列表开头
+        followingList.value.unshift({
+          ...user,
+          isFollowed: true
+        })
+        followingPage.value.total = (followingPage.value.total || 0) + 1
+      }
+      
+      // 刷新关注动态列表
+      loadFeed()
+    } else {
+      user.followerCount = Math.max(0, (user.followerCount || 1) - 1)
+      
+      // 同步从"我的关注"列表移除
+      followingList.value = followingList.value.filter(u => u.id !== user.id)
+      followingPage.value.total = Math.max(0, (followingPage.value.total || 1) - 1)
+      
+      // 刷新关注动态列表（移除该用户的动态）
+      loadFeed()
+    }
+    ElMessage.success(result.message)
+    
+    // 刷新用户信息
+    await userStore.fetchUserInfo()
+  } catch (error) {
+    // 用户点击取消，不做任何操作
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
+// 我的关注中取消关注确认
+const handleUnfollowConfirm = async (user) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要取消关注 "${user.realName}" 吗？`,
+      '取消关注',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+        distinguishCancelAndClose: true,
+        confirmButtonClass: 'el-button--primary',
+        cancelButtonClass: 'el-button--default'
+      }
+    )
+    
+    // 用户点击确定，执行取消关注
+    const result = await toggleFollow(user.id)
+    if (!result.isFollowing) {
+      // 从列表中移除
+      followingList.value = followingList.value.filter(u => u.id !== user.id)
+      followingPage.value.total = Math.max(0, followingPage.value.total - 1)
+      
+      // 同步更新推荐关注列表中对应用户的状态
+      const recommendUser = recommendList.value.find(u => u.id === user.id)
+      if (recommendUser) {
+        recommendUser.isFollowed = false
+        recommendUser.followerCount = Math.max(0, (recommendUser.followerCount || 1) - 1)
+      }
+      
+      // 刷新关注动态列表（移除该用户的动态）
+      loadFeed()
+      
+      ElMessage.success('已取消关注')
+      
+      // 刷新用户信息
+      await userStore.fetchUserInfo()
+    }
+  } catch (error) {
+    // 用户点击取消，不做任何操作
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
 // Tab 切换
 const handleTabChange = (tab) => {
   if (tab === 'feed' && feedList.value.length === 0) {
@@ -358,13 +471,13 @@ const formatTime = (time) => {
 
 // 获取板块类型名称
 const getBoardTypeName = (type) => {
-  const map = { OFFICIAL: '官方', CAMPUS: '全校', COLLEGE: '学院' }
+  const map = { OFFICIAL: '官方', CAMPUS: '全校', COLLEGE: '学院', MARKETPLACE: '集市' }
   return map[type] || type
 }
 
 // 获取板块标签类型
 const getBoardTagType = (type) => {
-  const map = { OFFICIAL: 'danger', CAMPUS: 'success', COLLEGE: 'warning' }
+  const map = { OFFICIAL: 'danger', CAMPUS: 'success', COLLEGE: 'warning', MARKETPLACE: '' }
   return map[type] || 'info'
 }
 
@@ -650,6 +763,31 @@ onMounted(() => {
   color: #909399;
 }
 
+/* 关注按钮样式 - 未关注状态 */
+.recommend-item :deep(.el-button--primary) {
+  background: #409eff !important;
+  border-color: #409eff !important;
+  color: #fff !important;
+}
+
+.recommend-item :deep(.el-button--primary:hover) {
+  background: #66b1ff !important;
+  border-color: #66b1ff !important;
+}
+
+/* 已关注按钮样式 */
+.followed-btn {
+  background: #fff !important;
+  color: #1a1a2e !important;
+  border-color: #dcdfe6 !important;
+}
+
+.followed-btn:hover {
+  background: #f5f5f5 !important;
+  color: #1a1a2e !important;
+  border-color: #c0c4cc !important;
+}
+
 /* 统计卡片 */
 .stats-card {
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
@@ -697,5 +835,15 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   margin-top: 20px;
+}
+</style>
+
+<style>
+/* 全局样式 - 调整MessageBox按钮顺序（确认在左，取消在右） */
+.el-message-box__btns {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  gap: 12px;
 }
 </style>

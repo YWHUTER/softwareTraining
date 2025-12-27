@@ -63,7 +63,7 @@
     <!-- 次要统计 -->
     <el-row :gutter="20" style="margin-top: 20px;">
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card-mini">
+        <el-card shadow="hover" class="stat-card-mini clickable" @click="goToArticles">
           <div class="mini-stat">
             <span class="label">待审核文章</span>
             <span class="value pending">{{ statistics.pendingCount }}</span>
@@ -160,11 +160,14 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { Refresh, View, DataAnalysis } from '@element-plus/icons-vue'
 import { getArticleList, approveArticle } from '@/api/article'
 import { getStatistics, getChartData } from '@/api/admin'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
+
+const router = useRouter()
 
 const statistics = ref({
   userCount: 0,
@@ -178,6 +181,11 @@ const statistics = ref({
 const recentArticles = ref([])
 const pendingArticles = ref([])
 const loading = ref(false)
+
+// 跳转到文章管理页面
+const goToArticles = () => {
+  router.push('/admin/articles')
+}
 
 // 图表 DOM 引用
 const categoryChartRef = ref(null)
@@ -652,6 +660,16 @@ onUnmounted(() => {
 /* 小卡片 */
 .stat-card-mini {
   border-radius: 8px;
+}
+
+.stat-card-mini.clickable {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.stat-card-mini.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .mini-stat {

@@ -475,7 +475,8 @@ const getBoardTypeName = (type) => {
   const types = {
     OFFICIAL: '官方新闻',
     CAMPUS: '全校新闻',
-    COLLEGE: '学院新闻'
+    COLLEGE: '学院新闻',
+    MARKETPLACE: '校园集市'
   }
   return types[type] || type
 }
@@ -484,7 +485,8 @@ const getBoardTypeTag = (type) => {
   const tags = {
     OFFICIAL: 'danger',
     CAMPUS: 'primary',
-    COLLEGE: 'success'
+    COLLEGE: 'success',
+    MARKETPLACE: 'warning'
   }
   return tags[type] || ''
 }
