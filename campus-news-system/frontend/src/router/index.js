@@ -141,6 +141,11 @@ const routes = [
         component: () => import('@/views/admin/Articles.vue')
       },
       {
+        path: 'videos',
+        name: 'AdminVideos',
+        component: () => import('@/views/admin/Videos.vue')
+      },
+      {
         path: 'colleges',
         name: 'AdminColleges',
         component: () => import('@/views/admin/Colleges.vue')

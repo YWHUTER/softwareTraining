@@ -32,6 +32,10 @@
             <el-icon><Document /></el-icon>
             <span>文章管理</span>
           </el-menu-item>
+          <el-menu-item index="/admin/videos">
+            <el-icon><Film /></el-icon>
+            <span>视频管理</span>
+          </el-menu-item>
           <el-menu-item index="/admin/colleges">
             <el-icon><School /></el-icon>
             <span>学院管理</span>
@@ -73,6 +77,7 @@ const pageTitle = computed(() => {
     '/admin': '数据概览',
     '/admin/users': '用户管理',
     '/admin/articles': '文章管理',
+    '/admin/videos': '视频管理',
     '/admin/colleges': '学院管理'
   }
   return titles[route.path] || '管理后台'
