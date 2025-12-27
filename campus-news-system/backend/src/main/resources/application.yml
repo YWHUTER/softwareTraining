@@ -87,13 +87,16 @@ recommendation:
   service:
     url: ${RECOMMENDATION_SERVICE_URL:http://localhost:5000}
 
-# 视频存储配置(远程服务器)
-video:
-  storage:
-    host: ${VIDEO_SERVER_HOST:203.195.182.166}
-    port: ${VIDEO_SERVER_PORT:22}
-    username: ${VIDEO_SERVER_USER:root}
-    password: ${VIDEO_SERVER_PASSWORD:YSW0910love}
-    remote-path: /var/www/videos
-    base-url: http://${VIDEO_SERVER_HOST:203.195.182.166}/videos
-    max-file-size: 524288000  # 500MB
+# 视频存储配置(阿里云OSS)
+aliyun:
+  oss:
+    endpoint: oss-cn-beijing.aliyuncs.com
+    access-key-id: ${OSS_ACCESS_KEY_ID:your-access-key-id}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:your-access-key-secret}
+    bucket-name: campus-news-videos
+    # 视频存储目录
+    video-dir: videos
+    # 缩略图存储目录
+    thumbnail-dir: thumbnails
+    # 最大文件大小 500MB
+    max-file-size: 524288000
