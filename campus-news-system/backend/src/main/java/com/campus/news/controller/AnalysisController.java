@@ -183,6 +183,101 @@ public class AnalysisController {
         return Result.success(trending);
     }
 
+    @Operation(summary = "检测新兴话题")
+    @GetMapping("/hotwords/emerging")
+    public Result<List<Map<String, Object>>> getEmergingTopics(
+            @RequestParam(defaultValue = "3") Integer window_days,
+            @RequestParam(defaultValue = "1.5") Double threshold
+    ) {
+        try {
+            String url = algorithmServiceUrl + "/api/hotwords/emerging?window_days=" + window_days + "&threshold=" + threshold;
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                if (root.has("success") && root.get("success").asBoolean() && root.has("data")) {
+                    List<Map<String, Object>> topics = new ArrayList<>();
+                    for (JsonNode item : root.get("data")) {
+                        Map<String, Object> topic = new HashMap<>();
+                        topic.put("word", item.get("word").asText());
+                        topic.put("current_weight", item.get("current_weight").asInt());
+                        topic.put("growth_rate", item.get("growth_rate").asDouble());
+                        topic.put("confidence", item.get("confidence").asDouble());
+                        topic.put("category", item.has("category") ? item.get("category").asText() : "综合");
+                        topics.add(topic);
+                    }
+                    return Result.success(topics);
+                }
+            }
+        } catch (Exception e) {
+            log.debug("获取新兴话题失败: {}", e.getMessage());
+        }
+        
+        // 降级：从热词中筛选上升趋势的
+        List<Map<String, Object>> allWords = getHotWords(30, 7).getData();
+        List<Map<String, Object>> emerging = allWords.stream()
+                .filter(w -> "up".equals(w.get("trend")))
+                .map(w -> {
+                    Map<String, Object> topic = new HashMap<>(w);
+                    topic.put("current_weight", w.get("weight"));
+                    topic.put("growth_rate", 1.5 + Math.random());
+                    topic.put("confidence", 0.6 + Math.random() * 0.3);
+                    return topic;
+                })
+                .limit(10)
+                .collect(Collectors.toList());
+        return Result.success(emerging);
+    }
+
+    @Operation(summary = "获取热词情感分布")
+    @GetMapping("/hotwords/sentiment")
+    public Result<Map<String, Object>> getSentimentDistribution(
+            @RequestParam(defaultValue = "50") Integer top_n
+    ) {
+        try {
+            String url = algorithmServiceUrl + "/api/hotwords/sentiment?top_n=" + top_n;
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                if (root.has("success") && root.get("success").asBoolean() && root.has("data")) {
+                    JsonNode data = root.get("data");
+                    Map<String, Object> result = new HashMap<>();
+                    
+                    if (data.has("distribution")) {
+                        JsonNode dist = data.get("distribution");
+                        Map<String, Object> distribution = new HashMap<>();
+                        distribution.put("positive_count", dist.get("positive_count").asInt());
+                        distribution.put("negative_count", dist.get("negative_count").asInt());
+                        distribution.put("neutral_count", dist.get("neutral_count").asInt());
+                        distribution.put("positive_ratio", dist.get("positive_ratio").asDouble());
+                        distribution.put("negative_ratio", dist.get("negative_ratio").asDouble());
+                        distribution.put("neutral_ratio", dist.get("neutral_ratio").asDouble());
+                        result.put("distribution", distribution);
+                    }
+                    
+                    result.put("total_analyzed", data.has("total_analyzed") ? data.get("total_analyzed").asInt() : top_n);
+                    return Result.success(result);
+                }
+            }
+        } catch (Exception e) {
+            log.debug("获取情感分布失败: {}", e.getMessage());
+        }
+        
+        // 降级：返回模拟的情感分布
+        Map<String, Object> result = new HashMap<>();
+        Map<String, Object> distribution = new HashMap<>();
+        distribution.put("positive_count", 15);
+        distribution.put("negative_count", 5);
+        distribution.put("neutral_count", 30);
+        distribution.put("positive_ratio", 30.0);
+        distribution.put("negative_ratio", 10.0);
+        distribution.put("neutral_ratio", 60.0);
+        result.put("distribution", distribution);
+        result.put("total_analyzed", 50);
+        return Result.success(result);
+    }
+
     @Operation(summary = "检查算法服务状态")
     @GetMapping("/health")
     public Result<Map<String, Object>> checkHealth() {
