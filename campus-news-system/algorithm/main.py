@@ -542,6 +542,263 @@ async def get_category_hot_words(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/hotwords/emerging", tags=["热词分析"])
+async def get_emerging_topics(
+    window_days: int = Query(default=3, ge=1, le=7),
+    threshold: float = Query(default=1.5, ge=1.0, le=5.0)
+):
+    """
+    检测新兴话题
+    
+    识别短期内快速增长的关键词
+    - window_days: 检测窗口天数
+    - threshold: 增长阈值倍数
+    """
+    if hot_words_analyzer is None:
+        raise HTTPException(status_code=503, detail="热词分析服务未就绪")
+    
+    try:
+        topics = hot_words_analyzer.detect_emerging_topics(window_days, threshold)
+        return {
+            "success": True,
+            "data": topics,
+            "message": f"检测到{len(topics)}个新兴话题"
+        }
+    except Exception as e:
+        logger.error(f"检测新兴话题失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/hotwords/correlation", tags=["热词分析"])
+async def get_keyword_correlation(
+    top_n: int = Query(default=30, ge=10, le=50)
+):
+    """
+    分析关键词相关性
+    
+    返回关键词之间的共现关系和聚类结果
+    """
+    if hot_words_analyzer is None:
+        raise HTTPException(status_code=503, detail="热词分析服务未就绪")
+    
+    try:
+        correlation = hot_words_analyzer.analyze_keyword_correlation(top_n)
+        return {
+            "success": True,
+            "data": correlation,
+            "message": "关键词相关性分析完成"
+        }
+    except Exception as e:
+        logger.error(f"关键词相关性分析失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/hotwords/sentiment", tags=["热词分析"])
+async def get_sentiment_distribution(
+    top_n: int = Query(default=50, ge=10, le=100)
+):
+    """
+    分析热词情感分布
+    
+    返回热词的积极/消极/中性情感分类
+    """
+    if hot_words_analyzer is None:
+        raise HTTPException(status_code=503, detail="热词分析服务未就绪")
+    
+    try:
+        sentiment = hot_words_analyzer.analyze_sentiment_distribution(top_n)
+        return {
+            "success": True,
+            "data": sentiment,
+            "message": "情感分布分析完成"
+        }
+    except Exception as e:
+        logger.error(f"情感分布分析失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/hotwords/timeseries/{keyword}", tags=["热词分析"])
+async def get_keyword_timeseries(
+    keyword: str,
+    days: int = Query(default=30, ge=7, le=90)
+):
+    """
+    获取关键词时间序列数据
+    
+    用于绘制关键词趋势图表
+    """
+    if hot_words_analyzer is None:
+        raise HTTPException(status_code=503, detail="热词分析服务未就绪")
+    
+    try:
+        timeseries = hot_words_analyzer.generate_time_series(keyword, days)
+        return {
+            "success": True,
+            "data": timeseries,
+            "message": f"获取'{keyword}'时间序列数据成功"
+        }
+    except Exception as e:
+        logger.error(f"获取时间序列失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/hotwords/compare", tags=["热词分析"])
+async def compare_periods(
+    period1_days: int = Query(default=7, ge=1, le=30),
+    period2_days: int = Query(default=7, ge=1, le=30),
+    offset_days: int = Query(default=7, ge=1, le=60),
+    top_n: int = Query(default=30, ge=10, le=50)
+):
+    """
+    对比两个时间段的热词变化
+    
+    - period1_days: 当前周期天数
+    - period2_days: 对比周期天数
+    - offset_days: 对比周期偏移天数
+    """
+    if hot_words_analyzer is None:
+        raise HTTPException(status_code=503, detail="热词分析服务未就绪")
+    
+    try:
+        comparison = hot_words_analyzer.compare_periods(
+            period1_days, period2_days, offset_days, top_n
+        )
+        return {
+            "success": True,
+            "data": comparison,
+            "message": "周期对比分析完成"
+        }
+    except Exception as e:
+        logger.error(f"周期对比分析失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/hotwords/phrases", tags=["热词分析"])
+async def get_topic_phrases(
+    top_n: int = Query(default=20, ge=5, le=50)
+):
+    """
+    提取主题短语
+    
+    返回2-3词组合的主题短语
+    """
+    if hot_words_analyzer is None:
+        raise HTTPException(status_code=503, detail="热词分析服务未就绪")
+    
+    try:
+        phrases = hot_words_analyzer.extract_topic_phrases(top_n)
+        return {
+            "success": True,
+            "data": phrases,
+            "message": f"提取到{len(phrases)}个主题短语"
+        }
+    except Exception as e:
+        logger.error(f"提取主题短语失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/hotwords/wordcloud", tags=["热词分析"])
+async def get_wordcloud_data(
+    style: str = Query(default="default", description="样式: default/colorful/minimal"),
+    top_n: int = Query(default=100, ge=20, le=200)
+):
+    """
+    生成词云可视化数据
+    
+    返回适合前端词云组件的数据格式
+    """
+    if hot_words_analyzer is None:
+        raise HTTPException(status_code=503, detail="热词分析服务未就绪")
+    
+    try:
+        wordcloud = hot_words_analyzer.generate_wordcloud_data(style, top_n)
+        return {
+            "success": True,
+            "data": wordcloud,
+            "message": "词云数据生成成功"
+        }
+    except Exception as e:
+        logger.error(f"生成词云数据失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/hotwords/comprehensive", tags=["热词分析"])
+async def get_comprehensive_analysis(
+    days: int = Query(default=7, ge=1, le=30),
+    top_n: int = Query(default=50, ge=20, le=100)
+):
+    """
+    获取综合热词分析报告
+    
+    包含多维度分析的完整报告：
+    - 热词列表
+    - 新兴话题
+    - 关键词相关性
+    - 情感分布
+    - 主题短语
+    - 周期对比
+    - 词云数据
+    """
+    if hot_words_analyzer is None:
+        raise HTTPException(status_code=503, detail="热词分析服务未就绪")
+    
+    try:
+        report = hot_words_analyzer.get_comprehensive_analysis(days, top_n)
+        return {
+            "success": True,
+            "data": report,
+            "message": "综合分析报告生成成功"
+        }
+    except Exception as e:
+        logger.error(f"生成综合分析报告失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/hotwords/dimension/{dimension}", tags=["热词分析"])
+async def analyze_by_dimension(
+    dimension: str,
+    value: str = Query(..., description="维度值"),
+    top_n: int = Query(default=20, ge=5, le=50)
+):
+    """
+    按维度分析热词
+    
+    - dimension: 分析维度 (time/category/user_group)
+    - value: 维度值 (如 today/week/month 或 分类名称)
+    """
+    if hot_words_analyzer is None:
+        raise HTTPException(status_code=503, detail="热词分析服务未就绪")
+    
+    try:
+        words = hot_words_analyzer.analyze_by_dimension(dimension, value, top_n)
+        return {
+            "success": True,
+            "data": words,
+            "message": f"按{dimension}={value}分析完成，获取{len(words)}个热词"
+        }
+    except Exception as e:
+        logger.error(f"维度分析失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/hotwords/stats", tags=["热词分析"])
+async def get_analysis_stats():
+    """获取热词分析统计信息"""
+    if hot_words_analyzer is None:
+        raise HTTPException(status_code=503, detail="热词分析服务未就绪")
+    
+    try:
+        stats = hot_words_analyzer.get_analysis_stats()
+        return {
+            "success": True,
+            "data": stats,
+            "message": "获取分析统计成功"
+        }
+    except Exception as e:
+        logger.error(f"获取分析统计失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== 用户聚类分析 API ====================
 
 @app.get("/api/user/clustering/type/{user_id}", tags=["用户聚类"])
