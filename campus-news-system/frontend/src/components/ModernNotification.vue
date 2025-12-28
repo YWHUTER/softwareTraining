@@ -19,6 +19,13 @@
       <div v-if="closable" class="notification-close" @click.stop="close">
         <i class="el-icon-close"></i>
       </div>
+      <div v-if="duration > 0" class="notification-progress">
+        <div 
+          class="progress-bar" 
+          :class="`progress-${type}`"
+          :style="{ width: progressWidth + '%' }"
+        ></div>
+      </div>
     </div>
   </transition>
 </template>
@@ -58,6 +65,23 @@ const iconClass = computed(() => {
   return icons[props.type]
 })
 
+const progressWidth = ref(100)
+
+const startProgress = () => {
+  if (props.duration > 0) {
+    const interval = 50
+    const step = (interval / props.duration) * 100
+    
+    const timer = setInterval(() => {
+      progressWidth.value -= step
+      if (progressWidth.value <= 0) {
+        clearInterval(timer)
+        close()
+      }
+    }, interval)
+  }
+}
+
 const close = () => {
   visible.value = false
   emit('close')
@@ -71,9 +95,7 @@ const handleClick = () => {
 
 onMounted(() => {
   if (props.duration > 0) {
-    setTimeout(() => {
-      close()
-    }, props.duration)
+    startProgress()
   }
 })
 </script>
@@ -188,6 +210,40 @@ onMounted(() => {
 
 .notification-info {
   border-left: 4px solid #667eea;
+}
+
+/* Progress bar */
+.notification-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  transition: width 0.05s linear;
+  border-radius: 0 0 12px 12px;
+}
+
+.progress-success {
+  background: linear-gradient(90deg, #67c23a, #85ce61);
+}
+
+.progress-warning {
+  background: linear-gradient(90deg, #e6a23c, #ebb563);
+}
+
+.progress-error {
+  background: linear-gradient(90deg, #f56c6c, #f78989);
+}
+
+.progress-info {
+  background: linear-gradient(90deg, #667eea, #764ba2);
 }
 
 /* Transition animations */
