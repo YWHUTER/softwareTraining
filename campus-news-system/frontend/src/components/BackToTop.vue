@@ -80,11 +80,31 @@ const handleScroll = () => {
 
 // 返回顶部
 const scrollToTop = () => {
+  // 添加点击涟漪效果
+  createRipple()
+  
   // 平滑滚动到顶部
   window.scrollTo({
     top: 0,
     behavior: 'smooth'
   })
+}
+
+// 创建点击涟漪效果
+const createRipple = () => {
+  const button = document.querySelector('.back-to-top-button')
+  if (!button) return
+  
+  const ripple = document.createElement('div')
+  ripple.className = 'click-ripple'
+  button.appendChild(ripple)
+  
+  // 动画结束后移除元素
+  setTimeout(() => {
+    if (ripple.parentNode) {
+      ripple.parentNode.removeChild(ripple)
+    }
+  }, 600)
 }
 
 onMounted(() => {
@@ -172,6 +192,28 @@ onUnmounted(() => {
 
 .progress-ring-circle {
   transition: stroke-dashoffset 0.15s ease;
+}
+
+/* 点击涟漪效果 */
+.click-ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  transform: translate(-50%, -50%);
+  animation: ripple 0.6s ease-out;
+  pointer-events: none;
+}
+
+@keyframes ripple {
+  to {
+    width: 120px;
+    height: 120px;
+    opacity: 0;
+  }
 }
 
 /* 增强按钮在不同背景下的可见性 */
