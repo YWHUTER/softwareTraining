@@ -9,8 +9,6 @@ import router from './router'
 import './style.css'
 import './styles/glassmorphism.css'
 import { MotionPlugin } from '@vueuse/motion'
-import Particles from '@tsparticles/vue3'
-import { loadFull } from 'tsparticles'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -24,14 +22,5 @@ app.use(pinia)
 app.use(router)
 app.use(ElementPlus, { locale: zhCn })
 app.use(MotionPlugin)
-app.use(Particles, {
-  init: async engine => {
-    try {
-      await loadFull(engine)
-    } catch (error) {
-      console.warn('Failed to load particles:', error)
-    }
-  }
-})
 
 app.mount('#app')

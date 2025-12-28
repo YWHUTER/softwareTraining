@@ -728,6 +728,12 @@ onMounted(() => {
   color: #64748b;
 }
 
+:global(.light) .refresh-btn:hover,
+:global([data-theme="light"]) .refresh-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #1e293b;
+}
+
 :global(.light) .trending-title,
 :global([data-theme="light"]) .trending-title {
   color: #64748b;
@@ -741,6 +747,17 @@ onMounted(() => {
 :global(.light) .empty-state,
 :global([data-theme="light"]) .empty-state {
   color: #94a3b8;
+}
+
+:global(.light) .trending-item,
+:global([data-theme="light"]) .trending-item {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+:global(.light) .trending-item:hover,
+:global([data-theme="light"]) .trending-item:hover {
+  background: rgba(34, 197, 94, 0.2);
 }
 
 /* 新增样式 */
@@ -1179,5 +1196,143 @@ onMounted(() => {
 :global(.light) .stat-value,
 :global([data-theme="light"]) .stat-value {
   color: #1e293b;
+}
+
+/* 亮色模式 - 维度标签 */
+:global(.light) .dimension-tabs,
+:global([data-theme="light"]) .dimension-tabs {
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+
+:global(.light) .dimension-tab,
+:global([data-theme="light"]) .dimension-tab {
+  color: #475569;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+:global(.light) .dimension-tab:hover,
+:global([data-theme="light"]) .dimension-tab:hover {
+  color: #1e293b;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+:global(.light) .dimension-tab.active,
+:global([data-theme="light"]) .dimension-tab.active {
+  color: #fff;
+}
+
+/* 亮色模式 - 列表视图 */
+:global(.light) .word-list-item,
+:global([data-theme="light"]) .word-list-item {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+:global(.light) .word-list-item:hover,
+:global([data-theme="light"]) .word-list-item:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+:global(.light) .word-list-item .rank,
+:global([data-theme="light"]) .word-list-item .rank {
+  background: rgba(0, 0, 0, 0.08);
+  color: #475569;
+}
+
+:global(.light) .word-list-item .word-name,
+:global([data-theme="light"]) .word-list-item .word-name {
+  color: #1e293b;
+}
+
+:global(.light) .word-list-item .word-category,
+:global([data-theme="light"]) .word-list-item .word-category {
+  color: #64748b;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+:global(.light) .word-list-item .word-bar,
+:global([data-theme="light"]) .word-list-item .word-bar {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+:global(.light) .word-list-item .word-weight,
+:global([data-theme="light"]) .word-list-item .word-weight {
+  color: #475569;
+}
+
+/* 亮色模式 - 新兴话题 */
+:global(.light) .emerging-section,
+:global([data-theme="light"]) .emerging-section {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+:global(.light) .emerging-item,
+:global([data-theme="light"]) .emerging-item {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+:global(.light) .emerging-item:hover,
+:global([data-theme="light"]) .emerging-item:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+:global(.light) .emerging-item .topic-word,
+:global([data-theme="light"]) .emerging-item .topic-word {
+  color: #1e293b;
+}
+
+/* 亮色模式 - 情感统计 */
+:global(.light) .sentiment-stats,
+:global([data-theme="light"]) .sentiment-stats {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+:global(.light) .stats-title,
+:global([data-theme="light"]) .stats-title {
+  color: #64748b;
+}
+
+:global(.light) .stat-bar .label,
+:global([data-theme="light"]) .stat-bar .label {
+  color: #475569;
+}
+
+:global(.light) .stat-bar .bar,
+:global([data-theme="light"]) .stat-bar .bar {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+:global(.light) .stat-bar .value,
+:global([data-theme="light"]) .stat-bar .value {
+  color: #475569;
+}
+
+/* 亮色模式 - 悬浮框 */
+:global(.light) .word-detail-popup,
+:global([data-theme="light"]) .word-detail-popup {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+:global(.light) .popup-header,
+:global([data-theme="light"]) .popup-header {
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+
+:global(.light) .popup-word,
+:global([data-theme="light"]) .popup-word {
+  color: #1e293b;
+}
+
+:global(.light) .stat-label,
+:global([data-theme="light"]) .stat-label {
+  color: #64748b;
+}
+
+:global(.light) .popup-tip,
+:global([data-theme="light"]) .popup-tip {
+  border-top-color: rgba(0, 0, 0, 0.1);
+  color: #94a3b8;
 }
 </style>

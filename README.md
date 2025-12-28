@@ -271,3 +271,7 @@ GET /api/profile/1
 <p align="center">
   © 2025 WHUT 智园10舍313. All rights reserved.
 </p>
+
+## 📅 更新日志
+
+- **2025-12-27**: 优化搜索界面 UI，修复 Git 配置问题，完善贡献者统计

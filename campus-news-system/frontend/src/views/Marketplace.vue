@@ -141,24 +141,6 @@
                   </div>
                 </div>
               </div>
-              <el-dropdown trigger="click" @click.stop>
-                <div class="more-btn">
-                  <el-icon><MoreFilled /></el-icon>
-                </div>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="handleShare(post)">
-                      <el-icon><Share /></el-icon> 分享
-                    </el-dropdown-item>
-                    <el-dropdown-item @click="handleFavorite(post)">
-                      <el-icon><Star /></el-icon> 收藏
-                    </el-dropdown-item>
-                    <el-dropdown-item v-if="isOwnPost(post)" divided @click="handleDeletePost(post)">
-                      <el-icon><Delete /></el-icon> 删除
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
             </div>
 
             <!-- 帖子内容 -->

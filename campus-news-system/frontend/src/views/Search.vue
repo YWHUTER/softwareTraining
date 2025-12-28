@@ -25,6 +25,7 @@
             size="large"
             clearable
             @keyup.enter="handleSearch"
+            @clear="resetToInitialState"
             class="search-input"
           >
             <template #prefix>
@@ -42,41 +43,61 @@
           </el-button>
         </div>
         
-        <!-- 热门搜索 -->
-        <div class="hot-keywords" v-if="!hasSearched">
-          <span class="hot-label">热门搜索：</span>
-          <el-tag 
-            v-for="tag in hotKeywords" 
-            :key="tag"
-            @click="quickSearch(tag)"
-            class="hot-tag"
-            effect="plain"
-          >
-            {{ tag }}
-          </el-tag>
-        </div>
-
-        <!-- 搜索历史 -->
-        <div class="search-history" v-if="!hasSearched && searchHistory.length > 0">
-          <div class="history-header">
-            <span class="history-label">搜索历史</span>
-            <el-button link type="info" @click="clearHistory" size="small" class="clear-btn">
-              <el-icon><Delete /></el-icon> 清空
-            </el-button>
+        <!-- 搜索提示区域 -->
+        <div class="search-suggestions" v-if="!hasSearched">
+          <!-- 热门搜索 -->
+          <div class="suggestion-section hot-keywords-section">
+            <div class="section-header">
+              <div class="section-icon">
+                <el-icon><TrendCharts /></el-icon>
+              </div>
+              <span class="section-title">热门搜索</span>
+              <div class="section-decoration"></div>
+            </div>
+            <div class="tags-container">
+              <el-tag 
+                v-for="(tag, index) in hotKeywords" 
+                :key="tag"
+                @click="quickSearch(tag)"
+                class="hot-tag"
+                effect="plain"
+                :style="{ animationDelay: `${index * 0.1}s` }"
+              >
+                <el-icon><Search /></el-icon>
+                {{ tag }}
+              </el-tag>
+            </div>
           </div>
-          <div class="history-tags">
-            <el-tag 
-              v-for="tag in searchHistory" 
-              :key="tag"
-              @click="quickSearch(tag)"
-              closable
-              @close="deleteHistoryItem(tag)"
-              class="history-tag"
-              type="info"
-              effect="plain"
-            >
-              {{ tag }}
-            </el-tag>
+
+          <!-- 搜索历史 -->
+          <div class="suggestion-section search-history-section" v-if="searchHistory.length > 0">
+            <div class="section-header">
+              <div class="section-icon">
+                <el-icon><Clock /></el-icon>
+              </div>
+              <span class="section-title">搜索历史</span>
+              <div class="section-decoration"></div>
+              <el-button link type="info" @click="clearHistory" size="small" class="clear-btn">
+                <el-icon><Delete /></el-icon>
+                清空历史
+              </el-button>
+            </div>
+            <div class="tags-container">
+              <el-tag 
+                v-for="(tag, index) in searchHistory" 
+                :key="tag"
+                @click="quickSearch(tag)"
+                closable
+                @close="deleteHistoryItem(tag)"
+                class="history-tag"
+                type="info"
+                effect="plain"
+                :style="{ animationDelay: `${index * 0.05}s` }"
+              >
+                <el-icon><Document /></el-icon>
+                {{ tag }}
+              </el-tag>
+            </div>
           </div>
         </div>
       </div>
@@ -134,27 +155,33 @@
 
       <!-- 结果列表 -->
       <div class="article-list">
-        <!-- 骨架屏加载状态 -->
-        <div v-if="loading" class="skeleton-list">
-          <el-card v-for="i in 5" :key="i" class="article-card skeleton-card">
-            <div class="skeleton-content">
-              <div class="skeleton-main">
-                <el-skeleton animated>
-                  <template #template>
-                    <el-skeleton-item variant="text" style="width: 60px; margin-bottom: 10px" />
-                    <el-skeleton-item variant="h3" style="width: 60%; margin-bottom: 15px" />
-                    <el-skeleton-item variant="p" style="width: 100%; margin-bottom: 5px" />
-                    <el-skeleton-item variant="p" style="width: 80%; margin-bottom: 15px" />
-                    <div style="display: flex; align-items: center; gap: 10px">
-                      <el-skeleton-item variant="circle" style="width: 24px; height: 24px" />
-                      <el-skeleton-item variant="text" style="width: 100px" />
-                    </div>
-                  </template>
-                </el-skeleton>
+        <!-- 搜索加载状态 -->
+        <div v-if="loading" class="search-loading">
+          <div class="loading-header">
+            <div class="loading-spinner"></div>
+            <span class="loading-text">正在搜索 "{{ searchedKeyword }}"...</span>
+          </div>
+          <div class="skeleton-list">
+            <el-card v-for="i in 5" :key="i" class="article-card skeleton-card">
+              <div class="skeleton-content">
+                <div class="skeleton-main">
+                  <el-skeleton animated>
+                    <template #template>
+                      <el-skeleton-item variant="text" style="width: 60px; margin-bottom: 10px" />
+                      <el-skeleton-item variant="h3" style="width: 60%; margin-bottom: 15px" />
+                      <el-skeleton-item variant="p" style="width: 100%; margin-bottom: 5px" />
+                      <el-skeleton-item variant="p" style="width: 80%; margin-bottom: 15px" />
+                      <div style="display: flex; align-items: center; gap: 10px">
+                        <el-skeleton-item variant="circle" style="width: 24px; height: 24px" />
+                        <el-skeleton-item variant="text" style="width: 100px" />
+                      </div>
+                    </template>
+                  </el-skeleton>
+                </div>
+                <el-skeleton-item variant="image" style="width: 200px; height: 150px; border-radius: 8px" />
               </div>
-              <el-skeleton-item variant="image" style="width: 200px; height: 150px; border-radius: 8px" />
-            </div>
-          </el-card>
+            </el-card>
+          </div>
         </div>
 
         <template v-else>
@@ -265,30 +292,33 @@
 
     <!-- 未搜索时的提示 -->
     <div class="search-tips" v-if="!hasSearched">
-      <el-card class="tips-card" shadow="hover">
-        <template #header>
-          <div class="tips-header">
-            <el-icon :size="20" color="#409eff"><InfoFilled /></el-icon>
-            <span>搜索小技巧</span>
+      <div class="tips-section">
+        <div class="section-header">
+          <div class="section-icon">
+            <el-icon><InfoFilled /></el-icon>
           </div>
-        </template>
-        <ul class="tips-list">
-          <li>输入关键词后按 <kbd>Enter</kbd> 键或点击搜索按钮开始搜索</li>
-          <li>支持标题和内容的模糊匹配搜索</li>
-          <li>可以使用筛选功能缩小搜索范围</li>
-          <li>尝试使用不同的关键词获得更好的搜索结果</li>
-        </ul>
-      </el-card>
+          <span class="section-title">搜索小技巧</span>
+          <div class="section-decoration"></div>
+        </div>
+        <div class="tips-content">
+          <div class="tip-item" v-for="(tip, index) in searchTips" :key="index" :style="{ animationDelay: `${index * 0.1}s` }">
+            <div class="tip-icon" :style="{ color: tip.color }">
+              <component :is="tip.icon" />
+            </div>
+            <span class="tip-text" v-html="tip.text"></span>
+          </div>
+        </div>
+      </div>
     </div>
     <el-backtop :right="40" :bottom="40" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getArticleList } from '@/api/article'
-import { Search, InfoFilled } from '@element-plus/icons-vue'
+import { Search, InfoFilled, TrendCharts, Clock, Delete, Document, Mouse, Filter, RefreshRight } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -304,9 +334,44 @@ const total = ref(0)
 const sortBy = ref('relevance')
 const boardType = ref('')
 const searchHistory = ref([])
+let resetTimer = null
 
 // 热门搜索关键词
 const hotKeywords = ['校园活动', '讲座', '竞赛', '招聘', '学术', '通知']
+
+// 搜索小技巧
+const searchTips = [
+  {
+    icon: 'Mouse',
+    text: '输入关键词后按 <kbd>Enter</kbd> 键或点击搜索按钮开始搜索',
+    color: '#667eea'
+  },
+  {
+    icon: 'Search',
+    text: '支持标题和内容的模糊匹配搜索，无需完整词汇',
+    color: '#764ba2'
+  },
+  {
+    icon: 'Filter',
+    text: '可以使用筛选功能按类型、时间等条件缩小搜索范围',
+    color: '#f093fb'
+  },
+  {
+    icon: 'RefreshRight',
+    text: '尝试使用不同的关键词或同义词获得更好的搜索结果',
+    color: '#f5576c'
+  },
+  {
+    icon: 'Star',
+    text: '点击热门搜索标签可以快速搜索热门内容',
+    color: '#4facfe'
+  },
+  {
+    icon: 'Clock',
+    text: '搜索历史会自动保存，方便您再次查找',
+    color: '#43e97b'
+  }
+]
 
 // 水滴动画样式生成
 const getRainStyle = (n) => {
@@ -342,6 +407,9 @@ onMounted(() => {
   if (route.query.keyword) {
     keyword.value = route.query.keyword
     handleSearch()
+  } else {
+    // 确保初始状态正确
+    resetToInitialState()
   }
 })
 
@@ -353,15 +421,57 @@ watch(() => route.query.keyword, (newKeyword) => {
   }
 })
 
+// 监听搜索框内容变化，当内容为空时重置到初始状态
+watch(keyword, (newKeyword) => {
+  // 清除之前的定时器
+  if (resetTimer) {
+    clearTimeout(resetTimer)
+  }
+  
+  if (!newKeyword || newKeyword.trim() === '') {
+    // 添加短暂延迟，避免输入过程中的闪烁
+    resetTimer = setTimeout(() => {
+      if (!keyword.value || keyword.value.trim() === '') {
+        resetToInitialState()
+      }
+    }, 100)
+  }
+})
+
+const resetToInitialState = () => {
+  hasSearched.value = false
+  searchedKeyword.value = ''
+  articles.value = []
+  total.value = 0
+  currentPage.value = 1
+  
+  // 清除URL中的搜索参数
+  router.replace({
+    path: '/search'
+  })
+}
+
+// 组件卸载时清理定时器
+onUnmounted(() => {
+  if (resetTimer) {
+    clearTimeout(resetTimer)
+  }
+})
+
 const handleSearch = async () => {
-  if (!keyword.value.trim()) {
+  const trimmedKeyword = keyword.value.trim()
+  
+  if (!trimmedKeyword) {
+    // 如果搜索关键词为空，重置到初始状态
+    resetToInitialState()
     return
   }
   
-  searchedKeyword.value = keyword.value.trim()
+  searchedKeyword.value = trimmedKeyword
   saveHistory(searchedKeyword.value)
   currentPage.value = 1
   hasSearched.value = true
+  loading.value = true
   
   // 更新URL
   router.replace({
@@ -369,10 +479,27 @@ const handleSearch = async () => {
     query: { keyword: searchedKeyword.value }
   })
   
+  // 添加最小加载时间，让用户感知到搜索过程
+  const minLoadTime = 800
+  const startTime = Date.now()
+  
   await fetchResults()
+  
+  // 确保加载动画至少显示一段时间
+  const elapsed = Date.now() - startTime
+  if (elapsed < minLoadTime) {
+    await new Promise(resolve => setTimeout(resolve, minLoadTime - elapsed))
+  }
+  
+  loading.value = false
 }
 
 const quickSearch = (tag) => {
+  // 清除重置定时器
+  if (resetTimer) {
+    clearTimeout(resetTimer)
+  }
+  
   keyword.value = tag
   handleSearch()
 }
@@ -380,7 +507,6 @@ const quickSearch = (tag) => {
 const fetchResults = async () => {
   if (!searchedKeyword.value) return
   
-  loading.value = true
   try {
     // 解析排序参数
     let sortField = 'date'
@@ -412,19 +538,37 @@ const fetchResults = async () => {
     total.value = data.total
   } catch (error) {
     console.error(error)
-  } finally {
-    loading.value = false
   }
 }
 
-const handleSortChange = () => {
+const handleSortChange = async () => {
   currentPage.value = 1
-  fetchResults()
+  loading.value = true
+  const minLoadTime = 500
+  const startTime = Date.now()
+  
+  await fetchResults()
+  
+  const elapsed = Date.now() - startTime
+  if (elapsed < minLoadTime) {
+    await new Promise(resolve => setTimeout(resolve, minLoadTime - elapsed))
+  }
+  loading.value = false
 }
 
-const handleBoardChange = () => {
+const handleBoardChange = async () => {
   currentPage.value = 1
-  fetchResults()
+  loading.value = true
+  const minLoadTime = 500
+  const startTime = Date.now()
+  
+  await fetchResults()
+  
+  const elapsed = Date.now() - startTime
+  if (elapsed < minLoadTime) {
+    await new Promise(resolve => setTimeout(resolve, minLoadTime - elapsed))
+  }
+  loading.value = false
 }
 
 const loadHistory = () => {
@@ -720,91 +864,288 @@ const formatTime = (time) => {
   background: rgba(255, 255, 255, 0.95);
 }
 
-/* 热门搜索 */
-.hot-keywords {
+/* 搜索提示区域 */
+.search-suggestions {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.suggestion-section {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 24px 28px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.suggestion-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.8s ease;
+}
+
+.suggestion-section:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.suggestion-section:hover::before {
+  left: 100%;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  position: relative;
+}
+
+.section-icon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.hot-label {
-  font-size: 14px;
-  opacity: 0.9;
-}
-
-.hot-tag {
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
   color: white;
+  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
 }
 
-.hot-tag:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
+.section-icon:hover {
+  transform: rotate(5deg) scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
-/* 搜索历史 */
-.search-history {
-  margin-top: 24px;
-  animation: fadeInDown 0.6s ease-out;
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
 }
 
-.history-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  color: rgba(255, 255, 255, 0.9);
+.section-decoration {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1), transparent);
+  margin-left: 16px;
+  border-radius: 1px;
+  position: relative;
 }
 
-.history-label {
-  font-size: 14px;
-  opacity: 0.9;
+.section-decoration::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30%;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.6), transparent);
+  border-radius: 1px;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(200%); }
+  100% { transform: translateX(300%); }
 }
 
 .clear-btn {
   color: rgba(255, 255, 255, 0.8);
-  font-size: 12px;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.clear-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
 }
 
 .clear-btn:hover {
   color: white;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.history-tags {
+.clear-btn:hover::before {
+  left: 100%;
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+/* 热门搜索标签 */
+.hot-tag {
+  cursor: pointer;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.15));
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 12px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;
+  animation: slideInUp 0.6s ease-out both;
+  position: relative;
+  overflow: hidden;
 }
 
+.hot-tag::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.6s ease;
+}
+
+.hot-tag:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.25));
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.hot-tag:hover::before {
+  left: 100%;
+}
+
+.hot-tag .el-icon {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* 搜索历史标签 */
 .history-tag {
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+  border: 1px solid rgba(255, 255, 255, 0.25);
   color: rgba(255, 255, 255, 0.9);
-  transition: all 0.3s ease;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 12px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: slideInUp 0.6s ease-out both;
+  position: relative;
+  overflow: hidden;
+}
+
+.history-tag::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transition: left 0.6s ease;
 }
 
 .history-tag:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.2));
+  border-color: rgba(255, 255, 255, 0.4);
   color: white;
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.history-tag:hover::before {
+  left: 100%;
+}
+
+.history-tag .el-icon {
+  font-size: 14px;
+  opacity: 0.8;
 }
 
 .history-tag :deep(.el-tag__close) {
   color: rgba(255, 255, 255, 0.6);
+  margin-left: 8px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .history-tag :deep(.el-tag__close:hover) {
   color: white;
   background-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1) rotate(90deg);
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 搜索结果 */
@@ -1070,6 +1411,63 @@ const formatTime = (time) => {
   flex: 1;
 }
 
+/* 搜索加载状态 */
+.search-loading {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.loading-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 30px;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(102, 126, 234, 0.2);
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #667eea;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
 /* 分页 */
 .pagination-wrapper {
   display: flex;
@@ -1087,42 +1485,174 @@ const formatTime = (time) => {
 
 /* 搜索提示 */
 .search-tips {
-  max-width: 600px;
+  max-width: 800px;
   margin: 0 auto;
+  animation: fadeInUp 0.8s ease-out;
 }
 
-.tips-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  animation: fadeInUp 0.6s ease-out;
+.tips-section {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.12));
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 24px 28px;
+  border: 1px solid rgba(102, 126, 234, 0.25);
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
-.tips-header {
+.tips-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+  transition: left 0.8s ease;
+}
+
+.tips-section:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.18));
+  border-color: rgba(102, 126, 234, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(102, 126, 234, 0.2);
+}
+
+.tips-section:hover::before {
+  left: 100%;
+}
+
+.tips-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tip-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08));
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideInUp 0.6s ease-out both;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.tip-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transition: left 0.6s ease;
+}
+
+.tip-item::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(102, 126, 234, 0.8), rgba(118, 75, 162, 0.6));
+  border-radius: 0 2px 2px 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.tip-item:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.15));
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateX(8px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.15);
+}
+
+.tip-item:hover::before {
+  left: 100%;
+}
+
+.tip-item:hover::after {
+  opacity: 1;
+}
+
+.tip-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.tip-icon::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.tip-item:hover .tip-icon {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.2));
+}
+
+.tip-item:hover .tip-icon::before {
+  opacity: 1;
+}
+
+.tip-text {
+  color: white;
+  font-size: 15px;
+  line-height: 1.6;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  flex: 1;
+  font-weight: 400;
+}
+
+.tip-text kbd {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.25));
+  border: 1px solid rgba(102, 126, 234, 0.4);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 13px;
+  color: white;
   font-weight: 600;
-  font-size: 16px;
-  color: #2c3e50;
+  box-shadow: 0 3px 8px rgba(102, 126, 234, 0.2);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
 }
 
-.tips-list {
-  margin: 0;
-  padding-left: 20px;
-  color: #606266;
-  line-height: 2;
-}
-
-.tips-list kbd {
-  background: #f5f7fa;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 12px;
-  color: #606266;
+.tip-item:hover .tip-text kbd {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.4), rgba(118, 75, 162, 0.35));
+  border-color: rgba(102, 126, 234, 0.6);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 /* 响应式设计 */
@@ -1141,6 +1671,66 @@ const formatTime = (time) => {
 
   .search-btn {
     width: 100%;
+  }
+
+  .search-suggestions {
+    padding: 0 10px;
+  }
+
+  .suggestion-section {
+    padding: 20px 16px;
+  }
+
+  .section-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .section-decoration {
+    display: none;
+  }
+
+  .clear-btn {
+    margin-top: 8px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .tags-container {
+    gap: 8px;
+  }
+
+  .hot-tag, .history-tag {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+
+  .search-tips {
+    padding: 0 10px;
+  }
+
+  .tips-section {
+    padding: 20px 16px;
+  }
+
+  .tip-item {
+    padding: 10px 12px;
+    gap: 12px;
+  }
+
+  .tip-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
+
+  .tip-text {
+    font-size: 13px;
+  }
+
+  .tip-text kbd {
+    font-size: 12px;
+    padding: 3px 8px;
   }
 
   .results-header {
