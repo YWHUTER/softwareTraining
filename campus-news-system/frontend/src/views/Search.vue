@@ -302,7 +302,7 @@
         </div>
         <div class="tips-content">
           <div class="tip-item" v-for="(tip, index) in searchTips" :key="index" :style="{ animationDelay: `${index * 0.1}s` }">
-            <div class="tip-icon">
+            <div class="tip-icon" :style="{ color: tip.color }">
               <component :is="tip.icon" />
             </div>
             <span class="tip-text" v-html="tip.text"></span>
@@ -343,19 +343,33 @@ const hotKeywords = ['校园活动', '讲座', '竞赛', '招聘', '学术', '�
 const searchTips = [
   {
     icon: 'Mouse',
-    text: '输入关键词后按 <kbd>Enter</kbd> 键或点击搜索按钮开始搜索'
+    text: '输入关键词后按 <kbd>Enter</kbd> 键或点击搜索按钮开始搜索',
+    color: '#667eea'
   },
   {
     icon: 'Search',
-    text: '支持标题和内容的模糊匹配搜索'
+    text: '支持标题和内容的模糊匹配搜索，无需完整词汇',
+    color: '#764ba2'
   },
   {
     icon: 'Filter',
-    text: '可以使用筛选功能缩小搜索范围'
+    text: '可以使用筛选功能按类型、时间等条件缩小搜索范围',
+    color: '#f093fb'
   },
   {
     icon: 'RefreshRight',
-    text: '尝试使用不同的关键词获得更好的搜索结果'
+    text: '尝试使用不同的关键词或同义词获得更好的搜索结果',
+    color: '#f5576c'
+  },
+  {
+    icon: 'Star',
+    text: '点击热门搜索标签可以快速搜索热门内容',
+    color: '#4facfe'
+  },
+  {
+    icon: 'Clock',
+    text: '搜索历史会自动保存，方便您再次查找',
+    color: '#43e97b'
   }
 ]
 
